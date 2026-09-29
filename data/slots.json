@@ -72,14 +72,14 @@
       ]
     },
     {
-      "id": "day-fri-2026-10-02",
-      "dateString": "2026-10-02",
-      "dayOfWeek": "Friday",
-      "formattedDate": "Friday, Oct 02, 2026",
+      "id": "day-wed-2026-09-30",
+      "dateString": "2026-09-30",
+      "dayOfWeek": "Wednesday",
+      "formattedDate": "Wednesday, Sept 30, 2026",
       "timeWindow": "6:00 PM – 7:30 PM",
       "slots": [
         {
-          "id": "fri-1800",
+          "id": "wed-1800",
           "startTime": "6:00 PM",
           "endTime": "6:15 PM",
           "start24": "18:00",
@@ -87,7 +87,7 @@
           "status": "available"
         },
         {
-          "id": "fri-1815",
+          "id": "wed-1815",
           "startTime": "6:15 PM",
           "endTime": "6:30 PM",
           "start24": "18:15",
@@ -95,7 +95,7 @@
           "status": "available"
         },
         {
-          "id": "fri-1830",
+          "id": "wed-1830",
           "startTime": "6:30 PM",
           "endTime": "6:45 PM",
           "start24": "18:30",
@@ -103,7 +103,7 @@
           "status": "available"
         },
         {
-          "id": "fri-1845",
+          "id": "wed-1845",
           "startTime": "6:45 PM",
           "endTime": "7:00 PM",
           "start24": "18:45",
@@ -111,7 +111,7 @@
           "status": "available"
         },
         {
-          "id": "fri-1900",
+          "id": "wed-1900",
           "startTime": "7:00 PM",
           "endTime": "7:15 PM",
           "start24": "19:00",
@@ -119,7 +119,7 @@
           "status": "available"
         },
         {
-          "id": "fri-1915",
+          "id": "wed-1915",
           "startTime": "7:15 PM",
           "endTime": "7:30 PM",
           "start24": "19:15",

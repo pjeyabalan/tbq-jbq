@@ -244,7 +244,7 @@ function renderSchedule() {
 
   const daysToRender = state.scheduleData.days.filter(day => {
     if (state.activeFilter === 'tue') return day.id.includes('tue');
-    if (state.activeFilter === 'fri') return day.id.includes('fri');
+    if (state.activeFilter === 'wed') return day.id.includes('wed');
     return true;
   });
 
