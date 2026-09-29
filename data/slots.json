@@ -1,0 +1,132 @@
+{
+  "settings": {
+    "title": "TBQ 1-on-1 Practice Sessions",
+    "description": "15-minute practice and quizzing prep slots with Coach. 7 quizzers, please pick one slot that works best for your schedule!",
+    "targetQuizzers": 7,
+    "students": [
+      "Jade",
+      "Noah",
+      "Prakash",
+      "Deevena",
+      "Amiel",
+      "Hosanna",
+      "Isabelle"
+    ]
+  },
+  "days": [
+    {
+      "id": "day-tue-2026-09-29",
+      "dateString": "2026-09-29",
+      "dayOfWeek": "Tuesday",
+      "formattedDate": "Tuesday, Sept 29, 2026",
+      "timeWindow": "6:30 PM – 8:00 PM",
+      "slots": [
+        {
+          "id": "tue-1830",
+          "startTime": "6:30 PM",
+          "endTime": "6:45 PM",
+          "start24": "18:30",
+          "end24": "18:45",
+          "status": "available"
+        },
+        {
+          "id": "tue-1845",
+          "startTime": "6:45 PM",
+          "endTime": "7:00 PM",
+          "start24": "18:45",
+          "end24": "19:00",
+          "status": "available"
+        },
+        {
+          "id": "tue-1900",
+          "startTime": "7:00 PM",
+          "endTime": "7:15 PM",
+          "start24": "19:00",
+          "end24": "19:15",
+          "status": "available"
+        },
+        {
+          "id": "tue-1915",
+          "startTime": "7:15 PM",
+          "endTime": "7:30 PM",
+          "start24": "19:15",
+          "end24": "19:30",
+          "status": "available"
+        },
+        {
+          "id": "tue-1930",
+          "startTime": "7:30 PM",
+          "endTime": "7:45 PM",
+          "start24": "19:30",
+          "end24": "19:45",
+          "status": "available"
+        },
+        {
+          "id": "tue-1945",
+          "startTime": "7:45 PM",
+          "endTime": "8:00 PM",
+          "start24": "19:45",
+          "end24": "20:00",
+          "status": "available"
+        }
+      ]
+    },
+    {
+      "id": "day-fri-2026-10-02",
+      "dateString": "2026-10-02",
+      "dayOfWeek": "Friday",
+      "formattedDate": "Friday, Oct 02, 2026",
+      "timeWindow": "6:00 PM – 7:30 PM",
+      "slots": [
+        {
+          "id": "fri-1800",
+          "startTime": "6:00 PM",
+          "endTime": "6:15 PM",
+          "start24": "18:00",
+          "end24": "18:15",
+          "status": "available"
+        },
+        {
+          "id": "fri-1815",
+          "startTime": "6:15 PM",
+          "endTime": "6:30 PM",
+          "start24": "18:15",
+          "end24": "18:30",
+          "status": "available"
+        },
+        {
+          "id": "fri-1830",
+          "startTime": "6:30 PM",
+          "endTime": "6:45 PM",
+          "start24": "18:30",
+          "end24": "18:45",
+          "status": "available"
+        },
+        {
+          "id": "fri-1845",
+          "startTime": "6:45 PM",
+          "endTime": "7:00 PM",
+          "start24": "18:45",
+          "end24": "19:00",
+          "status": "available"
+        },
+        {
+          "id": "fri-1900",
+          "startTime": "7:00 PM",
+          "endTime": "7:15 PM",
+          "start24": "19:00",
+          "end24": "19:15",
+          "status": "available"
+        },
+        {
+          "id": "fri-1915",
+          "startTime": "7:15 PM",
+          "endTime": "7:30 PM",
+          "start24": "19:15",
+          "end24": "19:30",
+          "status": "available"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "coach-super",
+    "name": "Head Coach",
+    "username": "supercoach",
+    "passcode": "super2026",
+    "role": "supercoach",
+    "createdAt": "2026-09-28T22:00:00.000Z"
+  },
+  {
+    "id": "coach-assistant",
+    "name": "Team Coach",
+    "username": "coach",
+    "passcode": "coach2026",
+    "role": "coach",
+    "createdAt": "2026-09-28T22:00:00.000Z"
+  }
+]
