@@ -8,9 +8,10 @@ Complete ministry platform for Church Teen Bible Quiz coaches and parents:
 
 ---
 
-## 🌐 Current Live Public Link
+## 🌐 Live Web Links
 
-👉 **[https://dublin-hist-adding-foo.trycloudflare.com](https://dublin-hist-adding-foo.trycloudflare.com)**  
+- 🚀 **Render Live App**: 👉 **[https://tbq-jbq.onrender.com](https://tbq-jbq.onrender.com)**  
+- 🌩️ **Cloudflare Tunnel (Local dev)**: 👉 **[https://dublin-hist-adding-foo.trycloudflare.com](https://dublin-hist-adding-foo.trycloudflare.com)**  
 *(Open on any mobile phone, tablet, or laptop)*
 
 ---

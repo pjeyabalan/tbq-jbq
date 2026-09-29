@@ -254,7 +254,7 @@ function getDefaultSlotsData() {
   return {
     settings: {
       title: "TBQ 1-on-1 Practice Sessions",
-      description: "15-minute practice and quizzing prep slots with Coach. Please pick a slot for your quizzer!",
+      description: "15-minute practice and quizzing prep slots with Coach. Please pick up to 2 slots for your quizzer across Tuesday and Wednesday!",
       targetQuizzers: 7,
       students: DEFAULT_STUDENTS
     },
@@ -324,28 +324,44 @@ function saveSlotsData() {
   }
 }
 
-function getStudentBooking(studentName) {
+function getStudentBookings(studentName) {
+  if (!studentName) return [];
+  const bookings = [];
   for (const day of scheduleData.days) {
     for (const slot of day.slots) {
       if (slot.status === 'booked' && slot.bookedBy && slot.bookedBy.toLowerCase() === studentName.toLowerCase()) {
-        return { slot, day };
+        bookings.push({ slot, day });
       }
     }
   }
-  return null;
+  return bookings;
+}
+
+function getStudentBooking(studentName) {
+  const bookings = getStudentBookings(studentName);
+  return bookings[0] || null;
 }
 
 // GET all slots and students status (Public)
 app.get('/api/slots', (req, res) => {
   const currentStudents = scheduleData.settings.students || DEFAULT_STUDENTS;
   const studentsStatus = currentStudents.map(name => {
-    const booking = getStudentBooking(name);
+    const bookings = getStudentBookings(name);
     return {
       name,
-      isBooked: !!booking,
-      slotId: booking ? booking.slot.id : null,
-      day: booking ? booking.day.formattedDate : null,
-      time: booking ? `${booking.slot.startTime} – ${booking.slot.endTime}` : null
+      bookingCount: bookings.length,
+      maxSlots: 2,
+      isBooked: bookings.length >= 2,
+      bookings: bookings.map(b => ({
+        slotId: b.slot.id,
+        day: b.day.formattedDate,
+        dayOfWeek: b.day.dayOfWeek,
+        time: `${b.slot.startTime} – ${b.slot.endTime}`
+      })),
+      // Backward compatibility fields
+      slotId: bookings[0] ? bookings[0].slot.id : null,
+      day: bookings[0] ? bookings[0].day.formattedDate : null,
+      time: bookings[0] ? `${bookings[0].slot.startTime} – ${bookings[0].slot.endTime}` : null
     };
   });
 
@@ -365,10 +381,13 @@ app.post('/api/book', (req, res) => {
   }
 
   const cleanName = quizzerName.trim();
-  const existingBooking = getStudentBooking(cleanName);
-  if (existingBooking) {
+  const existingBookings = getStudentBookings(cleanName);
+  if (existingBookings.length >= 2) {
+    const reservedList = existingBookings
+      .map(b => `${b.day.dayOfWeek} at ${b.slot.startTime}`)
+      .join(' and ');
     return res.status(400).json({
-      error: `${cleanName} already has a slot reserved on ${existingBooking.day.dayOfWeek} at ${existingBooking.slot.startTime}. Each quizzer can only book one slot.`
+      error: `${cleanName} already has 2 slots reserved (${reservedList}). Each quizzer can book a maximum of 2 slots.`
     });
   }
 
@@ -398,12 +417,14 @@ app.post('/api/book', (req, res) => {
 
   saveSlotsData();
 
-  console.log(`[BOOKED] Slot ${targetSlot.id} booked for ${cleanName}`);
+  const totalBooked = existingBookings.length + 1;
+  console.log(`[BOOKED] Slot ${targetSlot.id} booked for ${cleanName} (${totalBooked}/2 slots)`);
 
   res.json({
     success: true,
-    message: `Slot booked successfully for ${cleanName}!`,
+    message: `Slot booked successfully for ${cleanName}! (${totalBooked} of 2 slots reserved)`,
     slot: targetSlot,
+    bookingCount: totalBooked,
     day: {
       id: targetDay.id,
       dayOfWeek: targetDay.dayOfWeek,

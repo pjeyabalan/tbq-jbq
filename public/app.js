@@ -189,8 +189,7 @@ function updateStats() {
     });
   });
 
-  const studentsList = state.scheduleData.students || [];
-  const target = studentsList.length || 7;
+  const target = totalSlots || 12;
   const fractionEl = document.getElementById('booking-fraction');
   const barEl = document.getElementById('booking-progress-bar');
   const openCountEl = document.getElementById('open-slots-count');
@@ -204,7 +203,7 @@ function updateStats() {
       : 'bg-brand-600 h-3 rounded-full transition-all duration-500';
   }
   if (openCountEl) {
-    const openSlots = totalSlots - bookedSlots;
+    const openSlots = Math.max(0, totalSlots - bookedSlots);
     openCountEl.textContent = `${openSlots} open slot${openSlots === 1 ? '' : 's'}`;
   }
 }
@@ -217,19 +216,30 @@ function renderStudentChips() {
 
   let html = '';
   studentsList.forEach((s, idx) => {
-    if (s.isBooked) {
+    const count = typeof s.bookingCount === 'number' ? s.bookingCount : (s.isBooked ? 2 : 0);
+
+    if (count >= 2) {
       html += `
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs" title="${escapeHtml(s.name)} has booked 2 of 2 slots">
           <span>✓</span>
           <span>${idx + 1}. ${escapeHtml(s.name)}</span>
-          <span class="text-[10px] font-normal text-emerald-700 ml-0.5">(${s.time ? s.time.split('–')[0].trim() : 'Booked'})</span>
+          <span class="text-[10px] font-extrabold text-emerald-700 ml-0.5">(2/2 booked)</span>
+        </span>
+      `;
+    } else if (count === 1) {
+      html += `
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs" title="${escapeHtml(s.name)} has booked 1 slot, 1 open slot remaining">
+          <span>⚡</span>
+          <span>${idx + 1}. ${escapeHtml(s.name)}</span>
+          <span class="text-[10px] font-semibold text-indigo-600 ml-0.5">(1/2 booked)</span>
         </span>
       `;
     } else {
       html += `
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200" title="${escapeHtml(s.name)} has not booked a slot yet">
           <span class="text-amber-500 font-bold">⏳</span>
           <span>${idx + 1}. ${escapeHtml(s.name)}</span>
+          <span class="text-[10px] font-normal text-slate-400 ml-0.5">(0/2)</span>
         </span>
       `;
     }
@@ -383,11 +393,15 @@ function openBookingModal(slotId, dayId) {
   students.forEach((s, idx) => {
     const opt = document.createElement('option');
     opt.value = s.name;
-    if (s.isBooked) {
+    const count = typeof s.bookingCount === 'number' ? s.bookingCount : (s.isBooked ? 2 : 0);
+    if (count >= 2) {
       opt.disabled = true;
-      opt.textContent = `${idx + 1}. ${s.name} (Already Booked - ${s.day || ''})`;
+      opt.textContent = `${idx + 1}. ${s.name} (Max 2 slots booked ✓)`;
+    } else if (count === 1) {
+      const bookedDetail = s.bookings && s.bookings[0] ? ` — 1st on ${s.bookings[0].dayOfWeek || s.bookings[0].day} at ${s.bookings[0].time}` : '';
+      opt.textContent = `${idx + 1}. ${s.name} (1 of 2 booked — pick 2nd slot${bookedDetail})`;
     } else {
-      opt.textContent = `${idx + 1}. ${s.name}`;
+      opt.textContent = `${idx + 1}. ${s.name} (0 of 2 booked)`;
     }
     selectEl.appendChild(opt);
   });
@@ -430,7 +444,7 @@ async function submitBooking(event) {
     }
 
     closeBookingModal();
-    openSuccessModal(result.slot, result.day);
+    openSuccessModal(result.slot, result.day, result.bookingCount);
     await fetchSlots(true);
   } catch (err) {
     showBookingError('Network error. Please try again.');
@@ -446,8 +460,13 @@ function showBookingError(msg) {
   alertEl.classList.remove('hidden');
 }
 
-function openSuccessModal(slot, day) {
-  document.getElementById('success-quizzer-msg').textContent = `Slot reserved for ${slot.bookedBy}!`;
+function openSuccessModal(slot, day, bookingCount = 1) {
+  const count = typeof bookingCount === 'number' ? bookingCount : 1;
+  if (count >= 2) {
+    document.getElementById('success-quizzer-msg').textContent = `Slot reserved! ${slot.bookedBy} has reached the 2-slot maximum.`;
+  } else {
+    document.getElementById('success-quizzer-msg').textContent = `Slot reserved for ${slot.bookedBy}! (1 of 2 slots booked — you may book 1 more slot if desired)`;
+  }
   document.getElementById('success-student-name').textContent = slot.bookedBy;
   document.getElementById('success-date').textContent = day.formattedDate;
   document.getElementById('success-time').textContent = `${slot.startTime} – ${slot.endTime}`;

@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "TBQ 1-on-1 Practice Sessions",
-    "description": "15-minute practice and quizzing prep slots with Coach. 7 quizzers, please pick one slot that works best for your schedule!",
+    "description": "15-minute practice and quizzing prep slots with Coach. 7 quizzers, please pick up to 2 slots that work best for your schedule!",
     "targetQuizzers": 7,
     "students": [
       "Jade",
