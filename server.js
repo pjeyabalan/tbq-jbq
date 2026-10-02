@@ -464,8 +464,8 @@ function calculateMatchStats(matchId) {
     }
   }
 
-  const teamAObj = getTeamById(match.teamAId) || { name: "Team A", church: "Church A", quizzers: [] };
-  const teamBObj = getTeamById(match.teamBId) || { name: "Team B", church: "Church B", quizzers: [] };
+  const teamAObj = getTeamById(match.teamAId) || { name: "Church Team 1", church: "Church 1", quizzers: [] };
+  const teamBObj = getTeamById(match.teamBId) || { name: "Church Team 2", church: "Church 2", quizzers: [] };
 
   if (!match.seats) {
     match.seats = {
@@ -890,8 +890,8 @@ app.get('/api/tbq', authenticateCoach, (req, res) => {
       teamBId: m.teamBId,
       quizmaster: m.quizmaster || "Quizmaster",
       scorekeeper: m.scorekeeper || "Scorekeeper",
-      teamAName: tA ? tA.name : "Team A",
-      teamBName: tB ? tB.name : "Team B"
+      teamAName: tA ? tA.name : "Church Team 1",
+      teamBName: tB ? tB.name : "Church Team 2"
     };
   });
 

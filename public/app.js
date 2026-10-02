@@ -379,14 +379,14 @@ function renderOfficialScoresheet() {
   const nextQ = activeRound.questions.length + 1;
   document.getElementById('active-question-badge').textContent = `Question #${nextQ}`;
   document.getElementById('score-question-num').value = nextQ;
-  document.getElementById('scorer-home-label').textContent = `TEAM A: ${activeRound.teamA.name}`;
-  document.getElementById('scorer-opp-label').textContent = `TEAM B: ${activeRound.teamB.name}`;
+  document.getElementById('scorer-home-label').textContent = activeRound.teamA.name;
+  document.getElementById('scorer-opp-label').textContent = activeRound.teamB.name;
 
   renderSeatsSelectionGrid(activeRound);
 
   // 5. Table Headers - Seats Names
-  document.getElementById('table-head-team-a').textContent = `TEAM A: ${activeRound.teamA.name}`;
-  document.getElementById('table-head-team-b').textContent = `TEAM B: ${activeRound.teamB.name}`;
+  document.getElementById('table-head-team-a').textContent = activeRound.teamA.name;
+  document.getElementById('table-head-team-b').textContent = activeRound.teamB.name;
 
   const seatsA = activeRound.seats.home;
   const seatsB = activeRound.seats.opponent;
@@ -1147,6 +1147,12 @@ async function handleSaveMatchInfo(event) {
 
 function openAddFoulModal() {
   document.getElementById('foul-reason-input').value = '';
+  if (state.tbqData && state.tbqData.activeRound) {
+    const optHome = document.getElementById('foul-team-home-opt');
+    const optOpp = document.getElementById('foul-team-opp-opt');
+    if (optHome) optHome.textContent = state.tbqData.activeRound.teamA.name;
+    if (optOpp) optOpp.textContent = state.tbqData.activeRound.teamB.name;
+  }
   document.getElementById('add-foul-modal').classList.remove('hidden');
 }
 
@@ -1417,7 +1423,7 @@ async function handleSaveMatch(event) {
   const scorekeeper = document.getElementById('match-sk-input').value.trim();
 
   if (teamAId === teamBId) {
-    alert('Team A and Team B must be different teams!');
+    alert('Please select two different church teams for this match!');
     return;
   }
 
