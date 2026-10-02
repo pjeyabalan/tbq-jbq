@@ -6,6 +6,10 @@
 const state = {
   auth: null,
   currentTab: 'scoresheet',
+  currentLeague: 'tbq', // 'tbq' | 'jbq'
+  currentMeetId: 'tbq-meet-1',
+  currentDivision: 'b_level', // 'b_level' | 'c_level'
+  platformContext: null,
   publicData: null,
   tbqData: null,
   activeMatchId: null,
@@ -26,6 +30,8 @@ const state = {
 
 document.addEventListener('DOMContentLoaded', async () => {
   checkStorageStatus();
+  await fetchPlatformContext();
+
   const savedToken = localStorage.getItem('tbq_coach_token');
   if (savedToken) {
     try {
@@ -59,10 +65,18 @@ function setLoggedInCoach(token, user) {
 
   const roleBadge = document.getElementById('user-role-badge');
   roleBadge.classList.remove('hidden');
-  roleBadge.className = user.role === 'supercoach'
-    ? 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-amber-400 text-brand-950 border-amber-300'
-    : 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-indigo-500/20 text-indigo-200 border-indigo-400/30';
-  roleBadge.textContent = user.role === 'supercoach' ? '👑 Super Coach' : '👤 Coach';
+  if (user.role === 'supercoach') {
+    roleBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-amber-400 text-brand-950 border-amber-300';
+    roleBadge.textContent = '👑 Super Coach';
+  } else if (user.role === 'jbq_coach') {
+    roleBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-purple-500/20 text-purple-200 border-purple-400/30';
+    roleBadge.textContent = '🎒 JBQ Coach';
+    state.currentLeague = 'jbq';
+  } else {
+    roleBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-200 border-emerald-400/30';
+    roleBadge.textContent = '📖 TBQ Coach';
+    state.currentLeague = 'tbq';
+  }
 
   const coachesTabBtn = document.getElementById('tab-btn-coaches');
   if (user.role === 'supercoach') {
@@ -71,6 +85,7 @@ function setLoggedInCoach(token, user) {
     coachesTabBtn.classList.add('hidden');
   }
 
+  renderPlatformHeader();
   document.getElementById('section-public').classList.add('hidden');
   switchTab('scoresheet');
   fetchTbqData();
@@ -89,6 +104,8 @@ function setLoggedOutView() {
   document.getElementById('section-teams').classList.add('hidden');
   document.getElementById('section-coaches').classList.add('hidden');
   document.getElementById('section-public').classList.remove('hidden');
+
+  renderPlatformHeader();
 }
 
 function logoutCoach() {
@@ -180,10 +197,216 @@ async function authFetch(url, options = {}) {
   if (state.auth && state.auth.token) {
     headers['Authorization'] = `Bearer ${state.auth.token}`;
   }
+  headers['x-quiz-league'] = state.currentLeague;
+  headers['x-quiz-meet'] = state.currentMeetId;
+  if (state.currentLeague === 'jbq') {
+    headers['x-quiz-division'] = state.currentDivision;
+  }
   if (!headers['Content-Type'] && options.method && options.method !== 'GET') {
     headers['Content-Type'] = 'application/json';
   }
   return fetch(url, { ...options, headers });
+}
+
+// Platform Navigation & Context Manager
+async function fetchPlatformContext() {
+  try {
+    const res = await authFetch('/api/platform/context');
+    if (!res.ok) return;
+    const ctx = await res.json();
+    state.platformContext = ctx;
+
+    if (!state.currentLeague) state.currentLeague = ctx.activeLeague || 'tbq';
+    const lData = ctx[state.currentLeague];
+    if (lData) {
+      if (!state.currentMeetId || !lData.meets.some(m => m.id === state.currentMeetId)) {
+        state.currentMeetId = lData.activeMeetId || lData.meets[0]?.id || `${state.currentLeague}-meet-1`;
+      }
+      if (state.currentLeague === 'jbq') {
+        state.currentDivision = lData.activeDivision || 'b_level';
+      }
+    }
+
+    renderPlatformHeader();
+  } catch (err) {
+    console.warn('Failed to load platform context:', err);
+  }
+}
+
+function renderPlatformHeader() {
+  const isJBQ = state.currentLeague === 'jbq';
+  const role = state.auth?.user?.role;
+  const isSuper = role === 'supercoach';
+
+  // 1. Brand Logo & Title
+  const logoIcon = document.getElementById('brand-logo-icon');
+  const leagueBadge = document.getElementById('brand-league-badge');
+  const leagueTitle = document.getElementById('brand-league-title');
+  const meetSubtitle = document.getElementById('brand-meet-subtitle');
+
+  if (logoIcon) logoIcon.textContent = isJBQ ? '🎒' : '📖';
+  if (leagueBadge) leagueBadge.textContent = isJBQ ? 'JBQ Ministry' : 'TBQ Ministry';
+  if (leagueTitle) leagueTitle.textContent = isJBQ ? 'Junior Bible Quiz' : 'Teen Bible Quiz';
+
+  // 2. League Pills UI (TBQ vs JBQ)
+  const btnTbq = document.getElementById('btn-league-tbq');
+  const btnJbq = document.getElementById('btn-league-jbq');
+
+  if (btnTbq && btnJbq) {
+    if (isJBQ) {
+      btnTbq.className = 'px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1';
+      btnJbq.className = 'px-3 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1';
+    } else {
+      btnTbq.className = 'px-3 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1';
+      btnJbq.className = 'px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1';
+    }
+
+    if (role === 'tbq_coach') {
+      btnJbq.classList.add('hidden');
+      btnTbq.classList.remove('hidden');
+    } else if (role === 'jbq_coach') {
+      btnTbq.classList.add('hidden');
+      btnJbq.classList.remove('hidden');
+    } else {
+      btnTbq.classList.remove('hidden');
+      btnJbq.classList.remove('hidden');
+    }
+  }
+
+  // 3. Meet Dropdown
+  const meetSelect = document.getElementById('global-meet-select');
+  if (meetSelect && state.platformContext) {
+    const lData = state.platformContext[state.currentLeague];
+    if (lData && Array.isArray(lData.meets)) {
+      meetSelect.innerHTML = lData.meets.map(m => `
+        <option value="${m.id}" ${m.id === state.currentMeetId ? 'selected' : ''}>
+          ${escapeHtml(m.title)}
+        </option>
+      `).join('');
+
+      const activeMeetObj = lData.meets.find(m => m.id === state.currentMeetId) || lData.meets[0];
+      if (meetSubtitle && activeMeetObj) {
+        meetSubtitle.textContent = activeMeetObj.title;
+      }
+    }
+  }
+
+  // 4. "+ Meet" button (Super Coach only)
+  const createMeetBtn = document.getElementById('btn-create-meet-nav');
+  if (createMeetBtn) {
+    if (isSuper) {
+      createMeetBtn.classList.remove('hidden');
+    } else {
+      createMeetBtn.classList.add('hidden');
+    }
+  }
+
+  // 5. JBQ Division Sub-Bar
+  const jbqBar = document.getElementById('jbq-division-bar');
+  if (jbqBar) {
+    if (isJBQ) {
+      jbqBar.classList.remove('hidden');
+      const btnB = document.getElementById('btn-div-b');
+      const btnC = document.getElementById('btn-div-c');
+      const divDesc = document.getElementById('jbq-division-desc');
+
+      if (state.currentDivision === 'c_level') {
+        if (btnB) btnB.className = 'px-3.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5';
+        if (btnC) btnC.className = 'px-3.5 py-1 rounded-lg text-xs font-black transition-all bg-purple-600 text-white shadow-xs flex items-center gap-1.5';
+        if (divDesc) divDesc.innerHTML = '🌟 <strong>C-Level Division (Beginner)</strong> • 2 Teams (Chicago Indian Church - C1 & C2)';
+      } else {
+        if (btnB) btnB.className = 'px-3.5 py-1 rounded-lg text-xs font-black transition-all bg-purple-600 text-white shadow-xs flex items-center gap-1.5';
+        if (btnC) btnC.className = 'px-3.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5';
+        if (divDesc) divDesc.innerHTML = '⚡ <strong>B-Level Division (Intermediate)</strong> • 1 Team (Chicago Indian Church - B1)';
+      }
+    } else {
+      jbqBar.classList.add('hidden');
+    }
+  }
+}
+
+function handleSwitchLeague(league) {
+  if (state.auth && state.auth.user) {
+    if (state.auth.user.role === 'tbq_coach' && league !== 'tbq') return;
+    if (state.auth.user.role === 'jbq_coach' && league !== 'jbq') return;
+  }
+  state.currentLeague = league;
+  if (state.platformContext && state.platformContext[league]) {
+    const lData = state.platformContext[league];
+    state.currentMeetId = lData.activeMeetId || lData.meets[0]?.id || `${league}-meet-1`;
+  }
+  renderPlatformHeader();
+  if (state.auth) {
+    fetchTbqData();
+  } else {
+    fetchPublicSummary();
+  }
+}
+
+function handleMeetChange(meetId) {
+  state.currentMeetId = meetId;
+  renderPlatformHeader();
+  if (state.auth) {
+    fetchTbqData();
+  } else {
+    fetchPublicSummary();
+  }
+}
+
+function handleDivisionSwitch(divKey) {
+  state.currentDivision = divKey;
+  renderPlatformHeader();
+  if (state.auth) {
+    fetchTbqData();
+  } else {
+    fetchPublicSummary();
+  }
+}
+
+function openCreateMeetModal() {
+  document.getElementById('new-meet-league').value = state.currentLeague;
+  document.getElementById('new-meet-title').value = '';
+  document.getElementById('create-meet-modal').classList.remove('hidden');
+}
+
+function closeCreateMeetModal() {
+  document.getElementById('create-meet-modal').classList.add('hidden');
+}
+
+async function handleCreateMeet(event) {
+  event.preventDefault();
+  const league = document.getElementById('new-meet-league').value;
+  const title = document.getElementById('new-meet-title').value.trim();
+  const date = document.getElementById('new-meet-date').value;
+  const copyRoster = document.getElementById('new-meet-copy-roster').checked;
+
+  try {
+    const res = await authFetch('/api/meets/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        league,
+        title,
+        date,
+        copyRosterFromMeetId: copyRoster ? state.currentMeetId : null
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to create meet.');
+      return;
+    }
+    closeCreateMeetModal();
+    state.currentLeague = data.league;
+    state.currentMeetId = data.meetId;
+    await fetchPlatformContext();
+    if (state.auth) {
+      fetchTbqData();
+    } else {
+      fetchPublicSummary();
+    }
+  } catch (err) {
+    alert('Network error while creating meet.');
+  }
 }
 
 // Tab Switching
@@ -217,7 +440,12 @@ function switchTab(tab) {
 
 async function fetchPublicSummary() {
   try {
-    const res = await fetch('/api/tbq/public-summary');
+    const query = new URLSearchParams({
+      league: state.currentLeague,
+      meetId: state.currentMeetId,
+      division: state.currentDivision
+    });
+    const res = await fetch(`/api/tbq/public-summary?${query.toString()}`);
     if (!res.ok) return;
     const data = await res.json();
     state.publicData = data;
@@ -1493,9 +1721,13 @@ function renderCoachesTable(coaches) {
         <td class="py-3 font-mono font-medium text-slate-600">${escapeHtml(c.username)}</td>
         <td class="py-3">
           <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-            c.role === 'supercoach' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-100 text-slate-700'
+            c.role === 'supercoach'
+              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+              : (c.role === 'jbq_coach'
+                ? 'bg-purple-100 text-purple-900 border border-purple-300'
+                : 'bg-emerald-100 text-emerald-900 border border-emerald-300')
           }">
-            ${c.role === 'supercoach' ? 'Super Coach' : 'Coach'}
+            ${c.role === 'supercoach' ? '👑 Super Coach' : (c.role === 'jbq_coach' ? '🎒 JBQ Coach' : '📖 TBQ Coach')}
           </span>
         </td>
         <td class="py-3 font-mono text-slate-700">${escapeHtml(c.passcode)}</td>

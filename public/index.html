@@ -52,44 +52,68 @@
   <!-- TOP NAVIGATION HEADER                      -->
   <!-- ========================================== -->
   <header class="bg-brand-900 text-white shadow-lg border-b border-brand-800 no-print sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
       
       <!-- LOGO & BRAND -->
       <div class="flex items-center space-x-3 cursor-pointer" onclick="handleLogoClick()">
-        <div class="w-10 h-10 rounded-xl bg-amber-400 text-brand-950 flex items-center justify-center font-black text-xl shadow-inner flex-shrink-0">
-          📖
+        <div id="brand-logo-box" class="w-10 h-10 rounded-xl bg-amber-400 text-brand-950 flex items-center justify-center font-black text-xl shadow-inner flex-shrink-0 transition-transform hover:scale-105">
+          <span id="brand-logo-icon">📖</span>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <span class="bg-amber-400/20 text-amber-300 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-amber-400/30">
+            <span id="brand-league-badge" class="bg-amber-400/20 text-amber-300 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-amber-400/30">
               TBQ Ministry
             </span>
             <span id="user-role-badge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full border items-center gap-1"></span>
           </div>
           <h1 class="text-base sm:text-lg font-black tracking-tight mt-0.5 flex items-center gap-1.5">
-            <span>Teen Bible Quiz</span>
-            <span class="text-amber-400 font-normal text-xs sm:text-sm">4-Team Tournament</span>
+            <span id="brand-league-title">Teen Bible Quiz</span>
+            <span id="brand-meet-subtitle" class="text-amber-400 font-normal text-xs sm:text-sm">Meet 1</span>
           </h1>
         </div>
       </div>
 
-      <!-- NAVIGATION CONTROLS -->
+      <!-- LEAGUE & MEET SELECTOR TOOLBAR -->
+      <div class="flex items-center gap-2 flex-wrap justify-center">
+        <!-- LEAGUE TOGGLE (TBQ vs JBQ) -->
+        <div id="league-nav-pills" class="flex items-center bg-brand-950/90 p-1 rounded-xl border border-brand-800/80 shadow-inner">
+          <button id="btn-league-tbq" onclick="handleSwitchLeague('tbq')" class="px-3 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1">
+            <span>📖 TBQ</span>
+          </button>
+          <button id="btn-league-jbq" onclick="handleSwitchLeague('jbq')" class="px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1">
+            <span>🎒 JBQ</span>
+          </button>
+        </div>
+
+        <!-- MEET SELECTOR DROPDOWN -->
+        <div class="flex items-center gap-1.5 bg-brand-950/90 px-2.5 py-1 rounded-xl border border-brand-800/80 text-xs shadow-inner">
+          <span class="text-[11px] text-brand-300 font-bold hidden sm:inline">Meet:</span>
+          <select id="global-meet-select" onchange="handleMeetChange(this.value)" class="bg-transparent text-amber-300 font-black text-xs focus:outline-none cursor-pointer pr-1">
+            <!-- Dynamically populated via JS -->
+          </select>
+          <button id="btn-create-meet-nav" onclick="openCreateMeetModal()" title="Create New Meet" class="hidden text-[10px] bg-amber-400 hover:bg-amber-300 text-brand-950 font-black px-2 py-0.5 rounded-md shadow-xs transition-all flex items-center gap-1">
+            <span>+ Meet</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- NAVIGATION CONTROLS & AUTH -->
       <div class="flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
         <!-- LOGGED-IN NAVIGATION TABS -->
         <div id="coach-nav-tabs" class="hidden bg-brand-950/80 p-1 rounded-xl flex items-center gap-1 border border-brand-800/80">
-          <button onclick="switchTab('scoresheet')" id="tab-btn-scoresheet" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5">
+          <button onclick="switchTab('scoresheet')" id="tab-btn-scoresheet" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5">
             <span>📋 Scoresheet</span>
           </button>
-          <button onclick="switchTab('teams')" id="tab-btn-teams" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white hover:bg-brand-800/60 flex items-center gap-1.5">
+          <button onclick="switchTab('teams')" id="tab-btn-teams" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white hover:bg-brand-800/60 flex items-center gap-1.5">
             <span>👥 Teams & Matches</span>
           </button>
-          <button onclick="switchTab('coaches')" id="tab-btn-coaches" class="hidden px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-amber-300 hover:text-amber-100 hover:bg-brand-800/60 flex items-center gap-1">
+          <button onclick="switchTab('coaches')" id="tab-btn-coaches" class="hidden px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-amber-300 hover:text-amber-100 hover:bg-brand-800/60 flex items-center gap-1">
             <span>🛡️ Manage Coaches</span>
           </button>
         </div>
 
         <!-- AUTH BUTTONS -->
-        <button id="auth-login-btn" onclick="openCoachLoginModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-extrabold px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5">
+        <button id="auth-login-btn" onclick="openCoachLoginModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-extrabold px-3.5 py-1.5 rounded-xl transition-all shadow-md flex items-center gap-1.5">
           <span>🔒 Coach Login</span>
         </button>
 
@@ -103,6 +127,26 @@
 
     </div>
   </header>
+
+  <!-- JBQ DIVISION SUB-BAR (Visible whenever JBQ is active) -->
+  <div id="jbq-division-bar" class="hidden bg-slate-900 border-b border-slate-800 text-white py-2 px-4 sm:px-6 no-print sticky top-[57px] z-30 shadow-md">
+    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-black text-slate-400 uppercase tracking-wider">JBQ Division:</span>
+        <button id="btn-div-b" onclick="handleDivisionSwitch('b_level')" class="px-3.5 py-1 rounded-lg text-xs font-black transition-all bg-purple-600 text-white shadow-xs flex items-center gap-1.5">
+          <span>⚡ B-Level</span>
+          <span class="text-[10px] bg-purple-800/90 px-1.5 py-0.2 rounded-full font-bold">1 CIC Team</span>
+        </button>
+        <button id="btn-div-c" onclick="handleDivisionSwitch('c_level')" class="px-3.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5">
+          <span>🌟 C-Level</span>
+          <span class="text-[10px] bg-slate-800 px-1.5 py-0.2 rounded-full font-bold">2 CIC Teams</span>
+        </button>
+      </div>
+      <div class="text-[11px] text-purple-300 font-medium hidden md:flex items-center gap-2">
+        <span id="jbq-division-desc">⚡ B-Level Division • Chicago Indian Church - B1</span>
+      </div>
+    </div>
+  </div>
 
   <!-- ========================================== -->
   <!-- 1. PUBLIC VIEW (WITHOUT LOGIN)             -->
@@ -923,14 +967,57 @@
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Role / Permissions</label>
           <select id="add-coach-role" class="w-full px-3 py-2 border rounded-xl text-sm bg-white font-medium">
-            <option value="coach">Regular Coach (Scoresheet & Teams)</option>
-            <option value="supercoach">Super Coach (Full access + manage other coaches)</option>
+            <option value="supercoach">👑 Super Coach (Full admin for TBQ & JBQ)</option>
+            <option value="tbq_coach" selected>📖 TBQ Coach (Teen Bible Quiz)</option>
+            <option value="jbq_coach">🎒 JBQ Coach (Junior Bible Quiz - B & C Levels)</option>
           </select>
         </div>
 
         <div class="pt-2 flex justify-end gap-2">
           <button type="button" onclick="closeAddCoachModal()" class="px-3 py-2 text-xs font-semibold text-slate-600">Cancel</button>
           <button type="submit" class="px-4 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm">Save Coach</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 7. SUPER COACH: CREATE MEET MODAL -->
+  <div id="create-meet-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <span class="text-xs font-black text-amber-600 uppercase tracking-wider">Super Coach Panel</span>
+          <h3 class="text-base font-black text-slate-900">📅 Create New Meet</h3>
+        </div>
+        <button onclick="closeCreateMeetModal()" class="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+      </div>
+
+      <form onsubmit="handleCreateMeet(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">League</label>
+          <select id="new-meet-league" class="w-full px-3 py-2 border rounded-xl text-sm bg-white font-bold">
+            <option value="tbq">📖 TBQ (Teen Bible Quiz)</option>
+            <option value="jbq">🎒 JBQ (Junior Bible Quiz)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Meet Title</label>
+          <input type="text" id="new-meet-title" placeholder="e.g. Meet 2 (Nov / Dec 2026)" required class="w-full px-3 py-2 border rounded-xl text-sm font-semibold">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Meet Date</label>
+          <input type="date" id="new-meet-date" class="w-full px-3 py-2 border rounded-xl text-sm font-medium">
+        </div>
+        <div class="flex items-center gap-2 pt-1">
+          <input type="checkbox" id="new-meet-copy-roster" checked class="w-4 h-4 text-amber-500 rounded">
+          <label for="new-meet-copy-roster" class="text-xs font-bold text-slate-700 cursor-pointer">
+            Copy team rosters from current meet
+          </label>
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="closeCreateMeetModal()" class="px-3 py-2 text-xs font-semibold text-slate-600">Cancel</button>
+          <button type="submit" class="px-4 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm">Create Meet</button>
         </div>
       </form>
     </div>
