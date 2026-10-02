@@ -3,17 +3,37 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const DATA_DIR = path.join(__dirname, 'data');
 const SCORES_FILE = path.join(DATA_DIR, 'scores.json');
 const COACHES_FILE = path.join(DATA_DIR, 'coaches.json');
+
+// ==========================================
+// POSTGRESQL PERSISTENCE POOL
+// ==========================================
+let dbPool = null;
+if (process.env.DATABASE_URL) {
+  const connStr = process.env.DATABASE_URL;
+  const isSsl = process.env.NODE_ENV === 'production' || 
+                connStr.includes('render.com') || 
+                !connStr.includes('localhost');
+  dbPool = new Pool({
+    connectionString: connStr,
+    ssl: isSsl ? { rejectUnauthorized: false } : false
+  });
+
+  dbPool.on('error', (err) => {
+    console.error('[PG] Unexpected database client error:', err.message);
+  });
+}
 
 // ==========================================
 // 1. COACHES & AUTHENTICATION
@@ -22,7 +42,7 @@ const COACHES_FILE = path.join(DATA_DIR, 'coaches.json');
 let coaches = [];
 const activeSessions = new Map(); // token -> coach object
 
-function loadCoaches() {
+function loadCoachesLocal() {
   if (fs.existsSync(COACHES_FILE)) {
     try {
       coaches = JSON.parse(fs.readFileSync(COACHES_FILE, 'utf8'));
@@ -51,10 +71,10 @@ function loadCoaches() {
       createdAt: new Date().toISOString()
     }
   ];
-  saveCoaches();
+  saveCoachesLocal();
 }
 
-function saveCoaches() {
+function saveCoachesLocal() {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     const temp = `${COACHES_FILE}.tmp`;
@@ -62,6 +82,17 @@ function saveCoaches() {
     fs.renameSync(temp, COACHES_FILE);
   } catch (err) {
     console.error('Error saving coaches file:', err);
+  }
+}
+
+function saveCoaches() {
+  saveCoachesLocal();
+  if (dbPool) {
+    dbPool.query(
+      `INSERT INTO tbq_store (key, value, updated_at) VALUES ('coaches', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [JSON.stringify(coaches)]
+    ).catch(err => console.error('[PG] Error saving coaches to DB:', err.message));
   }
 }
 
@@ -348,7 +379,7 @@ function getDefaultScoresData() {
 
 let scoresData = null;
 
-function loadScoresData() {
+function loadScoresDataLocal() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
   if (fs.existsSync(SCORES_FILE)) {
@@ -367,17 +398,28 @@ function loadScoresData() {
   }
 
   scoresData = getDefaultScoresData();
-  saveScoresData();
+  saveScoresDataLocal();
 }
 
-function saveScoresData() {
+function saveScoresDataLocal() {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     const tempFile = `${SCORES_FILE}.tmp`;
     fs.writeFileSync(tempFile, JSON.stringify(scoresData, null, 2), 'utf8');
     fs.renameSync(tempFile, SCORES_FILE);
   } catch (err) {
-    console.error('Error saving scores data:', err);
+    console.error('Error saving scores data locally:', err);
+  }
+}
+
+function saveScoresData() {
+  saveScoresDataLocal();
+  if (dbPool) {
+    dbPool.query(
+      `INSERT INTO tbq_store (key, value, updated_at) VALUES ('scores', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [scoresData]
+    ).catch(err => console.error('[PG] Error persisting scores to DB:', err.message));
   }
 }
 
@@ -1118,15 +1160,118 @@ app.post('/api/tbq/settings', authenticateCoach, (req, res) => {
   res.json({ success: true, meet: scoresData.meet });
 });
 
-// Initialize Data
-loadCoaches();
-loadScoresData();
+// ==========================================
+// 6. SYSTEM STATUS & BACKUP / RESTORE
+// ==========================================
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`=================================================`);
-  console.log(`TBQ Multi-Team Platform running on port ${PORT}`);
-  console.log(`Super Coach login: supercoach / super2026`);
-  console.log(`Regular Coach login: coach / coach2026`);
-  console.log(`=================================================`);
+// GET Storage & System Status
+app.get('/api/system/status', (req, res) => {
+  res.json({
+    status: 'ok',
+    storage: dbPool ? 'postgresql' : 'local_json',
+    persistent: Boolean(dbPool),
+    uptimeSeconds: Math.round(process.uptime()),
+    matchesCount: Object.keys(scoresData?.matches || {}).length,
+    teamsCount: (scoresData?.meet?.teams || []).length
+  });
+});
+
+// GET Full JSON Backup (Coach or Super Coach)
+app.get('/api/tbq/backup', authenticateCoach, (req, res) => {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="tbq-tournament-backup-${dateStr}.json"`);
+  res.send(JSON.stringify(scoresData, null, 2));
+});
+
+// POST Restore Full Backup (Super Coach only)
+app.post('/api/tbq/restore', authenticateCoach, (req, res) => {
+  if (req.user.role !== 'supercoach') {
+    return res.status(403).json({ error: 'Only Super Coaches can restore tournament backups.' });
+  }
+
+  const { backupData } = req.body;
+  if (!backupData || !backupData.meet || !backupData.matches) {
+    return res.status(400).json({ error: 'Invalid backup format. Must contain "meet" and "matches".' });
+  }
+
+  scoresData = backupData;
+  saveScoresData();
+  console.log(`[BACKUP] Super Coach ${req.user.name} restored tournament data from backup file`);
+  res.json({ success: true, message: 'Tournament data restored successfully.', activeMatchId: scoresData.activeMatchId });
+});
+
+// ==========================================
+// INITIALIZE STORAGE & START SERVER
+// ==========================================
+async function initStorage() {
+  // Always load from local files first
+  loadCoachesLocal();
+  loadScoresDataLocal();
+
+  if (!dbPool) {
+    console.log('[STORAGE] No DATABASE_URL configured. Running with local JSON storage.');
+    return;
+  }
+
+  try {
+    console.log('[PG] Connecting to PostgreSQL database...');
+    await dbPool.query(`
+      CREATE TABLE IF NOT EXISTS tbq_store (
+        key VARCHAR(100) PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('[PG] Table "tbq_store" verified.');
+
+    // 1. Restore or seed Coaches
+    const coachesRes = await dbPool.query(`SELECT value FROM tbq_store WHERE key = 'coaches'`);
+    if (coachesRes.rows.length > 0 && Array.isArray(coachesRes.rows[0].value) && coachesRes.rows[0].value.length > 0) {
+      coaches = coachesRes.rows[0].value;
+      console.log(`[PG] Restored ${coaches.length} coaches from database.`);
+      saveCoachesLocal();
+    } else {
+      await dbPool.query(
+        `INSERT INTO tbq_store (key, value, updated_at) VALUES ('coaches', $1, NOW())
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+        [JSON.stringify(coaches)]
+      );
+      console.log(`[PG] Seeded coaches table into database.`);
+    }
+
+    // 2. Restore or seed Scores Data
+    const scoresRes = await dbPool.query(`SELECT value FROM tbq_store WHERE key = 'scores'`);
+    if (scoresRes.rows.length > 0 && scoresRes.rows[0].value && scoresRes.rows[0].value.meet) {
+      scoresData = scoresRes.rows[0].value;
+      console.log(`[PG] Restored scores from database (${Object.keys(scoresData.matches || {}).length} matches).`);
+      saveScoresDataLocal();
+    } else {
+      await dbPool.query(
+        `INSERT INTO tbq_store (key, value, updated_at) VALUES ('scores', $1, NOW())
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+        [scoresData]
+      );
+      console.log(`[PG] Seeded tournament scores into database.`);
+    }
+
+    console.log('[PG] Database sync complete. Scores are permanently persisted to PostgreSQL!');
+  } catch (err) {
+    console.error('[PG] Database initialization error (fallback to local files active):', err.message);
+  }
+}
+
+// Start Server after Storage initialization
+initStorage().then(() => {
+  app.listen(PORT, () => {
+    console.log(`=================================================`);
+    console.log(`TBQ Multi-Team Platform running on port ${PORT}`);
+    console.log(`Storage engine: ${dbPool ? 'PostgreSQL (Persistent)' : 'Local JSON'}`);
+    console.log(`Super Coach login: supercoach / super2026`);
+    console.log(`Regular Coach login: coach / coach2026`);
+    console.log(`=================================================`);
+  });
+}).catch((err) => {
+  console.error('Fatal startup error:', err);
+  process.exit(1);
 });

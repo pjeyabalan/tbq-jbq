@@ -65,6 +65,7 @@
               TBQ Ministry
             </span>
             <span id="user-role-badge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full border items-center gap-1"></span>
+            <span id="db-status-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800 text-slate-300 items-center gap-1 hidden sm:inline-flex">💾 Storage</span>
           </div>
           <h1 class="text-base sm:text-lg font-black tracking-tight mt-0.5 flex items-center gap-1.5">
             <span>Teen Bible Quiz</span>
@@ -582,6 +583,34 @@
 
       <div class="space-y-3" id="matches-schedule-list">
         <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- 3. DATA PERSISTENCE & BACKUP TOOLS -->
+    <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-slate-100 gap-2">
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-base font-black text-slate-900">💾 Data Persistence & Backup</h3>
+            <span id="storage-type-pill" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Checking database...
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">All scores, teams, and match results are permanently stored and persist across server restarts.</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="downloadScoresBackup()" class="text-xs bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-xl shadow-xs transition-all flex items-center gap-1.5">
+            <span>💾 Export Backup (JSON)</span>
+          </button>
+          <label class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl border border-slate-300 cursor-pointer shadow-xs transition-all flex items-center gap-1.5">
+            <span>📥 Restore Backup</span>
+            <input type="file" id="backup-file-input" accept=".json" onchange="handleRestoreBackupFile(event)" class="hidden">
+          </label>
+        </div>
+      </div>
+      <div class="text-[11px] text-slate-500 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+        <span>✅ Persistent storage: PostgreSQL Database + Local File System + In-Browser Cache.</span>
+        <span class="text-slate-400">All questions, seats, fouls, and timeouts are automatically saved on every click.</span>
       </div>
     </div>
 

@@ -25,6 +25,7 @@ const state = {
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', async () => {
+  checkStorageStatus();
   const savedToken = localStorage.getItem('tbq_coach_token');
   if (savedToken) {
     try {
@@ -320,6 +321,9 @@ async function fetchTbqData(matchId) {
     const data = await res.json();
     state.tbqData = data;
     state.activeMatchId = data.activeMatchId;
+    try {
+      localStorage.setItem('tbq_backup_scores', JSON.stringify(data));
+    } catch (e) {}
     renderOfficialScoresheet();
   } catch (err) {
     console.error('Error fetching TBQ scoresheet:', err);
@@ -995,6 +999,7 @@ function renderTeamsManagerUI() {
     `;
   });
   matchesListEl.innerHTML = mHtml || '<p class="text-xs text-slate-400 py-3 text-center">No matches configured. Tap "+ Add Meet / Match" above.</p>';
+  checkStorageStatus();
 }
 
 function selectAndOpenMatch(matchId) {
@@ -1302,4 +1307,96 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// ==========================================
+// 8. STORAGE STATUS & BACKUP / RESTORE
+// ==========================================
+
+async function checkStorageStatus() {
+  try {
+    const res = await fetch('/api/system/status');
+    if (!res.ok) return;
+    const data = await res.json();
+    const pill = document.getElementById('storage-type-pill');
+    const badge = document.getElementById('db-status-badge');
+
+    if (data.persistent) {
+      if (pill) {
+        pill.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
+        pill.innerHTML = '🟢 PostgreSQL Database (Permanent)';
+      }
+      if (badge) {
+        badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 items-center gap-1 hidden sm:inline-flex';
+        badge.innerHTML = '🟢 Cloud Database Active';
+      }
+    } else {
+      if (pill) {
+        pill.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
+        pill.innerHTML = '📁 Local Storage Mode';
+      }
+      if (badge) {
+        badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-300 items-center gap-1 hidden sm:inline-flex';
+        badge.innerHTML = '📁 Local Storage';
+      }
+    }
+  } catch (err) {
+    console.warn('Storage status check error:', err);
+  }
+}
+
+async function downloadScoresBackup() {
+  try {
+    const res = await authFetch('/api/tbq/backup');
+    if (!res.ok) {
+      alert('Failed to download backup.');
+      return;
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tbq-tournament-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Error downloading backup file.');
+  }
+}
+
+async function handleRestoreBackupFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  if (!confirm(`Are you sure you want to restore scores from "${file.name}"? This will replace current tournament scores.`)) {
+    event.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const backupData = JSON.parse(e.target.result);
+      const res = await authFetch('/api/tbq/restore', {
+        method: 'POST',
+        body: JSON.stringify({ backupData })
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        alert(result.error || 'Failed to restore backup.');
+        return;
+      }
+      alert('Tournament scores restored successfully!');
+      await fetchTbqData(result.activeMatchId);
+      renderTeamsManagerUI();
+      switchTab('scoresheet');
+    } catch (err) {
+      alert('Invalid JSON backup file: ' + err.message);
+    } finally {
+      event.target.value = '';
+    }
+  };
+  reader.readAsText(file);
 }
