@@ -1,42 +1,410 @@
 {
   "meet": {
-    "title": "TBQ Fall Invitational",
-    "homeChurch": "First Assembly TBQ",
-    "opponentChurch": "Grace Chapel",
-    "totalRounds": 4,
-    "homeQuizzers": [
-      "Jade",
-      "Noah",
-      "Prakash",
-      "Deevena",
-      "Amiel",
-      "Hosanna",
-      "Isabelle"
-    ],
-    "opponentQuizzers": [
-      "Timothy",
-      "Hannah",
-      "Samuel",
-      "Micah",
-      "Daniel"
+    "title": "TBQ Tournament 2026",
+    "teams": [
+      {
+        "id": "team-cic-1",
+        "name": "Chicago Indian Church - P",
+        "church": "Chicago Indian Church",
+        "quizzers": [
+          "Noah",
+          "Prakash",
+          "Jade"
+        ]
+      },
+      {
+        "id": "team-cic-2",
+        "name": "Chicago Indian Church - D",
+        "church": "Chicago Indian Church",
+        "quizzers": [
+          "Amiel",
+          "Isabelle",
+          "Dewanna",
+          "Hosanna"
+        ]
+      },
+      {
+        "id": "team-3",
+        "name": "Team 3 (TBD)",
+        "church": "Opponent Church A",
+        "quizzers": [
+          "Leo",
+          "Ava",
+          "Eli",
+          "Timothy",
+          "Hannah"
+        ]
+      },
+      {
+        "id": "team-4",
+        "name": "Team 4 (TBD)",
+        "church": "Opponent Church B",
+        "quizzers": [
+          "Quizzer 1",
+          "Quizzer 2",
+          "Quizzer 3",
+          "Quizzer 4",
+          "Quizzer 5"
+        ]
+      }
     ]
   },
-  "currentRound": 1,
-  "rounds": {
-    "1": {
+  "activeMatchId": "match-1",
+  "matches": {
+    "match-1": {
+      "id": "match-1",
+      "meetNum": 1,
       "roundNum": 1,
+      "matchNumber": "01",
+      "room": "201",
+      "quizmaster": "Pastor John",
+      "scorekeeper": "Sarah M.",
+      "teamAId": "team-cic-1",
+      "teamBId": "team-3",
+      "seats": {
+        "teamA": [
+          "Sam",
+          "Mia",
+          "Ben",
+          "Jade",
+          "Noah"
+        ],
+        "teamB": [
+          "Leo",
+          "Ava",
+          "Eli",
+          "Timothy",
+          "Hannah"
+        ]
+      },
+      "timeouts": {
+        "teamA": [
+          {
+            "id": 1,
+            "used": true,
+            "questionNum": "Q8"
+          },
+          {
+            "id": 2,
+            "used": false,
+            "questionNum": ""
+          }
+        ],
+        "teamB": [
+          {
+            "id": 1,
+            "used": true,
+            "questionNum": "Q4"
+          },
+          {
+            "id": 2,
+            "used": true,
+            "questionNum": "Q18"
+          }
+        ]
+      },
+      "fouls": {
+        "teamA": [],
+        "teamB": [
+          {
+            "id": "foul-1",
+            "reason": "Bench talking (-5)",
+            "penalty": 5,
+            "timestamp": "2026-10-02T18:00:00.000Z"
+          }
+        ]
+      },
       "questions": [
         {
-          "id": "q-1790636044709",
+          "id": "q-1",
           "questionNum": 1,
           "pointValue": 10,
-          "isInterruption": false,
-          "team": "home",
-          "quizzer": "Jade",
+          "team": "teamA",
+          "quizzer": "Sam",
+          "seatNum": 1,
           "isCorrect": true,
-          "timestamp": "2026-09-28T22:54:04.709Z"
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-2",
+          "questionNum": 2,
+          "pointValue": 20,
+          "team": "teamA",
+          "quizzer": "Mia",
+          "seatNum": 2,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-3",
+          "questionNum": 3,
+          "pointValue": 10,
+          "team": "teamB",
+          "quizzer": "Leo",
+          "seatNum": 1,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-4a",
+          "questionNum": 4,
+          "pointValue": 30,
+          "team": "teamA",
+          "quizzer": "Sam",
+          "seatNum": 1,
+          "isCorrect": false,
+          "isInterruption": true,
+          "isRebound": false
+        },
+        {
+          "id": "q-4b",
+          "questionNum": 4,
+          "pointValue": 30,
+          "team": "teamB",
+          "quizzer": "Ava",
+          "seatNum": 2,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": true
+        },
+        {
+          "id": "q-5",
+          "questionNum": 5,
+          "pointValue": 20,
+          "team": "teamA",
+          "quizzer": "Ben",
+          "seatNum": 3,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-6",
+          "questionNum": 6,
+          "pointValue": 20,
+          "team": "teamA",
+          "quizzer": "Sam",
+          "seatNum": 1,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-7",
+          "questionNum": 7,
+          "pointValue": 10,
+          "team": "teamB",
+          "quizzer": "Leo",
+          "seatNum": 1,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-8",
+          "questionNum": 8,
+          "pointValue": 20,
+          "team": "teamA",
+          "quizzer": "Mia",
+          "seatNum": 2,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-9",
+          "questionNum": 9,
+          "pointValue": 20,
+          "team": "teamB",
+          "quizzer": "Ava",
+          "seatNum": 2,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-10",
+          "questionNum": 10,
+          "pointValue": 20,
+          "team": "teamA",
+          "quizzer": "Jade",
+          "seatNum": 4,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-11",
+          "questionNum": 11,
+          "pointValue": 20,
+          "team": "teamB",
+          "quizzer": "Eli",
+          "seatNum": 3,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-12",
+          "questionNum": 12,
+          "pointValue": 20,
+          "team": "teamA",
+          "quizzer": "Mia",
+          "seatNum": 2,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-13",
+          "questionNum": 13,
+          "pointValue": 20,
+          "team": "teamB",
+          "quizzer": "Timothy",
+          "seatNum": 4,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-14",
+          "questionNum": 14,
+          "pointValue": 20,
+          "team": "teamA",
+          "quizzer": "Ben",
+          "seatNum": 3,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-15",
+          "questionNum": 15,
+          "pointValue": 20,
+          "team": "teamB",
+          "quizzer": "Hannah",
+          "seatNum": 5,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-16",
+          "questionNum": 16,
+          "pointValue": 20,
+          "team": "teamA",
+          "quizzer": "Sam",
+          "seatNum": 1,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-17",
+          "questionNum": 17,
+          "pointValue": 20,
+          "team": "teamA",
+          "quizzer": "Sam",
+          "seatNum": 1,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-18",
+          "questionNum": 18,
+          "pointValue": 30,
+          "team": "teamA",
+          "quizzer": "Mia",
+          "seatNum": 2,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-19",
+          "questionNum": 19,
+          "pointValue": 20,
+          "team": "teamB",
+          "quizzer": "Eli",
+          "seatNum": 3,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
+        },
+        {
+          "id": "q-20",
+          "questionNum": 20,
+          "pointValue": 10,
+          "team": "teamA",
+          "quizzer": "Sam",
+          "seatNum": 1,
+          "isCorrect": true,
+          "isInterruption": false,
+          "isRebound": false
         }
       ]
+    },
+    "match-2": {
+      "id": "match-2",
+      "meetNum": 1,
+      "roundNum": 1,
+      "matchNumber": "02",
+      "room": "202",
+      "quizmaster": "Pastor David",
+      "scorekeeper": "Linda K.",
+      "teamAId": "team-cic-2",
+      "teamBId": "team-4",
+      "seats": {
+        "teamA": [
+          "Prakash",
+          "Deevena",
+          "Amiel",
+          "Hosanna",
+          "Isabelle"
+        ],
+        "teamB": [
+          "Quizzer 1",
+          "Quizzer 2",
+          "Quizzer 3",
+          "Quizzer 4",
+          "Quizzer 5"
+        ]
+      },
+      "timeouts": {
+        "teamA": [
+          {
+            "id": 1,
+            "used": false,
+            "questionNum": ""
+          },
+          {
+            "id": 2,
+            "used": false,
+            "questionNum": ""
+          }
+        ],
+        "teamB": [
+          {
+            "id": 1,
+            "used": false,
+            "questionNum": ""
+          },
+          {
+            "id": 2,
+            "used": false,
+            "questionNum": ""
+          }
+        ]
+      },
+      "fouls": {
+        "teamA": [],
+        "teamB": []
+      },
+      "questions": []
     }
   }
 }

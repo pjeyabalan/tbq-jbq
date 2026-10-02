@@ -12,19 +12,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const DATA_DIR = path.join(__dirname, 'data');
-const SLOTS_FILE = path.join(DATA_DIR, 'slots.json');
 const SCORES_FILE = path.join(DATA_DIR, 'scores.json');
 const COACHES_FILE = path.join(DATA_DIR, 'coaches.json');
-
-const DEFAULT_STUDENTS = [
-  'Jade',
-  'Noah',
-  'Prakash',
-  'Deevena',
-  'Amiel',
-  'Hosanna',
-  'Isabelle'
-];
 
 // ==========================================
 // 1. COACHES & AUTHENTICATION
@@ -46,7 +35,7 @@ function loadCoaches() {
   // Seed default coaches if file doesn't exist
   coaches = [
     {
-      id: "coach-super-" + Date.now(),
+      id: "coach-super",
       name: "Head Coach",
       username: "supercoach",
       passcode: "super2026",
@@ -54,7 +43,7 @@ function loadCoaches() {
       createdAt: new Date().toISOString()
     },
     {
-      id: "coach-asst-" + Date.now(),
+      id: "coach-assistant",
       name: "Team Coach",
       username: "coach",
       passcode: "coach2026",
@@ -67,6 +56,7 @@ function loadCoaches() {
 
 function saveCoaches() {
   try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     const temp = `${COACHES_FILE}.tmp`;
     fs.writeFileSync(temp, JSON.stringify(coaches, null, 2), 'utf8');
     fs.renameSync(temp, COACHES_FILE);
@@ -119,7 +109,6 @@ app.post('/api/auth/login', (req, res) => {
     const u = username.trim().toLowerCase();
     matched = coaches.find(c => c.username.toLowerCase() === u && c.passcode === passcode.trim());
   } else {
-    // If only passcode provided, search by passcode
     matched = coaches.find(c => c.passcode === passcode.trim());
   }
 
@@ -127,7 +116,6 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid username or passcode.' });
   }
 
-  // Generate session token
   const token = crypto.randomBytes(24).toString('hex');
   const userSafe = {
     id: matched.id,
@@ -198,7 +186,6 @@ app.post('/api/coaches/add', authenticateCoach, requireSuperCoach, (req, res) =>
   saveCoaches();
 
   console.log(`[SUPERCOACH] Added coach: ${newCoach.name} (${newCoach.username}) [${newCoach.role}]`);
-
   res.json({ success: true, coach: newCoach });
 });
 
@@ -218,7 +205,6 @@ app.post('/api/coaches/delete', authenticateCoach, requireSuperCoach, (req, res)
   const removed = coaches.splice(idx, 1)[0];
   saveCoaches();
 
-  // Invalidate any active sessions for this coach
   for (const [token, user] of activeSessions.entries()) {
     if (user.id === coachId) activeSessions.delete(token);
   }
@@ -227,7 +213,7 @@ app.post('/api/coaches/delete', authenticateCoach, requireSuperCoach, (req, res)
   res.json({ success: true, removed });
 });
 
-// Super Coach: Reset a coach's passcode
+// Super Coach: Reset coach passcode
 app.post('/api/coaches/reset-passcode', authenticateCoach, requireSuperCoach, (req, res) => {
   const { coachId, newPasscode } = req.body;
 
@@ -247,349 +233,115 @@ app.post('/api/coaches/reset-passcode', authenticateCoach, requireSuperCoach, (r
 });
 
 // ==========================================
-// 2. PRACTICE SLOTS & ROSTER MANAGEMENT
-// ==========================================
-
-function getDefaultSlotsData() {
-  return {
-    settings: {
-      title: "TBQ 1-on-1 Practice Sessions",
-      description: "15-minute practice and quizzing prep slots with Coach. Please pick up to 2 slots for your quizzer across Tuesday and Wednesday!",
-      targetQuizzers: 7,
-      students: DEFAULT_STUDENTS
-    },
-    days: [
-      {
-        id: "day-tue-2026-09-29",
-        dateString: "2026-09-29",
-        dayOfWeek: "Tuesday",
-        formattedDate: "Tuesday, Sept 29, 2026",
-        timeWindow: "6:30 PM – 8:00 PM",
-        slots: [
-          { id: "tue-1830", startTime: "6:30 PM", endTime: "6:45 PM", start24: "18:30", end24: "18:45", status: "available" },
-          { id: "tue-1845", startTime: "6:45 PM", endTime: "7:00 PM", start24: "18:45", end24: "19:00", status: "available" },
-          { id: "tue-1900", startTime: "7:00 PM", endTime: "7:15 PM", start24: "19:00", end24: "19:15", status: "available" },
-          { id: "tue-1915", startTime: "7:15 PM", endTime: "7:30 PM", start24: "19:15", end24: "19:30", status: "available" },
-          { id: "tue-1930", startTime: "7:30 PM", endTime: "7:45 PM", start24: "19:30", end24: "19:45", status: "available" },
-          { id: "tue-1945", startTime: "7:45 PM", endTime: "8:00 PM", start24: "19:45", end24: "20:00", status: "available" }
-        ]
-      },
-      {
-        id: "day-wed-2026-09-30",
-        dateString: "2026-09-30",
-        dayOfWeek: "Wednesday",
-        formattedDate: "Wednesday, Sept 30, 2026",
-        timeWindow: "6:00 PM – 7:30 PM",
-        slots: [
-          { id: "wed-1800", startTime: "6:00 PM", endTime: "6:15 PM", start24: "18:00", end24: "18:15", status: "available" },
-          { id: "wed-1815", startTime: "6:15 PM", endTime: "6:30 PM", start24: "18:15", end24: "18:30", status: "available" },
-          { id: "wed-1830", startTime: "6:30 PM", endTime: "6:45 PM", start24: "18:30", end24: "18:45", status: "available" },
-          { id: "wed-1845", startTime: "6:45 PM", endTime: "7:00 PM", start24: "18:45", end24: "19:00", status: "available" },
-          { id: "wed-1900", startTime: "7:00 PM", endTime: "7:15 PM", start24: "19:00", end24: "19:15", status: "available" },
-          { id: "wed-1915", startTime: "7:15 PM", endTime: "7:30 PM", start24: "19:15", end24: "19:30", status: "available" }
-        ]
-      }
-    ]
-  };
-}
-
-let scheduleData = null;
-
-function loadSlotsData() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-  if (fs.existsSync(SLOTS_FILE)) {
-    try {
-      const raw = fs.readFileSync(SLOTS_FILE, 'utf8');
-      scheduleData = JSON.parse(raw);
-      if (!scheduleData.settings) scheduleData.settings = {};
-      if (!scheduleData.settings.students) scheduleData.settings.students = DEFAULT_STUDENTS;
-      return;
-    } catch (err) {
-      console.error('Failed to load slots file, resetting to default:', err);
-    }
-  }
-
-  scheduleData = getDefaultSlotsData();
-  saveSlotsData();
-}
-
-function saveSlotsData() {
-  try {
-    const tempFile = `${SLOTS_FILE}.tmp`;
-    fs.writeFileSync(tempFile, JSON.stringify(scheduleData, null, 2), 'utf8');
-    fs.renameSync(tempFile, SLOTS_FILE);
-  } catch (err) {
-    console.error('Error saving slots data:', err);
-  }
-}
-
-function getStudentBookings(studentName) {
-  if (!studentName) return [];
-  const bookings = [];
-  for (const day of scheduleData.days) {
-    for (const slot of day.slots) {
-      if (slot.status === 'booked' && slot.bookedBy && slot.bookedBy.toLowerCase() === studentName.toLowerCase()) {
-        bookings.push({ slot, day });
-      }
-    }
-  }
-  return bookings;
-}
-
-function getStudentBooking(studentName) {
-  const bookings = getStudentBookings(studentName);
-  return bookings[0] || null;
-}
-
-// GET all slots and students status (Public)
-app.get('/api/slots', (req, res) => {
-  const currentStudents = scheduleData.settings.students || DEFAULT_STUDENTS;
-  const studentsStatus = currentStudents.map(name => {
-    const bookings = getStudentBookings(name);
-    return {
-      name,
-      bookingCount: bookings.length,
-      maxSlots: 2,
-      isBooked: bookings.length >= 2,
-      bookings: bookings.map(b => ({
-        slotId: b.slot.id,
-        day: b.day.formattedDate,
-        dayOfWeek: b.day.dayOfWeek,
-        time: `${b.slot.startTime} – ${b.slot.endTime}`
-      })),
-      // Backward compatibility fields
-      slotId: bookings[0] ? bookings[0].slot.id : null,
-      day: bookings[0] ? bookings[0].day.formattedDate : null,
-      time: bookings[0] ? `${bookings[0].slot.startTime} – ${bookings[0].slot.endTime}` : null
-    };
-  });
-
-  res.json({
-    settings: scheduleData.settings,
-    students: studentsStatus,
-    days: scheduleData.days
-  });
-});
-
-// POST book a slot (Public: just student name)
-app.post('/api/book', (req, res) => {
-  const { slotId, quizzerName } = req.body;
-
-  if (!slotId || !quizzerName || typeof quizzerName !== 'string' || !quizzerName.trim()) {
-    return res.status(400).json({ error: 'Please choose a student name.' });
-  }
-
-  const cleanName = quizzerName.trim();
-  const existingBookings = getStudentBookings(cleanName);
-  if (existingBookings.length >= 2) {
-    const reservedList = existingBookings
-      .map(b => `${b.day.dayOfWeek} at ${b.slot.startTime}`)
-      .join(' and ');
-    return res.status(400).json({
-      error: `${cleanName} already has 2 slots reserved (${reservedList}). Each quizzer can book a maximum of 2 slots.`
-    });
-  }
-
-  let targetSlot = null;
-  let targetDay = null;
-
-  for (const day of scheduleData.days) {
-    const s = day.slots.find(slot => slot.id === slotId);
-    if (s) {
-      targetSlot = s;
-      targetDay = day;
-      break;
-    }
-  }
-
-  if (!targetSlot) return res.status(404).json({ error: 'Slot not found.' });
-
-  if (targetSlot.status === 'booked') {
-    return res.status(409).json({
-      error: `This slot was just booked by "${targetSlot.bookedBy}". Please select an open slot.`
-    });
-  }
-
-  targetSlot.status = 'booked';
-  targetSlot.bookedBy = cleanName;
-  targetSlot.bookedAt = new Date().toISOString();
-
-  saveSlotsData();
-
-  const totalBooked = existingBookings.length + 1;
-  console.log(`[BOOKED] Slot ${targetSlot.id} booked for ${cleanName} (${totalBooked}/2 slots)`);
-
-  res.json({
-    success: true,
-    message: `Slot booked successfully for ${cleanName}! (${totalBooked} of 2 slots reserved)`,
-    slot: targetSlot,
-    bookingCount: totalBooked,
-    day: {
-      id: targetDay.id,
-      dayOfWeek: targetDay.dayOfWeek,
-      formattedDate: targetDay.formattedDate
-    }
-  });
-});
-
-// Coach: Add a new student/kid to team roster
-app.post('/api/roster/add-student', authenticateCoach, (req, res) => {
-  const { name } = req.body;
-  if (!name || !name.trim()) return res.status(400).json({ error: 'Student name is required.' });
-
-  const cleanName = name.trim();
-  if (!scheduleData.settings.students) scheduleData.settings.students = [];
-
-  if (scheduleData.settings.students.some(s => s.toLowerCase() === cleanName.toLowerCase())) {
-    return res.status(400).json({ error: `Student "${cleanName}" is already on the roster.` });
-  }
-
-  scheduleData.settings.students.push(cleanName);
-  scheduleData.settings.targetQuizzers = scheduleData.settings.students.length;
-  saveSlotsData();
-
-  // Also sync to scoresData homeQuizzers
-  if (!scoresData.meet.homeQuizzers) scoresData.meet.homeQuizzers = [];
-  if (!scoresData.meet.homeQuizzers.some(s => s.toLowerCase() === cleanName.toLowerCase())) {
-    scoresData.meet.homeQuizzers.push(cleanName);
-    saveScoresData();
-  }
-
-  console.log(`[ROSTER] Coach ${req.user.name} added student: ${cleanName}`);
-  res.json({ success: true, students: scheduleData.settings.students });
-});
-
-// Coach: Remove a student from team roster
-app.post('/api/roster/remove-student', authenticateCoach, (req, res) => {
-  const { name } = req.body;
-  if (!name) return res.status(400).json({ error: 'Student name is required.' });
-
-  const cleanName = name.trim();
-  scheduleData.settings.students = (scheduleData.settings.students || []).filter(s => s.toLowerCase() !== cleanName.toLowerCase());
-  scheduleData.settings.targetQuizzers = scheduleData.settings.students.length;
-  saveSlotsData();
-
-  scoresData.meet.homeQuizzers = (scoresData.meet.homeQuizzers || []).filter(s => s.toLowerCase() !== cleanName.toLowerCase());
-  saveScoresData();
-
-  console.log(`[ROSTER] Coach ${req.user.name} removed student: ${cleanName}`);
-  res.json({ success: true, students: scheduleData.settings.students });
-});
-
-// Coach: Cancel / Reopen a practice slot
-app.post('/api/admin/cancel', authenticateCoach, (req, res) => {
-  const { slotId } = req.body;
-
-  for (const day of scheduleData.days) {
-    const slot = day.slots.find(s => s.id === slotId);
-    if (slot) {
-      const prev = slot.bookedBy;
-      slot.status = 'available';
-      delete slot.bookedBy;
-      delete slot.bookedAt;
-      saveSlotsData();
-      return res.json({ success: true, message: `Slot reopened for ${prev}` });
-    }
-  }
-  res.status(404).json({ error: 'Slot not found.' });
-});
-
-// Coach: Add slot
-app.post('/api/admin/add-slot', authenticateCoach, (req, res) => {
-  const { dayId, startTime, endTime } = req.body;
-  const day = scheduleData.days.find(d => d.id === dayId);
-  if (!day) return res.status(404).json({ error: 'Day not found.' });
-
-  const newSlot = {
-    id: `${day.id}-custom-${Date.now()}`,
-    startTime: startTime.trim(),
-    endTime: endTime.trim(),
-    status: 'available'
-  };
-  day.slots.push(newSlot);
-  saveSlotsData();
-  res.json({ success: true, slot: newSlot });
-});
-
-// Coach: Delete slot
-app.post('/api/admin/delete-slot', authenticateCoach, (req, res) => {
-  const { slotId } = req.body;
-  for (const day of scheduleData.days) {
-    const idx = day.slots.findIndex(s => s.id === slotId);
-    if (idx !== -1) {
-      const removed = day.slots.splice(idx, 1);
-      saveSlotsData();
-      return res.json({ success: true, slot: removed[0] });
-    }
-  }
-  res.status(404).json({ error: 'Slot not found.' });
-});
-
-// Calendar .ics download
-app.get('/api/calendar/:slotId', (req, res) => {
-  const { slotId } = req.params;
-  let targetSlot = null;
-  let targetDay = null;
-
-  for (const day of scheduleData.days) {
-    const s = day.slots.find(slot => slot.id === slotId);
-    if (s) {
-      targetSlot = s;
-      targetDay = day;
-      break;
-    }
-  }
-
-  if (!targetSlot || targetSlot.status !== 'booked') {
-    return res.status(404).send('Booking not found');
-  }
-
-  const dateStr = targetDay.dateString.replace(/-/g, '');
-  const startHours = targetSlot.start24 ? targetSlot.start24.replace(':', '') : '1830';
-  const endHours = targetSlot.end24 ? targetSlot.end24.replace(':', '') : '1845';
-
-  const icsContent = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//TBQ Quiz Coaching//Slot Booking//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-    'BEGIN:VEVENT',
-    `UID:tbq-${targetSlot.id}@churchquiz`,
-    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
-    `DTSTART:${dateStr}T${startHours}00`,
-    `DTEND:${dateStr}T${endHours}00`,
-    `SUMMARY:TBQ Practice: ${targetSlot.bookedBy} with Coach`,
-    `DESCRIPTION:Teen Bible Quiz 1-on-1 Practice Session with Coach for ${targetSlot.bookedBy}.`,
-    'LOCATION:Church TBQ Practice Room',
-    'STATUS:CONFIRMED',
-    'END:VEVENT',
-    'END:VCALENDAR'
-  ].join('\r\n');
-
-  res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="TBQ_Practice_${targetSlot.bookedBy.replace(/[^a-zA-Z0-9]/g, '_')}.ics"`);
-  res.send(icsContent);
-});
-
-// ==========================================
-// 3. TBQ MATCH SCOREKEEPER (COACH ONLY)
+// 2. TBQ 4-TEAM TOURNAMENT DATA STORAGE
 // ==========================================
 
 function getDefaultScoresData() {
   return {
     meet: {
-      title: "TBQ Quiz Meet",
-      homeChurch: "Our Church TBQ",
-      opponentChurch: "Opponent Church",
-      totalRounds: 3,
-      homeQuizzers: DEFAULT_STUDENTS,
-      opponentQuizzers: ["Opponent 1", "Opponent 2", "Opponent 3", "Opponent 4", "Opponent 5"]
+      title: "TBQ Tournament 2026",
+      teams: [
+        {
+          id: "team-cic-1",
+          name: "Chicago Indian Church - Team 1",
+          church: "Chicago Indian Church",
+          quizzers: ["Sam", "Mia", "Ben", "Jade", "Noah"]
+        },
+        {
+          id: "team-cic-2",
+          name: "Chicago Indian Church - Team 2",
+          church: "Chicago Indian Church",
+          quizzers: ["Prakash", "Deevena", "Amiel", "Hosanna", "Isabelle"]
+        },
+        {
+          id: "team-3",
+          name: "Team 3 (TBD)",
+          church: "Opponent Church A",
+          quizzers: ["Leo", "Ava", "Eli", "Timothy", "Hannah"]
+        },
+        {
+          id: "team-4",
+          name: "Team 4 (TBD)",
+          church: "Opponent Church B",
+          quizzers: ["Quizzer 1", "Quizzer 2", "Quizzer 3", "Quizzer 4", "Quizzer 5"]
+        }
+      ]
     },
-    currentRound: 1,
-    rounds: {
-      "1": { roundNum: 1, questions: [] }
+    activeMatchId: "match-1",
+    matches: {
+      "match-1": {
+        id: "match-1",
+        roundNum: 1,
+        matchNumber: "01",
+        room: "201",
+        quizmaster: "Pastor John",
+        scorekeeper: "Sarah M.",
+        teamAId: "team-cic-1",
+        teamBId: "team-3",
+        seats: {
+          teamA: ["Sam", "Mia", "Ben", "Jade", "Noah"],
+          teamB: ["Leo", "Ava", "Eli", "Timothy", "Hannah"]
+        },
+        timeouts: {
+          teamA: [
+            { id: 1, used: true, questionNum: "Q8" },
+            { id: 2, used: false, questionNum: "" }
+          ],
+          teamB: [
+            { id: 1, used: true, questionNum: "Q4" },
+            { id: 2, used: true, questionNum: "Q18" }
+          ]
+        },
+        fouls: {
+          teamA: [],
+          teamB: [
+            { id: "foul-1", reason: "Bench talking (-5)", penalty: 5, timestamp: "2026-10-02T18:00:00.000Z" }
+          ]
+        },
+        questions: [
+          { id: "q-1", questionNum: 1, pointValue: 10, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-2", questionNum: 2, pointValue: 20, team: "teamA", quizzer: "Mia", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-3", questionNum: 3, pointValue: 10, team: "teamB", quizzer: "Leo", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-4a", questionNum: 4, pointValue: 30, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: false, isInterruption: true, isRebound: false },
+          { id: "q-4b", questionNum: 4, pointValue: 30, team: "teamB", quizzer: "Ava", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: true },
+          { id: "q-5", questionNum: 5, pointValue: 20, team: "teamA", quizzer: "Ben", seatNum: 3, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-6", questionNum: 6, pointValue: 20, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-7", questionNum: 7, pointValue: 10, team: "teamB", quizzer: "Leo", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-8", questionNum: 8, pointValue: 20, team: "teamA", quizzer: "Mia", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-9", questionNum: 9, pointValue: 20, team: "teamB", quizzer: "Ava", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-10", questionNum: 10, pointValue: 20, team: "teamA", quizzer: "Jade", seatNum: 4, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-11", questionNum: 11, pointValue: 20, team: "teamB", quizzer: "Eli", seatNum: 3, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-12", questionNum: 12, pointValue: 20, team: "teamA", quizzer: "Mia", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-13", questionNum: 13, pointValue: 20, team: "teamB", quizzer: "Timothy", seatNum: 4, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-14", questionNum: 14, pointValue: 20, team: "teamA", quizzer: "Ben", seatNum: 3, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-15", questionNum: 15, pointValue: 20, team: "teamB", quizzer: "Hannah", seatNum: 5, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-16", questionNum: 16, pointValue: 20, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-17", questionNum: 17, pointValue: 20, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-18", questionNum: 18, pointValue: 30, team: "teamA", quizzer: "Mia", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-19", questionNum: 19, pointValue: 20, team: "teamB", quizzer: "Eli", seatNum: 3, isCorrect: true, isInterruption: false, isRebound: false },
+          { id: "q-20", questionNum: 20, pointValue: 10, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false }
+        ]
+      },
+      "match-2": {
+        id: "match-2",
+        roundNum: 1,
+        matchNumber: "02",
+        room: "202",
+        quizmaster: "Pastor David",
+        scorekeeper: "Linda K.",
+        teamAId: "team-cic-2",
+        teamBId: "team-4",
+        seats: {
+          teamA: ["Prakash", "Deevena", "Amiel", "Hosanna", "Isabelle"],
+          teamB: ["Quizzer 1", "Quizzer 2", "Quizzer 3", "Quizzer 4", "Quizzer 5"]
+        },
+        timeouts: {
+          teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
+          teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
+        },
+        fouls: { teamA: [], teamB: [] },
+        questions: []
+      }
     }
   };
 }
@@ -597,10 +349,17 @@ function getDefaultScoresData() {
 let scoresData = null;
 
 function loadScoresData() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
   if (fs.existsSync(SCORES_FILE)) {
     try {
       scoresData = JSON.parse(fs.readFileSync(SCORES_FILE, 'utf8'));
-      if (!scoresData.meet.homeQuizzers) scoresData.meet.homeQuizzers = DEFAULT_STUDENTS;
+      if (!scoresData.meet) scoresData.meet = getDefaultScoresData().meet;
+      if (!scoresData.meet.teams) scoresData.meet.teams = getDefaultScoresData().meet.teams;
+      if (!scoresData.matches) scoresData.matches = getDefaultScoresData().matches;
+      if (!scoresData.activeMatchId || !scoresData.matches[scoresData.activeMatchId]) {
+        scoresData.activeMatchId = Object.keys(scoresData.matches)[0] || "match-1";
+      }
       return;
     } catch (err) {
       console.error('Failed to load scores file, resetting to default:', err);
@@ -613,6 +372,7 @@ function loadScoresData() {
 
 function saveScoresData() {
   try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     const tempFile = `${SCORES_FILE}.tmp`;
     fs.writeFileSync(tempFile, JSON.stringify(scoresData, null, 2), 'utf8');
     fs.renameSync(tempFile, SCORES_FILE);
@@ -621,174 +381,683 @@ function saveScoresData() {
   }
 }
 
-function calculateRoundStats(roundNum) {
-  const roundKey = String(roundNum);
-  const round = scoresData.rounds[roundKey] || { roundNum, questions: [] };
+// Find team helper
+function getTeamById(teamId) {
+  if (!scoresData.meet.teams) scoresData.meet.teams = [];
+  return scoresData.meet.teams.find(t => t.id === teamId) || null;
+}
 
-  const homeStats = {};
-  (scoresData.meet.homeQuizzers || []).forEach(q => {
-    homeStats[q] = { name: q, correct: 0, errors: 0, points: 0, isQuizzedOut: false, quizOutBonus: 0 };
+// Calculate 20-Question Scoresheet for a given match
+function calculateMatchStats(matchId) {
+  let mId = matchId || scoresData.activeMatchId;
+  let match = scoresData.matches[mId];
+
+  if (!match) {
+    const firstKey = Object.keys(scoresData.matches)[0];
+    if (firstKey) {
+      match = scoresData.matches[firstKey];
+      mId = firstKey;
+    } else {
+      match = {
+        id: "match-1",
+        roundNum: 1,
+        matchNumber: "01",
+        room: "201",
+        quizmaster: "Pastor John",
+        scorekeeper: "Sarah M.",
+        teamAId: "team-cic-1",
+        teamBId: "team-3",
+        seats: {
+          teamA: ["Sam", "Mia", "Ben", "Jade", "Noah"],
+          teamB: ["Quizzer 1", "Quizzer 2", "Quizzer 3", "Quizzer 4", "Quizzer 5"]
+        },
+        timeouts: {
+          teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
+          teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
+        },
+        fouls: { teamA: [], teamB: [] },
+        questions: []
+      };
+      scoresData.matches["match-1"] = match;
+    }
+  }
+
+  const teamAObj = getTeamById(match.teamAId) || { name: "Team A", church: "Church A", quizzers: [] };
+  const teamBObj = getTeamById(match.teamBId) || { name: "Team B", church: "Church B", quizzers: [] };
+
+  if (!match.seats) {
+    match.seats = {
+      teamA: (teamAObj.quizzers || []).slice(0, 5),
+      teamB: (teamBObj.quizzers || []).slice(0, 5)
+    };
+  }
+  while (match.seats.teamA.length < 5) match.seats.teamA.push(`Seat #${match.seats.teamA.length + 1}`);
+  while (match.seats.teamB.length < 5) match.seats.teamB.push(`Seat #${match.seats.teamB.length + 1}`);
+
+  if (!match.timeouts) {
+    match.timeouts = {
+      teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
+      teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
+    };
+  }
+  if (!match.fouls) {
+    match.fouls = { teamA: [], teamB: [] };
+  }
+
+  // Quizzers individual stats map
+  const teamAStats = {};
+  match.seats.teamA.forEach((name, idx) => {
+    if (name) teamAStats[name] = { seat: idx + 1, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, quizOutBonus: 0 };
+  });
+  (teamAObj.quizzers || []).forEach(name => {
+    if (!teamAStats[name]) teamAStats[name] = { seat: null, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, quizOutBonus: 0 };
   });
 
-  const oppStats = {};
-  (scoresData.meet.opponentQuizzers || []).forEach(q => {
-    oppStats[q] = { name: q, correct: 0, errors: 0, points: 0, isQuizzedOut: false, quizOutBonus: 0 };
+  const teamBStats = {};
+  match.seats.teamB.forEach((name, idx) => {
+    if (name) teamBStats[name] = { seat: idx + 1, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, quizOutBonus: 0 };
+  });
+  (teamBObj.quizzers || []).forEach(name => {
+    if (!teamBStats[name]) teamBStats[name] = { seat: null, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, quizOutBonus: 0 };
   });
 
-  let homeTotalScore = 0;
-  let oppTotalScore = 0;
+  // Calculate 20 questions grid
+  const maxQuestionRecorded = match.questions.length > 0 ? Math.max(...match.questions.map(q => q.questionNum)) : 0;
+  const totalRows = Math.max(20, maxQuestionRecorded);
+  const rows = [];
 
-  round.questions.forEach(q => {
-    const isHome = q.team === 'home';
-    const statsMap = isHome ? homeStats : oppStats;
-    const quizzerStat = statsMap[q.quizzer];
+  let teamARunning = 0;
+  let teamBRunning = 0;
 
-    if (q.isCorrect) {
-      if (quizzerStat) {
-        quizzerStat.correct += 1;
-        quizzerStat.points += q.pointValue;
-        if (quizzerStat.correct === 5 && !quizzerStat.isQuizzedOut) {
-          quizzerStat.isQuizzedOut = true;
-          if (quizzerStat.errors === 0) {
-            quizzerStat.quizOutBonus = 20;
-            quizzerStat.points += 20;
-            if (isHome) homeTotalScore += 20;
-            else oppTotalScore += 20;
+  // Group questions by questionNum
+  const qMap = {};
+  match.questions.forEach(q => {
+    if (!qMap[q.questionNum]) qMap[q.questionNum] = [];
+    qMap[q.questionNum].push(q);
+  });
+
+  for (let qNum = 1; qNum <= totalRows; qNum++) {
+    const qList = qMap[qNum] || [];
+
+    // Official standard TBQ points:
+    // Q1 - Q8: 10 pts
+    // Q9 - Q17: 20 pts
+    // Q18 - Q20: 30 pts
+    let defaultPts = qNum <= 8 ? 10 : (qNum <= 17 ? 20 : 30);
+    let pts = qList.length > 0 ? qList[0].pointValue : defaultPts;
+
+    const teamACells = ["", "", "", "", ""];
+    const teamBCells = ["", "", "", "", ""];
+    let note = "";
+
+    qList.forEach(q => {
+      const isTeamA = q.team === 'teamA' || q.team === 'home';
+      const seatList = isTeamA ? match.seats.teamA : match.seats.teamB;
+      const targetCells = isTeamA ? teamACells : teamBCells;
+      const statsMap = isTeamA ? teamAStats : teamBStats;
+      const stat = statsMap[q.quizzer];
+
+      let seatIdx = (typeof q.seatNum === 'number' && q.seatNum >= 1 && q.seatNum <= 5)
+        ? q.seatNum - 1
+        : seatList.indexOf(q.quizzer);
+      if (seatIdx === -1 || seatIdx > 4) seatIdx = 0;
+
+      let cellText = "";
+      if (q.isCorrect) {
+        let delta = q.pointValue;
+        cellText = q.isRebound ? `+${delta}*` : `+${delta}`;
+        if (q.isRebound) note = note ? `${note}, Rebound` : "Rebound";
+
+        if (isTeamA) teamARunning += delta;
+        else teamBRunning += delta;
+
+        if (stat) {
+          stat.correct += 1;
+          stat.points += delta;
+          if (stat.correct >= 5) stat.isQuizzedOut = true;
+        }
+      } else {
+        if (q.isInterruption) {
+          const penalty = Math.round(q.pointValue / 2);
+          cellText = `-${penalty}`;
+          if (isTeamA) teamARunning -= penalty;
+          else teamBRunning -= penalty;
+
+          if (stat) {
+            stat.errors += 1;
+            stat.points -= penalty;
           }
+        } else {
+          cellText = "0";
+          if (stat) stat.errors += 1;
         }
       }
-      if (isHome) homeTotalScore += q.pointValue;
-      else oppTotalScore += q.pointValue;
-    } else {
-      if (quizzerStat) quizzerStat.errors += 1;
-      if (q.isInterruption) {
-        const penalty = Math.round(q.pointValue / 2);
-        if (quizzerStat) quizzerStat.points -= penalty;
-        if (isHome) homeTotalScore -= penalty;
-        else oppTotalScore -= penalty;
+
+      targetCells[seatIdx] = targetCells[seatIdx] ? `${targetCells[seatIdx]}, ${cellText}` : cellText;
+    });
+
+    rows.push({
+      questionNum: qNum,
+      pointValue: pts,
+      homeCells: teamACells,
+      oppCells: teamBCells,
+      homeRunning: teamARunning,
+      oppRunning: teamBRunning,
+      note,
+      hasAnswers: qList.length > 0
+    });
+  }
+
+  // Quiz-Out Bonuses (+20 points for 5 correct)
+  const teamABonuses = [];
+  let teamABonusPts = 0;
+  Object.values(teamAStats).forEach(s => {
+    if (s.correct >= 5) {
+      const bonus = 20;
+      s.quizOutBonus = bonus;
+      s.points += bonus;
+      teamABonusPts += bonus;
+      const desc = s.errors === 0 ? `${s.name}: Perfect QO (+20)` : `${s.name}: Quiz Out (+20)`;
+      teamABonuses.push({ quizzer: s.name, desc, points: bonus });
+    }
+  });
+
+  const teamBBonuses = [];
+  let teamBBonusPts = 0;
+  Object.values(teamBStats).forEach(s => {
+    if (s.correct >= 5) {
+      const bonus = 20;
+      s.quizOutBonus = bonus;
+      s.points += bonus;
+      teamBBonusPts += bonus;
+      const desc = s.errors === 0 ? `${s.name}: Perfect QO (+20)` : `${s.name}: Quiz Out (+20)`;
+      teamBBonuses.push({ quizzer: s.name, desc, points: bonus });
+    }
+  });
+
+  // Team Fouls deduction (-5 per foul)
+  let teamAFoulPenalty = 0;
+  (match.fouls.teamA || match.fouls.home || []).forEach(f => teamAFoulPenalty += (parseInt(f.penalty) || 5));
+
+  let teamBFoulPenalty = 0;
+  (match.fouls.teamB || match.fouls.opponent || []).forEach(f => teamBFoulPenalty += (parseInt(f.penalty) || 5));
+
+  // Official Final Score
+  const finalTeamAScore = teamARunning + teamABonusPts - teamAFoulPenalty;
+  const finalTeamBScore = teamBRunning + teamBBonusPts - teamBFoulPenalty;
+
+  let winner = "tie";
+  if (finalTeamAScore > finalTeamBScore) winner = "teamA";
+  else if (finalTeamBScore > finalTeamAScore) winner = "teamB";
+
+  return {
+    id: match.id,
+    meetNum: match.meetNum || match.roundNum || 1,
+    roundNum: match.meetNum || match.roundNum || 1,
+    matchNumber: match.matchNumber || "01",
+    room: match.room || "201",
+    quizmaster: match.quizmaster || "Pastor John",
+    scorekeeper: match.scorekeeper || "Sarah M.",
+    teamA: {
+      id: match.teamAId,
+      name: teamAObj.name,
+      church: teamAObj.church,
+      regulationScore: teamARunning,
+      bonusPoints: teamABonusPts,
+      bonuses: teamABonuses,
+      foulPenalty: teamAFoulPenalty,
+      fouls: match.fouls.teamA || match.fouls.home || [],
+      finalScore: finalTeamAScore,
+      seats: match.seats.teamA,
+      quizzers: Object.values(teamAStats)
+    },
+    teamB: {
+      id: match.teamBId,
+      name: teamBObj.name,
+      church: teamBObj.church,
+      regulationScore: teamBRunning,
+      bonusPoints: teamBBonusPts,
+      bonuses: teamBBonuses,
+      foulPenalty: teamBFoulPenalty,
+      fouls: match.fouls.teamB || match.fouls.opponent || [],
+      finalScore: finalTeamBScore,
+      seats: match.seats.teamB,
+      quizzers: Object.values(teamBStats)
+    },
+    seats: {
+      home: match.seats.teamA,
+      opponent: match.seats.teamB
+    },
+    homeTeam: {
+      name: teamAObj.name,
+      finalScore: finalTeamAScore,
+      regulationScore: teamARunning,
+      bonusPoints: teamABonusPts,
+      bonuses: teamABonuses,
+      foulPenalty: teamAFoulPenalty,
+      fouls: match.fouls.teamA || match.fouls.home || [],
+      quizzers: Object.values(teamAStats)
+    },
+    opponentTeam: {
+      name: teamBObj.name,
+      finalScore: finalTeamBScore,
+      regulationScore: teamBRunning,
+      bonusPoints: teamBBonusPts,
+      bonuses: teamBBonuses,
+      foulPenalty: teamBFoulPenalty,
+      fouls: match.fouls.teamB || match.fouls.opponent || [],
+      quizzers: Object.values(teamBStats)
+    },
+    timeouts: {
+      home: match.timeouts.teamA || match.timeouts.home || [],
+      opponent: match.timeouts.teamB || match.timeouts.opponent || []
+    },
+    rows,
+    winner,
+    totalQuestions: match.questions.length,
+    questions: match.questions
+  };
+}
+
+// Compute Standings / Leaderboard for all 4 teams
+function calculateTournamentStandings() {
+  const teams = scoresData.meet.teams || [];
+  const standingsMap = {};
+
+  teams.forEach(t => {
+    standingsMap[t.id] = {
+      id: t.id,
+      name: t.name,
+      church: t.church,
+      quizzers: t.quizzers || [],
+      matchesPlayed: 0,
+      won: 0,
+      lost: 0,
+      tied: 0,
+      totalPoints: 0,
+      avgPoints: 0
+    };
+  });
+
+  const allMatchKeys = Object.keys(scoresData.matches || {});
+  allMatchKeys.forEach(mKey => {
+    const stats = calculateMatchStats(mKey);
+    if (stats.totalQuestions > 0) {
+      const a = standingsMap[stats.teamA.id];
+      const b = standingsMap[stats.teamB.id];
+
+      if (a) {
+        a.matchesPlayed += 1;
+        a.totalPoints += stats.teamA.finalScore;
+        if (stats.winner === 'teamA') a.won += 1;
+        else if (stats.winner === 'teamB') a.lost += 1;
+        else a.tied += 1;
+      }
+
+      if (b) {
+        b.matchesPlayed += 1;
+        b.totalPoints += stats.teamB.finalScore;
+        if (stats.winner === 'teamB') b.won += 1;
+        else if (stats.winner === 'teamA') b.lost += 1;
+        else b.tied += 1;
       }
     }
   });
 
-  return {
-    roundNum,
-    homeTeam: {
-      name: scoresData.meet.homeChurch,
-      totalScore: homeTotalScore,
-      quizzers: Object.values(homeStats)
-    },
-    opponentTeam: {
-      name: scoresData.meet.opponentChurch,
-      totalScore: oppTotalScore,
-      quizzers: Object.values(oppStats)
-    },
-    questions: round.questions
-  };
+  const list = Object.values(standingsMap);
+  list.forEach(item => {
+    item.avgPoints = item.matchesPlayed > 0 ? Math.round(item.totalPoints / item.matchesPlayed) : 0;
+  });
+
+  // Sort by Wins (descending), then Total Points (descending)
+  list.sort((x, y) => {
+    if (y.won !== x.won) return y.won - x.won;
+    return y.totalPoints - x.totalPoints;
+  });
+
+  return list;
 }
 
-// GET TBQ Meet & Round Data (COACH ONLY)
-app.get('/api/tbq', authenticateCoach, (req, res) => {
-  const roundNum = parseInt(req.query.round || scoresData.currentRound || 1);
-  const roundStats = calculateRoundStats(roundNum);
+// ==========================================
+// 3. PUBLIC SUMMARY ENDPOINT (NO LOGIN REQUIRED)
+// ==========================================
+app.get('/api/tbq/public-summary', (req, res) => {
+  const standings = calculateTournamentStandings();
+  const allMatchKeys = Object.keys(scoresData.matches || {});
+  const matchesSummaries = [];
+
+  allMatchKeys.forEach(mKey => {
+    const stats = calculateMatchStats(mKey);
+    const hasQuestions = stats.totalQuestions > 0;
+    matchesSummaries.push({
+      id: stats.id,
+      matchNumber: stats.matchNumber,
+      meetNum: stats.meetNum,
+      roundNum: stats.meetNum,
+      room: stats.room,
+      teamAName: stats.teamA.name,
+      teamBName: stats.teamB.name,
+      teamAScore: stats.teamA.finalScore,
+      teamBScore: stats.teamB.finalScore,
+      winner: hasQuestions ? stats.winner : 'upcoming',
+      status: hasQuestions ? (stats.totalQuestions >= 20 ? 'Completed' : 'In Progress') : 'Scheduled',
+      totalQuestions: stats.totalQuestions
+    });
+  });
 
   res.json({
-    meet: scoresData.meet,
-    currentRound: roundNum,
-    activeRound: roundStats
+    title: scoresData.meet.title,
+    teams: standings,
+    matches: matchesSummaries,
+    activeMatchId: scoresData.activeMatchId
   });
 });
 
-// POST Update Meet & Opponent Settings (COACH ONLY)
-app.post('/api/tbq/settings', authenticateCoach, (req, res) => {
-  const { title, homeChurch, opponentChurch, totalRounds, opponentQuizzers } = req.body;
+// ==========================================
+// 4. COACH MATCH APIS (AUTHENTICATED)
+// ==========================================
 
-  if (title) scoresData.meet.title = title.trim();
-  if (homeChurch) scoresData.meet.homeChurch = homeChurch.trim();
-  if (opponentChurch) scoresData.meet.opponentChurch = opponentChurch.trim();
-  if (totalRounds && !isNaN(totalRounds)) scoresData.meet.totalRounds = Math.max(1, parseInt(totalRounds));
+// GET Active Match & Full Scoresheet
+app.get('/api/tbq', authenticateCoach, (req, res) => {
+  const matchId = req.query.matchId || scoresData.activeMatchId;
+  if (matchId && scoresData.matches[matchId]) {
+    scoresData.activeMatchId = matchId;
+  }
+  const activeMatch = calculateMatchStats(scoresData.activeMatchId);
 
-  if (Array.isArray(opponentQuizzers)) {
-    scoresData.meet.opponentQuizzers = opponentQuizzers.map(q => q.trim()).filter(Boolean);
-  } else if (typeof opponentQuizzers === 'string') {
-    scoresData.meet.opponentQuizzers = opponentQuizzers.split(',').map(q => q.trim()).filter(Boolean);
+  const matchesList = Object.keys(scoresData.matches).map(k => {
+    const m = scoresData.matches[k];
+    const tA = getTeamById(m.teamAId);
+    const tB = getTeamById(m.teamBId);
+    return {
+      id: m.id,
+      matchNumber: m.matchNumber || "01",
+      meetNum: m.meetNum || m.roundNum || 1,
+      roundNum: m.meetNum || m.roundNum || 1,
+      room: m.room || "201",
+      teamAName: tA ? tA.name : "Team A",
+      teamBName: tB ? tB.name : "Team B"
+    };
+  });
+
+  res.json({
+    meet: scoresData.meet,
+    activeMatchId: scoresData.activeMatchId,
+    matchesList,
+    activeRound: activeMatch // Active match stats
+  });
+});
+
+// POST Switch Active Match
+app.post('/api/matches/switch', authenticateCoach, (req, res) => {
+  const { matchId } = req.body;
+  if (matchId && scoresData.matches[matchId]) {
+    scoresData.activeMatchId = matchId;
+    saveScoresData();
+  }
+  res.json({ success: true, activeRound: calculateMatchStats(scoresData.activeMatchId) });
+});
+
+// POST Save / Add / Update a Team (Tomorrow morning quick configuration!)
+app.post('/api/teams/save', authenticateCoach, (req, res) => {
+  const { teamId, name, church, quizzers } = req.body;
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Team name is required.' });
+  }
+
+  if (!scoresData.meet.teams) scoresData.meet.teams = [];
+
+  let targetTeam = scoresData.meet.teams.find(t => t.id === teamId);
+  if (!targetTeam) {
+    targetTeam = {
+      id: teamId || `team-${Date.now()}`,
+      name: name.trim(),
+      church: (church || name).trim(),
+      quizzers: []
+    };
+    scoresData.meet.teams.push(targetTeam);
+  } else {
+    targetTeam.name = name.trim();
+    if (church) targetTeam.church = church.trim();
+  }
+
+  if (Array.isArray(quizzers)) {
+    targetTeam.quizzers = quizzers.map(q => String(q).trim()).filter(Boolean);
+  } else if (typeof quizzers === 'string') {
+    targetTeam.quizzers = quizzers.split(/[\n,]+/).map(q => q.trim()).filter(Boolean);
   }
 
   saveScoresData();
-  console.log(`[TBQ] Coach ${req.user.name} updated meet settings`);
-  res.json({ success: true, meet: scoresData.meet });
+  console.log(`[TEAM] Coach ${req.user.name} saved team: ${targetTeam.name} (${targetTeam.quizzers.length} quizzers)`);
+  res.json({ success: true, team: targetTeam, teams: scoresData.meet.teams });
+});
+
+// POST Delete a Team
+app.post('/api/teams/delete', authenticateCoach, (req, res) => {
+  const { teamId } = req.body;
+  scoresData.meet.teams = (scoresData.meet.teams || []).filter(t => t.id !== teamId);
+  saveScoresData();
+  res.json({ success: true, teams: scoresData.meet.teams });
+});
+
+// POST Add a New Match / Round
+app.post('/api/matches/add', authenticateCoach, (req, res) => {
+  const { meetNum, roundNum, matchNumber, room, quizmaster, scorekeeper, teamAId, teamBId } = req.body;
+
+  const newId = `match-${Date.now()}`;
+  const tA = getTeamById(teamAId) || (scoresData.meet.teams[0] || { id: "team-1", quizzers: [] });
+  const tB = getTeamById(teamBId) || (scoresData.meet.teams[1] || { id: "team-2", quizzers: [] });
+  const mNum = parseInt(meetNum || roundNum) || 1;
+
+  const newMatch = {
+    id: newId,
+    meetNum: mNum,
+    roundNum: mNum,
+    matchNumber: String(matchNumber || `0${Object.keys(scoresData.matches).length + 1}`).trim(),
+    room: String(room || "201").trim(),
+    quizmaster: String(quizmaster || "Quizmaster").trim(),
+    scorekeeper: String(scorekeeper || "Scorekeeper").trim(),
+    teamAId: tA.id,
+    teamBId: tB.id,
+    seats: {
+      teamA: (tA.quizzers || []).slice(0, 5),
+      teamB: (tB.quizzers || []).slice(0, 5)
+    },
+    timeouts: {
+      teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
+      teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
+    },
+    fouls: { teamA: [], teamB: [] },
+    questions: []
+  };
+
+  scoresData.matches[newId] = newMatch;
+  scoresData.activeMatchId = newId;
+  saveScoresData();
+
+  console.log(`[MATCH] Coach ${req.user.name} created Match #${newMatch.matchNumber} (Meet ${newMatch.meetNum})`);
+  res.json({ success: true, match: newMatch, activeRound: calculateMatchStats(newId) });
+});
+
+// POST Update Match Details & Seating
+app.post('/api/tbq/match-info', authenticateCoach, (req, res) => {
+  const { matchId, meetNum, roundNum, matchNumber, room, quizmaster, scorekeeper, teamAId, teamBId, seatsHome, seatsOpp } = req.body;
+  const mId = matchId || scoresData.activeMatchId;
+  const match = scoresData.matches[mId];
+
+  if (!match) return res.status(404).json({ error: 'Match not found.' });
+
+  if (meetNum !== undefined || roundNum !== undefined) {
+    const num = parseInt(meetNum || roundNum) || 1;
+    match.meetNum = num;
+    match.roundNum = num;
+  }
+  if (matchNumber !== undefined) match.matchNumber = String(matchNumber).trim();
+  if (room !== undefined) match.room = String(room).trim();
+  if (quizmaster !== undefined) match.quizmaster = String(quizmaster).trim();
+  if (scorekeeper !== undefined) match.scorekeeper = String(scorekeeper).trim();
+  if (teamAId) match.teamAId = teamAId;
+  if (teamBId) match.teamBId = teamBId;
+
+  if (Array.isArray(seatsHome)) {
+    match.seats.teamA = seatsHome.map(s => String(s || '').trim()).slice(0, 5);
+  }
+  if (Array.isArray(seatsOpp)) {
+    match.seats.teamB = seatsOpp.map(s => String(s || '').trim()).slice(0, 5);
+  }
+
+  saveScoresData();
+  console.log(`[TBQ] Coach ${req.user.name} updated Match #${match.matchNumber} info`);
+  res.json({ success: true, activeRound: calculateMatchStats(mId) });
 });
 
 // POST Record Question Score (COACH ONLY)
 app.post('/api/tbq/score', authenticateCoach, (req, res) => {
-  const { roundNum, pointValue, isInterruption, team, quizzer, isCorrect } = req.body;
-  const rNum = parseInt(roundNum || scoresData.currentRound || 1);
-  const rKey = String(rNum);
+  const { matchId, questionNum, pointValue, isInterruption, isRebound, team, quizzer, seatNum, isCorrect } = req.body;
+  const mId = matchId || scoresData.activeMatchId;
+  const match = scoresData.matches[mId];
 
-  if (!scoresData.rounds[rKey]) {
-    scoresData.rounds[rKey] = { roundNum: rNum, questions: [] };
+  if (!match) return res.status(404).json({ error: 'Match not found.' });
+
+  let qNum = parseInt(questionNum);
+  if (isNaN(qNum) || qNum < 1) {
+    qNum = match.questions.length + 1;
   }
 
-  const round = scoresData.rounds[rKey];
-  const currentStats = calculateRoundStats(rNum);
-  const teamStats = team === 'home' ? currentStats.homeTeam : currentStats.opponentTeam;
-  const quizzerStat = teamStats.quizzers.find(q => q.name === quizzer);
+  const currentStats = calculateMatchStats(mId);
+  const isTeamA = team === 'teamA' || team === 'home';
+  const teamStats = isTeamA ? currentStats.teamA : currentStats.teamB;
+  const quizzerStat = teamStats.quizzers.find(q => q.name.toLowerCase() === (quizzer || '').toLowerCase());
 
   if (quizzerStat && quizzerStat.isQuizzedOut) {
-    return res.status(400).json({ error: `${quizzer} has already Quizzed Out with 5 questions and cannot answer further questions in this round.` });
+    return res.status(400).json({
+      error: `${quizzer} has already Quizzed Out (5 correct answers) and cannot answer further questions in this match.`
+    });
   }
 
   const newQuestion = {
-    id: `q-${Date.now()}`,
-    questionNum: round.questions.length + 1,
+    id: `q-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    questionNum: qNum,
     pointValue: parseInt(pointValue) || 20,
     isInterruption: !!isInterruption,
-    team: team === 'opponent' ? 'opponent' : 'home',
-    quizzer: (quizzer || 'Unknown').trim(),
+    isRebound: !!isRebound,
+    team: isTeamA ? 'teamA' : 'teamB',
+    quizzer: (quizzer || 'Quizzer').trim(),
+    seatNum: parseInt(seatNum) || 1,
     isCorrect: !!isCorrect,
     scoredBy: req.user.name,
     timestamp: new Date().toISOString()
   };
 
-  round.questions.push(newQuestion);
-  scoresData.currentRound = rNum;
+  match.questions.push(newQuestion);
   saveScoresData();
 
-  res.json({ success: true, activeRound: calculateRoundStats(rNum) });
+  console.log(`[TBQ] Match #${match.matchNumber} Q#${newQuestion.questionNum}: ${newQuestion.quizzer} (${newQuestion.team}) [${newQuestion.isCorrect ? 'CORRECT' : 'INCORRECT'}] ${newQuestion.pointValue}pts`);
+  res.json({ success: true, activeRound: calculateMatchStats(mId) });
 });
 
-// POST Undo Question (COACH ONLY)
-app.post('/api/tbq/undo', authenticateCoach, (req, res) => {
-  const { roundNum } = req.body;
-  const rNum = parseInt(roundNum || scoresData.currentRound || 1);
-  const rKey = String(rNum);
+// POST Toggle / Update Timeout
+app.post('/api/tbq/timeout', authenticateCoach, (req, res) => {
+  const { matchId, team, timeoutId, used, questionNum } = req.body;
+  const mId = matchId || scoresData.activeMatchId;
+  const match = scoresData.matches[mId];
 
-  if (scoresData.rounds[rKey] && scoresData.rounds[rKey].questions.length > 0) {
-    const removed = scoresData.rounds[rKey].questions.pop();
-    saveScoresData();
-    return res.json({ success: true, removed, activeRound: calculateRoundStats(rNum) });
+  if (!match) return res.status(404).json({ error: 'Match not found.' });
+
+  const isTeamA = team === 'teamA' || team === 'home';
+  const key = isTeamA ? 'teamA' : 'teamB';
+  if (!match.timeouts[key]) match.timeouts[key] = [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ];
+
+  const t = match.timeouts[key].find(item => item.id === parseInt(timeoutId));
+  if (t) {
+    t.used = !!used;
+    t.questionNum = used ? (questionNum || `Q${match.questions.length || 1}`) : "";
   }
 
-  res.status(400).json({ error: 'No questions to undo in this round.' });
-});
-
-// POST Reset Round (COACH ONLY)
-app.post('/api/tbq/reset-round', authenticateCoach, (req, res) => {
-  const { roundNum } = req.body;
-  const rNum = parseInt(roundNum || 1);
-  scoresData.rounds[String(rNum)] = { roundNum: rNum, questions: [] };
   saveScoresData();
-  res.json({ success: true, activeRound: calculateRoundStats(rNum) });
+  res.json({ success: true, activeRound: calculateMatchStats(mId) });
 });
 
-// Initialize
+// POST Add or Delete Team Foul
+app.post('/api/tbq/foul', authenticateCoach, (req, res) => {
+  const { matchId, team, action, foulId, reason, penalty } = req.body;
+  const mId = matchId || scoresData.activeMatchId;
+  const match = scoresData.matches[mId];
+
+  if (!match) return res.status(404).json({ error: 'Match not found.' });
+
+  const isTeamA = team === 'teamA' || team === 'home';
+  const key = isTeamA ? 'teamA' : 'teamB';
+  if (!match.fouls[key]) match.fouls[key] = [];
+
+  if (action === 'delete') {
+    match.fouls[key] = match.fouls[key].filter(f => f.id !== foulId);
+  } else {
+    const newFoul = {
+      id: `foul-${Date.now()}`,
+      reason: (reason || 'Team Foul (-5)').trim(),
+      penalty: parseInt(penalty) || 5,
+      timestamp: new Date().toISOString(),
+      calledBy: req.user.name
+    };
+    match.fouls[key].push(newFoul);
+  }
+
+  saveScoresData();
+  res.json({ success: true, activeRound: calculateMatchStats(mId) });
+});
+
+// POST Undo Question
+app.post('/api/tbq/undo', authenticateCoach, (req, res) => {
+  const { matchId } = req.body;
+  const mId = matchId || scoresData.activeMatchId;
+  const match = scoresData.matches[mId];
+
+  if (match && match.questions.length > 0) {
+    const removed = match.questions.pop();
+    saveScoresData();
+    return res.json({ success: true, removed, activeRound: calculateMatchStats(mId) });
+  }
+
+  res.status(400).json({ error: 'No questions to undo in this match.' });
+});
+
+// POST Reset Match
+app.post('/api/tbq/reset-round', authenticateCoach, (req, res) => {
+  const { matchId } = req.body;
+  const mId = matchId || scoresData.activeMatchId;
+  const match = scoresData.matches[mId];
+
+  if (match) {
+    match.questions = [];
+    match.timeouts = {
+      teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
+      teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
+    };
+    match.fouls = { teamA: [], teamB: [] };
+    saveScoresData();
+  }
+
+  res.json({ success: true, activeRound: calculateMatchStats(mId) });
+});
+
+// POST Update Meet Title / Overall Settings
+app.post('/api/tbq/settings', authenticateCoach, (req, res) => {
+  const { title } = req.body;
+  if (title) scoresData.meet.title = title.trim();
+  saveScoresData();
+  res.json({ success: true, meet: scoresData.meet });
+});
+
+// Initialize Data
 loadCoaches();
-loadSlotsData();
 loadScoresData();
 
 // Start Server
 app.listen(PORT, () => {
   console.log(`=================================================`);
-  console.log(`TBQ Coaching Platform running on http://localhost:${PORT}`);
+  console.log(`TBQ Multi-Team Platform running on port ${PORT}`);
   console.log(`Super Coach login: supercoach / super2026`);
   console.log(`Regular Coach login: coach / coach2026`);
   console.log(`=================================================`);

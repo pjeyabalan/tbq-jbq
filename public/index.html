@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TBQ Church Ministry | Practice Signups & Match Platform</title>
+  <title>TBQ Church Ministry | Tournament & Match Scoresheet Platform</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -19,6 +19,7 @@
               700: '#3730a3',
               800: '#312e81',
               900: '#1e1b4b',
+              950: '#0f0c29'
             }
           }
         }
@@ -27,63 +28,68 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono-score { font-family: 'JetBrains Mono', monospace; }
+    
     @media print {
       .no-print { display: none !important; }
       .print-only { display: block !important; }
-      body { background: white !important; }
+      body { background: white !important; color: black !important; font-size: 11px; }
+      .print-container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+      table { border-collapse: collapse !important; width: 100% !important; }
+      th, td { border: 1px solid #333 !important; padding: 3px 5px !important; }
+      .print-shadow-none { box-shadow: none !important; border: 1px solid #333 !important; }
+      @page { size: landscape; margin: 0.5cm; }
     }
     .print-only { display: none; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
 
-  <!-- TOP HEADER -->
-  <header class="bg-brand-900 text-white shadow-lg border-b border-brand-800 no-print">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+  <!-- ========================================== -->
+  <!-- TOP NAVIGATION HEADER                      -->
+  <!-- ========================================== -->
+  <header class="bg-brand-900 text-white shadow-lg border-b border-brand-800 no-print sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-4">
       
-      <!-- LOGO & TITLE -->
-      <div class="flex items-center space-x-3 text-center sm:text-left">
-        <div class="w-10 h-10 rounded-xl bg-amber-400 text-brand-900 flex items-center justify-center font-bold text-xl shadow-inner flex-shrink-0">
+      <!-- LOGO & BRAND -->
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="handleLogoClick()">
+        <div class="w-10 h-10 rounded-xl bg-amber-400 text-brand-950 flex items-center justify-center font-black text-xl shadow-inner flex-shrink-0">
           📖
         </div>
         <div>
-          <div class="flex items-center gap-2 justify-center sm:justify-start">
-            <span class="bg-amber-400/20 text-amber-300 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border border-amber-400/30">
+          <div class="flex items-center gap-2">
+            <span class="bg-amber-400/20 text-amber-300 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-amber-400/30">
               TBQ Ministry
             </span>
-            <span id="user-role-badge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1">
-              <!-- Rendered via JS -->
-            </span>
+            <span id="user-role-badge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full border items-center gap-1"></span>
           </div>
-          <h1 class="text-lg sm:text-xl font-extrabold tracking-tight mt-0.5">
-            Teen Bible Quiz (TBQ)
+          <h1 class="text-base sm:text-lg font-black tracking-tight mt-0.5 flex items-center gap-1.5">
+            <span>Teen Bible Quiz</span>
+            <span class="text-amber-400 font-normal text-xs sm:text-sm">4-Team Tournament</span>
           </h1>
         </div>
       </div>
 
-      <!-- NAVIGATION BUTTONS (VISIBLE ONLY WHEN LOGGED IN) & AUTH BUTTON -->
+      <!-- NAVIGATION CONTROLS -->
       <div class="flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
         <!-- LOGGED-IN NAVIGATION TABS -->
         <div id="coach-nav-tabs" class="hidden bg-brand-950/80 p-1 rounded-xl flex items-center gap-1 border border-brand-800/80">
-          <button onclick="switchTab('signups')" id="tab-btn-signups" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-brand-600 text-white shadow-sm">
-            📅 Practice Signups
+          <button onclick="switchTab('scoresheet')" id="tab-btn-scoresheet" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5">
+            <span>📋 Scoresheet</span>
           </button>
-          <button onclick="switchTab('scorekeeper')" id="tab-btn-scorekeeper" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white hover:bg-brand-800/60">
-            🏆 Match Scorekeeper
+          <button onclick="switchTab('teams')" id="tab-btn-teams" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white hover:bg-brand-800/60 flex items-center gap-1.5">
+            <span>👥 Teams & Matches</span>
           </button>
-          <button onclick="switchTab('teams')" id="tab-btn-teams" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white hover:bg-brand-800/60">
-            👥 Teams & Quizzers
-          </button>
-          <button onclick="switchTab('coaches')" id="tab-btn-coaches" class="hidden px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-amber-300 hover:text-amber-100 hover:bg-brand-800/60 flex items-center gap-1">
+          <button onclick="switchTab('coaches')" id="tab-btn-coaches" class="hidden px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-amber-300 hover:text-amber-100 hover:bg-brand-800/60 flex items-center gap-1">
             <span>🛡️ Manage Coaches</span>
           </button>
         </div>
 
         <!-- AUTH BUTTONS -->
-        <button id="auth-login-btn" onclick="openCoachLoginModal()" class="text-xs bg-brand-800/90 hover:bg-brand-700 text-brand-200 hover:text-white px-3.5 py-2 rounded-xl transition-all border border-brand-700 flex items-center gap-1.5 shadow-sm font-semibold">
+        <button id="auth-login-btn" onclick="openCoachLoginModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-extrabold px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5">
           <span>🔒 Coach Login</span>
         </button>
 
@@ -98,432 +104,510 @@
     </div>
   </header>
 
-  <!-- ==================================================== -->
-  <!-- TAB 1: PRACTICE SIGNUPS (PUBLIC + COACH)             -->
-  <!-- ==================================================== -->
-  <main id="section-signups" class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full">
+  <!-- ========================================== -->
+  <!-- 1. PUBLIC VIEW (WITHOUT LOGIN)             -->
+  <!-- ========================================== -->
+  <main id="section-public" class="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex-grow w-full">
 
-    <!-- INSTRUCTION BANNER & STATS -->
-    <div class="no-print bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 mb-6">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-5 pb-5 border-b border-slate-100">
-        <div class="space-y-1.5 max-w-xl">
-          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <span>🎯 1-on-1 Practice Sessions with Coach</span>
-          </h2>
-          <p class="text-slate-600 text-sm leading-relaxed">
-            Please select up to <strong class="text-brand-700 font-semibold">two 15-minute slots</strong> for your quizzer across <strong>Tuesday (6:30 – 8:00 PM)</strong> and <strong>Wednesday (6:00 – 7:30 PM)</strong>.
-            Slots lock instantly to avoid overlapping bookings.
-          </p>
-          <div class="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500">
-            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Green = Open Slot</span>
-            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block"></span> Gray = Taken / Locked</span>
-            <span class="flex items-center gap-1">✌️ Max 2 slots per quizzer</span>
-          </div>
+    <!-- HERO PUBLIC BANNER -->
+    <div class="bg-gradient-to-br from-brand-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-xl mb-8 relative overflow-hidden border border-brand-800">
+      <div class="relative z-10">
+        <div class="inline-flex items-center gap-2 bg-amber-400/20 text-amber-300 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full border border-amber-400/30 mb-3">
+          <span>🏆 Live Tournament Standings</span>
         </div>
+        <h2 id="public-meet-title" class="text-2xl sm:text-4xl font-black tracking-tight text-white mb-2">
+          TBQ Tournament 2026
+        </h2>
+        <p class="text-brand-200 text-xs sm:text-sm max-w-2xl leading-relaxed mb-6">
+          Real-time 4-team standings, round results, and church scores. Officials and coaches can sign in for live 20-question scoresheets and buzzer entry.
+        </p>
 
-        <!-- PROGRESS CARD -->
-        <div class="bg-brand-50 border border-brand-100 rounded-xl p-4 sm:p-5 flex flex-col justify-center min-w-[240px]">
-          <div class="flex justify-between items-baseline mb-2">
-            <span class="text-xs font-semibold uppercase tracking-wider text-brand-700">Slots Booked</span>
-            <span id="booking-fraction" class="text-xl font-extrabold text-brand-900">0 / 12</span>
-          </div>
-          <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
-            <div id="booking-progress-bar" class="bg-brand-600 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
-          </div>
-          <div class="flex justify-between text-[11px] text-slate-500 mt-2">
-            <span id="open-slots-count">12 open slots</span>
-            <span>Max 2 slots / quizzer</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- STUDENTS TRACKER CHIPS -->
-      <div class="pt-4">
-        <div class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center justify-between">
-          <span class="flex items-center gap-1.5">👥 Quizzers Roster Status:</span>
-          <span id="add-student-hint" class="hidden text-brand-600 font-semibold text-[11px] cursor-pointer hover:underline" onclick="switchTab('teams')">
-            + Manage / Add Kids in Teams Tab
-          </span>
-        </div>
-        <div id="students-roster-chips" class="flex flex-wrap gap-2">
-          <span class="text-xs text-slate-400">Loading student roster...</span>
+        <!-- 4-TEAMS LEADERBOARD TABLE -->
+        <div class="bg-white/10 rounded-2xl p-4 sm:p-5 border border-white/15 backdrop-blur-xs overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm">
+            <thead>
+              <tr class="text-amber-300 text-[11px] font-black uppercase tracking-wider border-b border-white/20 pb-2">
+                <th class="pb-2 text-center w-12">Rank</th>
+                <th class="pb-2">Team / Church</th>
+                <th class="pb-2 text-center">Meets Played</th>
+                <th class="pb-2 text-center">Won</th>
+                <th class="pb-2 text-center">Lost</th>
+                <th class="pb-2 text-right">Total Pts</th>
+              </tr>
+            </thead>
+            <tbody id="public-standings-tbody" class="divide-y divide-white/10 font-bold">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <!-- COACH TOOLBAR (VISIBLE WHEN COACH IS LOGGED IN) -->
-    <div id="coach-toolbar" class="hidden no-print bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 shadow-sm flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <span class="text-amber-800 font-bold text-sm">👑 Coach Control:</span>
-        <span class="text-xs text-amber-700">You can cancel bookings, copy WhatsApp schedule, or print the roster.</span>
+    <!-- MATCHES & MEETS RESULTS LIST -->
+    <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 mb-8">
+      <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-100">
+        <div>
+          <h3 class="text-lg sm:text-xl font-black text-slate-900">Meets & Results</h3>
+          <p class="text-xs sm:text-sm text-slate-500">Scores between participating church teams across all round robin meets.</p>
+        </div>
+        <span class="text-xs font-bold text-brand-700 bg-brand-50 px-3 py-1 rounded-full border border-brand-100" id="public-matches-badge">
+          Meets List
+        </span>
       </div>
-      <div class="flex items-center gap-2">
-        <button onclick="copyScheduleToClipboard()" class="text-xs bg-amber-600 hover:bg-amber-700 text-white font-semibold px-3 py-2 rounded-lg shadow-sm transition-all flex items-center gap-1.5">
-          📋 Copy WhatsApp Schedule
-        </button>
-        <button onclick="window.print()" class="text-xs bg-slate-800 hover:bg-slate-900 text-white font-semibold px-3 py-2 rounded-lg shadow-sm transition-all flex items-center gap-1.5">
-          🖨️ Print Roster
-        </button>
-        <button onclick="openAddSlotModal()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-2 rounded-lg shadow-sm transition-all flex items-center gap-1.5">
-          ➕ Add Slot
-        </button>
+
+      <div id="public-matches-list" class="space-y-3">
+        <!-- Rendered dynamically via JS -->
       </div>
     </div>
 
-    <!-- DAY FILTER TABS -->
-    <div class="no-print flex items-center gap-2 border-b border-slate-200 pb-3 mb-6 overflow-x-auto">
-      <button onclick="filterDay('all')" id="tab-all" class="day-tab px-4 py-2 rounded-xl text-sm font-semibold transition-all bg-brand-600 text-white shadow-sm">
-        All Days (12 Slots)
-      </button>
-      <button onclick="filterDay('tue')" id="tab-tue" class="day-tab px-4 py-2 rounded-xl text-sm font-semibold transition-all bg-white hover:bg-slate-100 text-slate-700 border border-slate-200">
-        🗓️ Tuesday (6:30 – 8:00 PM)
-      </button>
-      <button onclick="filterDay('wed')" id="tab-wed" class="day-tab px-4 py-2 rounded-xl text-sm font-semibold transition-all bg-white hover:bg-slate-100 text-slate-700 border border-slate-200">
-        🗓️ Wednesday (6:00 – 7:30 PM)
-      </button>
-    </div>
-
-    <!-- SCHEDULE SLOTS CONTAINER -->
-    <div id="schedule-container" class="space-y-8">
-      <div class="text-center py-16 text-slate-400">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand-500 border-t-transparent mb-3"></div>
-        <p class="text-sm font-medium">Loading practice schedule...</p>
-      </div>
-    </div>
-
-    <!-- PRINT-ONLY ROSTER TABLE -->
-    <div id="print-roster-view" class="print-only">
+    <!-- INLINE COACH LOGIN BOX -->
+    <div class="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 max-w-xl mx-auto">
       <div class="text-center mb-6">
-        <h1 class="text-2xl font-bold">TBQ 1-on-1 Practice Roster</h1>
-        <p class="text-sm text-gray-600">Teen Bible Quiz Practice Schedule with Coach</p>
+        <div class="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center text-2xl mx-auto mb-3 font-black">
+          🔒
+        </div>
+        <h3 class="text-xl font-black text-white">Coach & Official Login</h3>
+        <p class="text-slate-400 text-xs sm:text-sm mt-1">
+          Sign in to access the <strong>Official 20-Question Scoresheet</strong>, configure teams, and record buzzer answers.
+        </p>
       </div>
-      <div id="print-roster-content"></div>
+
+      <form onsubmit="handleInlineLogin(event)" class="space-y-4">
+        <div id="inline-login-error" class="hidden p-3 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-200 text-xs font-bold text-center">
+          Invalid username or passcode.
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Username</label>
+          <input type="text" id="inline-username" placeholder="e.g. coach or supercoach" required class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm font-semibold">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Passcode</label>
+          <input type="password" id="inline-passcode" placeholder="Enter passcode" required class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm font-semibold">
+        </div>
+
+        <button type="submit" class="w-full bg-amber-400 hover:bg-amber-300 active:scale-98 text-brand-950 font-black py-3.5 px-4 rounded-xl text-sm shadow-lg shadow-amber-400/20 transition-all flex items-center justify-center gap-2">
+          <span>Sign In to Scoresheet</span>
+          <span>⚡</span>
+        </button>
+      </form>
+
+      <div class="mt-4 pt-4 border-t border-slate-800 text-center text-xs text-slate-400">
+        <span>Default credentials: </span>
+        <code class="text-amber-300 bg-slate-800 px-1.5 py-0.5 rounded font-mono">coach / coach2026</code>
+        <span> or </span>
+        <code class="text-amber-300 bg-slate-800 px-1.5 py-0.5 rounded font-mono">supercoach / super2026</code>
+      </div>
     </div>
 
   </main>
 
-  <!-- ==================================================== -->
-  <!-- TAB 2: TBQ MATCH SCOREKEEPER (COACHES ONLY)          -->
-  <!-- ==================================================== -->
-  <main id="section-scorekeeper" class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full hidden">
+  <!-- ========================================== -->
+  <!-- 2. OFFICIAL TBQ SCORESHEET (LOGGED IN)     -->
+  <!-- ========================================== -->
+  <main id="section-scoresheet" class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full hidden print-container">
 
-    <!-- MATCH SCOREBOARD HEADER -->
-    <div class="bg-gradient-to-r from-brand-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-6 sm:p-7 shadow-lg mb-6 relative overflow-hidden">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-        <div>
-          <span class="text-xs uppercase tracking-widest font-extrabold text-amber-400">TBQ Official Match Scoreboard</span>
-          <h2 id="sb-meet-title" class="text-xl sm:text-2xl font-black mt-0.5">TBQ Quiz Meet</h2>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="switchTab('teams')" class="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg border border-white/20 font-semibold flex items-center gap-1 transition-colors">
-            ⚙️ Edit Meet & Opponent Info
-          </button>
-        </div>
+    <!-- MATCH SELECTOR BAR (SWITCH BETWEEN MATCHES OR ADD NEW) -->
+    <div class="bg-slate-900 text-white rounded-2xl p-4 shadow-sm border border-slate-800 mb-5 no-print flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div class="flex items-center gap-2 overflow-x-auto" id="match-selector-pills">
+        <!-- Rendered via JS -->
       </div>
-
-      <!-- TEAMS LIVE SCORES -->
-      <div class="grid grid-cols-2 gap-4 sm:gap-8 pt-5">
-        <!-- HOME TEAM -->
-        <div class="bg-white/10 rounded-2xl p-4 text-center border border-white/15 backdrop-blur-xs">
-          <div class="text-xs uppercase font-extrabold text-brand-200 tracking-wider">Home Team</div>
-          <div id="sb-home-church" class="text-sm sm:text-base font-bold text-white truncate mt-0.5">Our Church</div>
-          <div id="sb-home-score" class="text-4xl sm:text-6xl font-black text-amber-300 mt-2">0</div>
-          <div class="text-[11px] text-brand-200 mt-1">Points</div>
-        </div>
-
-        <!-- OPPONENT TEAM -->
-        <div class="bg-white/10 rounded-2xl p-4 text-center border border-white/15 backdrop-blur-xs">
-          <div class="text-xs uppercase font-extrabold text-rose-300 tracking-wider">Opponent Team</div>
-          <div id="sb-opp-church" class="text-sm sm:text-base font-bold text-white truncate mt-0.5">Opponent Church</div>
-          <div id="sb-opp-score" class="text-4xl sm:text-6xl font-black text-rose-300 mt-2">0</div>
-          <div class="text-[11px] text-rose-200 mt-1">Points</div>
-        </div>
-      </div>
-
-      <!-- ROUNDS SELECTOR BAR -->
-      <div class="flex items-center justify-between flex-wrap gap-2 mt-5 pt-4 border-t border-white/10">
-        <div class="flex items-center gap-2 overflow-x-auto pb-1" id="rounds-pill-bar">
-          <!-- Dynamic round buttons -->
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="undoLastQuestion()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg font-semibold border border-slate-700 transition-colors flex items-center gap-1">
-            ↩️ Undo Last
-          </button>
-          <button onclick="coachResetRound()" class="text-xs bg-rose-900/60 hover:bg-rose-800 text-rose-200 px-3 py-1.5 rounded-lg font-semibold border border-rose-700/60 transition-colors">
-            🔄 Reset Round
-          </button>
-        </div>
+      <div class="flex items-center gap-2 self-end md:self-auto">
+        <button onclick="openAddMatchModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-black px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1">
+          <span>➕ Add Meet / Match</span>
+        </button>
       </div>
     </div>
 
-    <!-- LIVE QUESTION ENTRY BOX -->
-    <div class="bg-white rounded-2xl p-5 sm:p-7 shadow-sm border border-slate-200 mb-6">
-      <div class="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
-        <div>
-          <span class="text-xs font-extrabold text-brand-600 uppercase tracking-wider bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-100">
-            Score Question
-          </span>
-          <h3 class="text-lg font-extrabold text-slate-900 mt-1" id="active-question-label">
-            Question #1
-          </h3>
+    <!-- OFFICIAL MATCH HEADER CARD -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 mb-5 no-print">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        <!-- MATCH METADATA BAR -->
+        <div class="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm font-bold text-slate-800">
+          <div class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+            <span class="text-slate-500 text-[11px] uppercase tracking-wider font-extrabold">MATCH #:</span>
+            <span id="meta-match-num" class="text-brand-700 font-black font-mono-score">01</span>
+          </div>
+          <div class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+            <span class="text-slate-500 text-[11px] uppercase tracking-wider font-extrabold">ROOM:</span>
+            <span id="meta-room-num" class="text-slate-900 font-black">201</span>
+          </div>
+          <div class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+            <span class="text-slate-500 text-[11px] uppercase tracking-wider font-extrabold">QUIZMASTER:</span>
+            <span id="meta-quizmaster" class="text-slate-900 font-extrabold">Pastor John</span>
+          </div>
+          <div class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+            <span class="text-slate-500 text-[11px] uppercase tracking-wider font-extrabold">SCOREKEEPER:</span>
+            <span id="meta-scorekeeper" class="text-slate-900 font-extrabold">Sarah M.</span>
+          </div>
         </div>
-        <div class="text-xs text-slate-500 font-medium">
-          Rule: 5 correct = <strong class="text-emerald-600 font-bold">Quiz Out (+20 bonus)</strong>
+
+        <!-- ACTIONS -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="openMatchInfoModal()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg border border-slate-300 transition-colors flex items-center gap-1">
+            <span>✏️ Edit Match Info & Seats</span>
+          </button>
+          <button onclick="window.print()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-bold px-3.5 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1.5">
+            <span>🖨️ Print Scoresheet</span>
+          </button>
         </div>
       </div>
 
-      <form onsubmit="submitQuestionScore(event)" class="space-y-5">
-        <!-- 1. POINT VALUE SELECTOR -->
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-            1. Select Question Points:
-          </label>
-          <div class="grid grid-cols-3 gap-3">
-            <button type="button" onclick="selectPoints(10)" id="btn-pts-10" class="pts-btn py-3 rounded-xl border border-slate-200 font-extrabold text-sm sm:text-base text-slate-700 hover:bg-slate-50 transition-all flex flex-col items-center">
-              <span>10 Points</span>
-              <span class="text-[10px] text-slate-400 font-normal">Intro level</span>
-            </button>
-            <button type="button" onclick="selectPoints(20)" id="btn-pts-20" class="pts-btn py-3 rounded-xl border-2 border-brand-500 bg-brand-50 font-extrabold text-sm sm:text-base text-brand-900 transition-all flex flex-col items-center shadow-xs">
-              <span>20 Points</span>
-              <span class="text-[10px] text-brand-600 font-medium">Standard</span>
-            </button>
-            <button type="button" onclick="selectPoints(30)" id="btn-pts-30" class="pts-btn py-3 rounded-xl border border-slate-200 font-extrabold text-sm sm:text-base text-slate-700 hover:bg-slate-50 transition-all flex flex-col items-center">
-              <span>30 Points</span>
-              <span class="text-[10px] text-slate-400 font-normal">Master level</span>
-            </button>
+      <!-- TEAMS LIVE SCORE STRIP -->
+      <div class="grid grid-cols-2 gap-4 pt-4">
+        <!-- TEAM A -->
+        <div class="bg-brand-50 border border-brand-100 rounded-xl p-3 sm:p-4 flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-extrabold uppercase tracking-wider text-brand-700 flex items-center gap-1.5">
+              <span>TEAM A:</span>
+              <span id="scoresheet-home-name" class="text-brand-900 text-sm sm:text-base font-black">Chicago Indian Church - Team 1</span>
+            </div>
+            <div class="text-[11px] text-brand-600 mt-0.5" id="home-bonus-badge">Regulation: 0 pts</div>
+          </div>
+          <div class="text-right">
+            <div id="scoresheet-home-total" class="text-3xl sm:text-5xl font-black text-brand-900 font-mono-score">0</div>
           </div>
         </div>
 
-        <!-- 2. INTERRUPTION TOGGLE -->
-        <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="text-base">⚡</span>
+        <!-- TEAM B -->
+        <div class="bg-rose-50 border border-rose-100 rounded-xl p-3 sm:p-4 flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-extrabold uppercase tracking-wider text-rose-700 flex items-center gap-1.5">
+              <span>TEAM B:</span>
+              <span id="scoresheet-opp-name" class="text-rose-900 text-sm sm:text-base font-black">Team 3 (TBD)</span>
+            </div>
+            <div class="text-[11px] text-rose-600 mt-0.5" id="opp-bonus-badge">Regulation: 0 pts</div>
+          </div>
+          <div class="text-right">
+            <div id="scoresheet-opp-total" class="text-3xl sm:text-5xl font-black text-rose-900 font-mono-score">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTROLS: UNDO & RESET -->
+      <div class="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-slate-100">
+        <button onclick="undoLastQuestion()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg font-bold border border-slate-700 transition-colors flex items-center gap-1">
+          <span>↩️ Undo Last Question</span>
+        </button>
+        <button onclick="coachResetRound()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg font-bold border border-rose-200 transition-colors">
+          <span>🔄 Reset Match</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- QUICK BUZZER QUESTION ENTRY BOX -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 mb-6 no-print">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-300">
+            ⚡ Live Question Scorer
+          </span>
+          <h3 class="text-base font-black text-slate-900" id="active-question-badge">
+            Question #1
+          </h3>
+        </div>
+        <div class="text-xs text-slate-500 flex items-center gap-3">
+          <span>5 Correct = <strong class="text-emerald-600 font-bold">Quiz Out (+20)</strong></span>
+          <button type="button" onclick="toggleQuickScorer()" id="quick-scorer-toggle-btn" class="text-brand-600 font-bold hover:underline">
+            Hide Box ▴
+          </button>
+        </div>
+      </div>
+
+      <form id="quick-scorer-form" onsubmit="submitQuestionScore(event)" class="space-y-4">
+        <!-- 1. QUESTION NUMBER & POINT VALUE -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              Question #:
+            </label>
+            <input type="number" id="score-question-num" min="1" max="30" value="1" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-black text-base font-mono-score text-center bg-slate-50">
+          </div>
+          <div class="sm:col-span-3">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              Points Value:
+            </label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" onclick="selectPoints(10)" id="btn-pts-10" class="pts-btn py-2 rounded-xl border border-slate-200 font-black text-sm text-slate-700 hover:bg-slate-50">
+                10 Pts
+              </button>
+              <button type="button" onclick="selectPoints(20)" id="btn-pts-20" class="pts-btn py-2 rounded-xl border-2 border-brand-500 bg-brand-50 font-black text-sm text-brand-900">
+                20 Pts
+              </button>
+              <button type="button" onclick="selectPoints(30)" id="btn-pts-30" class="pts-btn py-2 rounded-xl border border-slate-200 font-black text-sm text-slate-700 hover:bg-slate-50">
+                30 Pts
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. TOGGLES: INTERRUPTION & REBOUND -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-2.5 flex items-center justify-between">
             <div>
-              <div class="text-xs font-bold text-amber-900">Interruption Question?</div>
-              <div class="text-[11px] text-amber-700">Check if buzzed before question was completely read (deducts half points on error)</div>
+              <span class="text-xs font-black text-amber-950 flex items-center gap-1">
+                <span>⚡ Interruption?</span>
+              </span>
+              <span class="text-[10px] text-amber-800 block">Deducts half-points (-5, -10, -15) on error</span>
             </div>
+            <input type="checkbox" id="score-is-interruption" class="w-5 h-5 text-amber-600 rounded cursor-pointer">
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="score-is-interruption" class="sr-only peer">
-            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-          </label>
+
+          <div class="bg-indigo-50/80 border border-indigo-200 rounded-xl p-2.5 flex items-center justify-between">
+            <div>
+              <span class="text-xs font-black text-indigo-950 flex items-center gap-1">
+                <span>⭐ Rebound Question?</span>
+              </span>
+              <span class="text-[10px] text-indigo-800 block">Answering after other team missed (marked with *)</span>
+            </div>
+            <input type="checkbox" id="score-is-rebound" class="w-5 h-5 text-indigo-600 rounded cursor-pointer">
+          </div>
         </div>
 
-        <!-- 3. WHO BUZZED IN? -->
+        <!-- 3. WHO BUZZED IN? (SEATS 1-5 GRID) -->
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-            2. Who Answered? (Tap quizzer):
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+            Who Answered? (Select Team & Seat 1–5):
           </label>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- HOME QUIZZERS -->
-            <div class="border border-brand-100 rounded-xl p-3 bg-brand-50/40">
-              <div class="text-xs font-bold text-brand-900 uppercase tracking-wider mb-2 flex items-center justify-between">
-                <span>🛡️ Our Team Quizzers</span>
-                <span class="text-[10px] text-brand-600 font-normal">Home</span>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- TEAM A SEATS -->
+            <div class="border border-brand-200 rounded-xl p-3 bg-brand-50/40">
+              <div class="text-xs font-black text-brand-900 uppercase tracking-wider mb-2 flex justify-between">
+                <span id="scorer-home-label">TEAM A</span>
+                <span class="text-[10px] text-brand-600">Left Side</span>
               </div>
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="home-quizzers-select-grid">
-                <!-- Rendered dynamically -->
-              </div>
+              <div class="grid grid-cols-5 gap-1.5" id="home-seats-btn-grid"></div>
             </div>
 
-            <!-- OPPONENT QUIZZERS -->
-            <div class="border border-rose-100 rounded-xl p-3 bg-rose-50/40">
-              <div class="text-xs font-bold text-rose-900 uppercase tracking-wider mb-2 flex items-center justify-between">
-                <span id="opp-team-label-select">⚔️ Opponent Team</span>
-                <span class="text-[10px] text-rose-600 font-normal">Away</span>
+            <!-- TEAM B SEATS -->
+            <div class="border border-rose-200 rounded-xl p-3 bg-rose-50/40">
+              <div class="text-xs font-black text-rose-900 uppercase tracking-wider mb-2 flex justify-between">
+                <span id="scorer-opp-label">TEAM B</span>
+                <span class="text-[10px] text-rose-600">Right Side</span>
               </div>
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="opp-quizzers-select-grid">
-                <!-- Rendered dynamically -->
-              </div>
+              <div class="grid grid-cols-5 gap-1.5" id="opp-seats-btn-grid"></div>
             </div>
           </div>
         </div>
 
-        <!-- 4. RESULT: CORRECT OR INCORRECT -->
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-            3. Answer Result:
-          </label>
-          <div class="grid grid-cols-2 gap-3">
-            <button type="button" onclick="selectResult(true)" id="btn-result-correct" class="result-btn py-3.5 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-xs transition-all">
-              <span class="text-lg">✅</span>
-              <span>CORRECT (+points)</span>
-            </button>
-            <button type="button" onclick="selectResult(false)" id="btn-result-incorrect" class="result-btn py-3.5 rounded-xl border border-slate-200 text-slate-700 font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 hover:bg-slate-50 transition-all">
-              <span class="text-lg">❌</span>
-              <span>INCORRECT (Error)</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- SUBMIT QUESTION BUTTON -->
-        <div class="pt-2">
-          <button type="submit" id="submit-score-btn" class="w-full bg-brand-600 hover:bg-brand-700 active:scale-99 text-white font-extrabold py-3.5 px-4 rounded-xl text-base shadow-md shadow-brand-600/20 transition-all flex items-center justify-center gap-2">
-            <span>Record Question Score</span>
-            <span>⚡</span>
+        <!-- 4. ANSWER RESULT & SUBMISSION -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <button type="button" onclick="selectResult(true)" id="btn-result-correct" class="result-btn py-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-black text-sm flex items-center justify-center gap-1.5 shadow-xs">
+            <span>✅ CORRECT (+Points)</span>
+          </button>
+          <button type="button" onclick="selectResult(false)" id="btn-result-incorrect" class="result-btn py-3 rounded-xl border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50">
+            <span>❌ INCORRECT (Error)</span>
+          </button>
+          <button type="submit" class="bg-brand-600 hover:bg-brand-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-sm shadow-md shadow-brand-600/20 transition-all flex items-center justify-center gap-1.5">
+            <span>Record Score ⚡</span>
           </button>
         </div>
       </form>
     </div>
 
-    <!-- QUIZZERS SCORECARD TABLE & QUESTION AUDIT LOG -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-      <!-- INDIVIDUAL STATS TABLE -->
-      <div class="lg:col-span-2 bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
-        <h3 class="text-base font-extrabold text-slate-900 mb-4 flex items-center justify-between">
-          <span>📊 Individual Quizzers Scorecard (Round <span class="current-round-text">1</span>)</span>
-          <span class="text-xs text-slate-400 font-normal">5 Correct = Quizzed Out</span>
-        </h3>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs sm:text-sm">
-            <thead>
-              <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
-                <th class="pb-2.5">Quizzer</th>
-                <th class="pb-2.5 text-center">Team</th>
-                <th class="pb-2.5 text-center">Correct</th>
-                <th class="pb-2.5 text-center">Errors</th>
-                <th class="pb-2.5 text-center">Pts</th>
-                <th class="pb-2.5 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody id="individual-scorecard-tbody" class="divide-y divide-slate-100 font-medium">
-              <!-- Rendered dynamically -->
-            </tbody>
-          </table>
+    <!-- ==================================================== -->
+    <!-- THE OFFICIAL TBQ SCORESHEET TABLE                    -->
+    <!-- ==================================================== -->
+    <div class="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden mb-6 print-shadow-none">
+      
+      <!-- PRINT HEADER ONLY -->
+      <div class="print-only p-4 border-b border-black text-center">
+        <h2 class="text-xl font-black uppercase">Official TBQ Scoresheet</h2>
+        <div class="text-xs font-bold mt-1">
+          MATCH #: <span id="print-match-num">01</span> | ROOM: <span id="print-room-num">201</span> | QUIZMASTER: <span id="print-qm">Pastor John</span> | SCOREKEEPER: <span id="print-sk">Sarah M.</span>
         </div>
       </div>
 
-      <!-- QUESTION AUDIT LOG -->
-      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 flex flex-col justify-between">
-        <div>
-          <h3 class="text-base font-extrabold text-slate-900 mb-3 flex items-center justify-between">
-            <span>📝 Questions Log</span>
-            <span id="log-count" class="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">0 recorded</span>
-          </h3>
-          <div id="questions-log-list" class="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs">
-            <p class="text-slate-400 text-center py-8 italic">No questions recorded in this round yet.</p>
-          </div>
-        </div>
+      <!-- SCORESHEET TABLE WRAPPER -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs text-left border-collapse" id="official-scoresheet-table">
+          <thead>
+            <!-- SUPER HEADER: TEAM A vs TEAM B -->
+            <tr class="bg-slate-900 text-white font-black text-center text-xs tracking-wider uppercase border-b border-slate-800">
+              <th colspan="2" class="p-2.5 border-r border-slate-800 bg-slate-950" id="super-header-badge">MEET 1 • M#01</th>
+              <th colspan="6" class="p-2.5 border-r border-slate-800 bg-brand-900/90" id="table-head-team-a">
+                TEAM A: Chicago Indian Church - Team 1
+              </th>
+              <th colspan="6" class="p-2.5 bg-rose-950/90" id="table-head-team-b">
+                TEAM B: Team 3 (TBD)
+              </th>
+            </tr>
+
+            <!-- SUB HEADER: COLUMNS -->
+            <tr class="bg-slate-100 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider border-b-2 border-slate-300">
+              <th class="p-2 text-center w-12 border-r border-slate-300">Q #</th>
+              <th class="p-2 text-center w-14 border-r-2 border-slate-400">PTS</th>
+
+              <!-- TEAM A: SEATS 1 TO 5 -->
+              <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-1">#1 Sam</th>
+              <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-2">#2 Mia</th>
+              <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-3">#3 Ben</th>
+              <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-4">#4 Jade</th>
+              <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-5">#5 Noah</th>
+              <th class="p-2 text-center bg-brand-100/70 text-brand-900 font-black border-r-2 border-slate-400 w-20">RUNNING<br>TOTAL</th>
+
+              <!-- TEAM B: SEATS 1 TO 5 -->
+              <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-1">#1 Leo</th>
+              <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-2">#2 Ava</th>
+              <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-3">#3 Eli</th>
+              <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-4">#4 Tim</th>
+              <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-5">#5 Han</th>
+              <th class="p-2 text-center bg-rose-100/70 text-rose-900 font-black w-20">RUNNING<br>TOTAL</th>
+            </tr>
+          </thead>
+
+          <tbody id="scoresheet-tbody" class="divide-y divide-slate-200 font-medium">
+            <!-- 20 Question Rows Rendered Dynamically -->
+          </tbody>
+
+          <!-- BOTTOM OFFICIAL SUMMARY ROWS -->
+          <tfoot class="border-t-2 border-slate-400 text-xs font-bold divide-y divide-slate-200">
+            <!-- 1. BONUSES ROW -->
+            <tr class="bg-amber-50/70">
+              <td colspan="2" class="p-2.5 font-black uppercase text-amber-900 border-r-2 border-slate-400">
+                BONUSES
+              </td>
+              <td colspan="5" class="p-2.5 text-slate-700 border-r border-slate-200" id="summary-home-bonuses">
+                Sam: Perfect QO (+20)
+              </td>
+              <td class="p-2.5 text-center font-mono-score font-black text-amber-900 bg-amber-100/60 border-r-2 border-slate-400" id="summary-home-bonus-pts">
+                +20
+              </td>
+              <td colspan="5" class="p-2.5 text-slate-700 border-r border-slate-200" id="summary-opp-bonuses">
+                None
+              </td>
+              <td class="p-2.5 text-center font-mono-score font-black text-amber-900 bg-amber-100/60" id="summary-opp-bonus-pts">
+                0
+              </td>
+            </tr>
+
+            <!-- 2. TEAM FOULS ROW -->
+            <tr class="bg-slate-50">
+              <td colspan="2" class="p-2.5 font-black uppercase text-slate-800 border-r-2 border-slate-400 flex items-center justify-between">
+                <span>TEAM FOULS</span>
+                <button type="button" onclick="openAddFoulModal()" class="no-print text-[10px] text-brand-600 hover:underline">+ Add</button>
+              </td>
+              <td colspan="5" class="p-2.5 text-slate-600 border-r border-slate-200" id="summary-home-fouls">
+                None
+              </td>
+              <td class="p-2.5 text-center font-mono-score font-black text-rose-700 bg-slate-100 border-r-2 border-slate-400" id="summary-home-foul-pts">
+                0
+              </td>
+              <td colspan="5" class="p-2.5 text-slate-600 border-r border-slate-200" id="summary-opp-fouls">
+                Bench talking (-5)
+              </td>
+              <td class="p-2.5 text-center font-mono-score font-black text-rose-700 bg-slate-100" id="summary-opp-foul-pts">
+                -5
+              </td>
+            </tr>
+
+            <!-- 3. FINAL SCORE ROW -->
+            <tr class="bg-slate-900 text-white font-black text-sm">
+              <td colspan="2" class="p-3 uppercase tracking-wider text-amber-400 border-r-2 border-slate-700">
+                FINAL SCORE
+              </td>
+              <td colspan="5" class="p-3 text-slate-300 border-r border-slate-700" id="summary-home-final-label">
+                Official Result
+              </td>
+              <td class="p-3 text-center font-mono-score text-xl font-black text-amber-400 bg-brand-950 border-r-2 border-slate-700" id="summary-home-final-pts">
+                220
+              </td>
+              <td colspan="5" class="p-3 text-slate-300 border-r border-slate-700" id="summary-opp-final-label">
+                Official Result
+              </td>
+              <td class="p-3 text-center font-mono-score text-xl font-black text-rose-300 bg-rose-950" id="summary-opp-final-pts">
+                145
+              </td>
+            </tr>
+
+            <!-- 4. TIMEOUTS ROW -->
+            <tr class="bg-slate-50 text-[11px]">
+              <td colspan="2" class="p-2.5 font-black uppercase text-slate-700 border-r-2 border-slate-400">
+                TIMEOUTS
+              </td>
+              <td colspan="6" class="p-2.5 border-r-2 border-slate-400" id="summary-home-timeouts"></td>
+              <td colspan="6" class="p-2.5" id="summary-opp-timeouts"></td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
 
     </div>
 
   </main>
 
-  <!-- ==================================================== -->
-  <!-- TAB 3: TEAMS & QUIZZERS MANAGER (COACHES)            -->
-  <!-- ==================================================== -->
-  <main id="section-teams" class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full hidden">
+  <!-- ========================================== -->
+  <!-- 3. TEAMS & MATCHES MANAGER (COACHES)       -->
+  <!-- ========================================== -->
+  <main id="section-teams" class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full hidden no-print">
     
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900">👥 Teams, Kids & Meet Settings</h2>
-        <p class="text-slate-500 text-xs sm:text-sm">Manage your team's roster, add kids, configure opponent teams and match rounds.</p>
+        <h2 class="text-xl sm:text-2xl font-black text-slate-900">👥 4 Teams & Tournament Meets Schedule</h2>
+        <p class="text-slate-500 text-xs sm:text-sm">Configure church teams, enter quizzers' names tomorrow morning, and set up meet pairings.</p>
       </div>
-      <div class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 self-start sm:self-auto">
-        <span>✓ Changes sync instantly across Signups & Scorekeeper</span>
+      <div class="flex items-center gap-2">
+        <button onclick="openEditTeamModal()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-bold px-3.5 py-2 rounded-xl shadow-sm">
+          ➕ Add Team
+        </button>
+        <button onclick="openAddMatchModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-black px-3.5 py-2 rounded-xl shadow-sm">
+          ➕ Add Meet / Match
+        </button>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- 1. THE 4 TEAMS GRID -->
+    <div class="mb-8">
+      <h3 class="text-base font-black text-slate-900 mb-3 flex items-center justify-between">
+        <span>Participating Teams & Quizzers</span>
+        <span class="text-xs text-slate-400 font-normal">Tap "Edit" on any team tomorrow morning to enter announced names</span>
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="teams-cards-grid">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
 
-      <!-- 1. OUR TEAM (HOME QUIZZERS) -->
-      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 flex flex-col justify-between">
+    <!-- 2. TOURNAMENT MATCHES LIST -->
+    <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
         <div>
-          <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
-            <div>
-              <span class="text-xs font-bold uppercase tracking-wider text-brand-600">Our Church Team</span>
-              <h3 class="text-lg font-bold text-slate-900">Quizzers Roster</h3>
-            </div>
-            <span id="home-kids-count-badge" class="text-xs font-bold bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full">7 Students</span>
-          </div>
-
-          <!-- ADD NEW STUDENT FORM -->
-          <form onsubmit="handleAddNewStudent(event)" class="mb-5 flex gap-2">
-            <input type="text" id="new-student-name-input" required placeholder="Enter student's name (e.g. Samuel)" class="flex-grow px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium">
-            <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm shadow-sm transition-all whitespace-nowrap">
-              + Add Kid
-            </button>
-          </form>
-
-          <!-- LIST OF HOME QUIZZERS -->
-          <div class="space-y-2 max-h-[360px] overflow-y-auto pr-1" id="home-students-manager-list">
-            <!-- Dynamic student cards -->
-          </div>
+          <h3 class="text-base font-black text-slate-900">Configured Meets & Matches</h3>
+          <p class="text-xs text-slate-500">Pairings between teams for each round robin meet.</p>
         </div>
+        <button onclick="openAddMatchModal()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded-lg border border-slate-300">
+          + Add Meet
+        </button>
       </div>
 
-      <!-- 2. OPPONENT TEAM & ROUNDS CONFIGURATION -->
-      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
-        <div class="pb-3 mb-4 border-b border-slate-100">
-          <span class="text-xs font-bold uppercase tracking-wider text-rose-600">Match Settings</span>
-          <h3 class="text-lg font-bold text-slate-900">Opponent & Rounds</h3>
-        </div>
-
-        <form onsubmit="handleSaveOpponentSettings(event)" class="space-y-4">
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Meet Title</label>
-            <input type="text" id="teams-meet-title" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium" placeholder="e.g. TBQ Fall Invitational">
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Our Team Name</label>
-              <input type="text" id="teams-home-church" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium" placeholder="Our Church TBQ">
-            </div>
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Total Rounds</label>
-              <input type="number" id="teams-total-rounds" min="1" max="10" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Opponent Church Name</label>
-            <input type="text" id="teams-opp-church" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium" placeholder="e.g. Calvary Assembly">
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              Opponent Team Quizzers <span class="text-slate-400 font-normal">(comma-separated)</span>
-            </label>
-            <textarea id="teams-opp-quizzers" rows="3" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium resize-none" placeholder="e.g. Timothy, Hannah, Samuel, Micah, Daniel"></textarea>
-            <p class="text-[11px] text-slate-400 mt-1">These names populate the opponent buzzing buttons in the scorekeeper.</p>
-          </div>
-
-          <div class="pt-2">
-            <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs sm:text-sm shadow-sm transition-all">
-              Save Opponent & Rounds Configuration
-            </button>
-          </div>
-        </form>
+      <div class="space-y-3" id="matches-schedule-list">
+        <!-- Rendered via JS -->
       </div>
-
     </div>
 
   </main>
 
-  <!-- ==================================================== -->
-  <!-- TAB 4: SUPER COACH - MANAGE COACHES                  -->
-  <!-- ==================================================== -->
-  <main id="section-coaches" class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full hidden">
+  <!-- ========================================== -->
+  <!-- 4. SUPER COACH - MANAGE COACHES            -->
+  <!-- ========================================== -->
+  <main id="section-coaches" class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full hidden no-print">
     
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <div class="flex items-center gap-2">
-          <span class="text-xs font-extrabold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-            Super Coach Area
+          <span class="text-xs font-black uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+            Super Coach Panel
           </span>
         </div>
-        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">🛡️ Manage Coaches & Staff</h2>
-        <p class="text-slate-500 text-xs sm:text-sm">As Super Coach, you have complete authority to add new coaches, grant roles, and manage access.</p>
+        <h2 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">🛡️ Manage Coaches & Staff</h2>
+        <p class="text-slate-500 text-xs sm:text-sm">Manage login accounts, grant roles, and reset coach passcodes.</p>
       </div>
       <button onclick="openAddCoachModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm shadow-sm transition-all flex items-center gap-1.5 self-start sm:self-auto">
         <span>➕ Add New Coach</span>
       </button>
     </div>
 
-    <!-- COACHES LIST TABLE -->
+    <!-- COACHES TABLE -->
     <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs sm:text-sm">
@@ -536,9 +620,7 @@
               <th class="pb-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody id="coaches-table-tbody" class="divide-y divide-slate-100 font-medium">
-            <!-- Dynamic coach rows -->
-          </tbody>
+          <tbody id="coaches-table-tbody" class="divide-y divide-slate-100 font-medium"></tbody>
         </table>
       </div>
     </div>
@@ -547,152 +629,246 @@
 
   <!-- FOOTER -->
   <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 no-print mt-auto">
-    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
       <div>
         <strong>Teen Bible Quiz (TBQ)</strong> • Dedicated to raising up quizzers in God's Word.
       </div>
       <div class="text-slate-400 flex items-center gap-3">
-        <span>Multi-Coach System</span>
-        <span>•</span>
-        <button onclick="openCoachLoginModal()" class="hover:text-brand-600 underline">Coach Portal</button>
+        <span>Chicago Indian Church TBQ Ministry</span>
       </div>
     </div>
   </footer>
 
-  <!-- ==================================================== -->
-  <!-- MODALS                                               -->
-  <!-- ==================================================== -->
+  <!-- ========================================== -->
+  <!-- MODALS                                     -->
+  <!-- ========================================== -->
 
-  <!-- BOOKING MODAL (PUBLIC: ONLY STUDENT DROPDOWN!) -->
-  <div id="booking-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
-      <div class="flex items-start justify-between mb-4">
+  <!-- 1. EDIT TEAM MODAL (QUICK SETUP TOMORROW MORNING!) -->
+  <div id="edit-team-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+      <div class="flex items-start justify-between pb-3 mb-4 border-b border-slate-100">
         <div>
-          <span class="text-xs font-bold text-brand-600 uppercase tracking-wider bg-brand-50 px-2 py-0.5 rounded-full border border-brand-100">
-            Book Practice Slot
-          </span>
-          <h3 id="modal-slot-title" class="text-xl font-extrabold text-slate-900 mt-1">
-            Tuesday, Sep 29
-          </h3>
-          <p id="modal-slot-time" class="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mt-0.5">
-            ⏰ 6:30 PM – 6:45 PM (15 mins)
-          </p>
+          <span class="text-xs font-black text-brand-600 uppercase tracking-wider">Quick Team Setup</span>
+          <h3 class="text-lg font-black text-slate-900 mt-0.5" id="modal-team-title">Configure Team</h3>
         </div>
-        <button onclick="closeBookingModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 text-lg leading-none">
-          ✕
-        </button>
+        <button onclick="closeEditTeamModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
 
-      <div id="booking-error-alert" class="hidden mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-start gap-2">
-        <span class="text-rose-500 font-bold">⚠️</span>
-        <span id="booking-error-text">An error occurred.</span>
-      </div>
-
-      <form id="booking-form" onsubmit="submitBooking(event)" class="space-y-4">
-        <input type="hidden" id="modal-slot-id" value="">
+      <form onsubmit="handleSaveTeam(event)" class="space-y-3">
+        <input type="hidden" id="edit-team-id" value="">
 
         <div>
-          <label for="quizzer-name" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-            Choose Student Name <span class="text-rose-500">*</span>
+          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Team Name</label>
+          <input type="text" id="edit-team-name" required placeholder="e.g. Chicago Indian Church - Team 1 or Faith Chapel" class="w-full px-3 py-2 border rounded-xl text-sm font-bold">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Church Name</label>
+          <input type="text" id="edit-team-church" placeholder="e.g. Chicago Indian Church" class="w-full px-3 py-2 border rounded-xl text-sm font-semibold">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">
+            Quizzers' Names <span class="text-slate-400 font-normal">(comma-separated or one per line)</span>
           </label>
-          <div class="relative">
-            <select id="quizzer-name" required class="w-full px-3.5 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-bold text-slate-800 bg-white shadow-inner cursor-pointer appearance-none">
-              <!-- Populated dynamically -->
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-500">
-              ▼
-            </div>
-          </div>
-          <p class="text-[11px] text-slate-400 mt-1">Select your child's name to lock in this 15-minute slot (up to 2 slots per quizzer).</p>
+          <textarea id="edit-team-quizzers" rows="4" placeholder="Enter quizzers, e.g.:&#10;Sam, Mia, Ben, Jade, Noah" class="w-full px-3 py-2 border rounded-xl text-sm font-medium resize-none"></textarea>
+          <p class="text-[11px] text-slate-400 mt-1">Easily paste or type the names announced tomorrow morning!</p>
         </div>
 
-        <div class="pt-3 flex items-center justify-end gap-2">
-          <button type="button" onclick="closeBookingModal()" class="px-4 py-2.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100 text-sm font-semibold transition-colors">
-            Cancel
-          </button>
-          <button type="submit" id="submit-booking-btn" class="bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1.5">
-            <span>Confirm Booking</span>
-            <span>✓</span>
-          </button>
+        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="closeEditTeamModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-sm">Save Team</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- BOOKING SUCCESS MODAL -->
-  <div id="success-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 text-center transform transition-all">
-      <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 font-bold shadow-inner">
-        ✓
-      </div>
-      <h3 class="text-2xl font-extrabold text-slate-900">
-        You're All Set! 🎉
-      </h3>
-      <p id="success-quizzer-msg" class="text-slate-600 text-sm mt-1">
-        Slot reserved for student.
-      </p>
-
-      <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 my-5 text-left text-sm space-y-1.5">
-        <div class="flex items-center justify-between">
-          <span class="text-slate-500">Student:</span>
-          <span id="success-student-name" class="font-bold text-slate-800">Jade</span>
+  <!-- 2. ADD / CONFIGURE MATCH MODAL -->
+  <div id="add-match-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+      <div class="flex items-start justify-between pb-3 mb-4 border-b border-slate-100">
+        <div>
+          <span class="text-xs font-black text-amber-600 uppercase tracking-wider">Tournament Schedule</span>
+          <h3 class="text-lg font-black text-slate-900 mt-0.5">➕ Add Meet / Match</h3>
         </div>
-        <div class="flex items-center justify-between">
-          <span class="text-slate-500">Date:</span>
-          <span id="success-date" class="font-bold text-slate-800">Tuesday, Sep 29</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-slate-500">Time:</span>
-          <span id="success-time" class="font-bold text-brand-600">6:30 PM – 6:45 PM</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-slate-500">Duration:</span>
-          <span class="font-semibold text-slate-700">15 Minutes</span>
-        </div>
+        <button onclick="closeAddMatchModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
 
-      <div class="space-y-2">
-        <a id="download-ics-link" href="#" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all">
-          <span>📅 Add to Calendar (.ics / Apple / Outlook)</span>
-        </a>
-        <button onclick="closeSuccessModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition-colors">
-          Back to Schedule
-        </button>
-      </div>
+      <form onsubmit="handleCreateMatch(event)" class="space-y-3">
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Meet #</label>
+            <input type="number" id="match-meet-num" min="1" max="20" value="1" required class="w-full px-3 py-2 border rounded-xl text-sm font-bold text-center">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Match #</label>
+            <input type="text" id="match-number-input" placeholder="e.g. 03" required class="w-full px-3 py-2 border rounded-xl text-sm font-bold font-mono-score text-center">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Room #</label>
+            <input type="text" id="match-room-input" placeholder="201" value="201" required class="w-full px-3 py-2 border rounded-xl text-sm font-bold text-center">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Team A (Left)</label>
+            <select id="match-team-a-select" class="w-full px-3 py-2 border rounded-xl text-xs font-bold bg-white"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Team B (Right)</label>
+            <select id="match-team-b-select" class="w-full px-3 py-2 border rounded-xl text-xs font-bold bg-white"></select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Quizmaster</label>
+            <input type="text" id="match-qm-input" placeholder="Pastor John" class="w-full px-3 py-2 border rounded-xl text-xs font-semibold">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Scorekeeper</label>
+            <input type="text" id="match-sk-input" placeholder="Sarah M." class="w-full px-3 py-2 border rounded-xl text-xs font-semibold">
+          </div>
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="closeAddMatchModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-xs font-black bg-amber-500 hover:bg-amber-400 text-brand-950 rounded-xl shadow-sm">Save Match</button>
+        </div>
+      </form>
     </div>
   </div>
 
-  <!-- COACH LOGIN MODAL (USERNAME & PASSCODE) -->
-  <div id="coach-login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
-      <div class="text-center mb-4">
-        <div class="w-12 h-12 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center text-2xl mx-auto mb-2 font-bold">
-          🔒
+  <!-- 3. EDIT MATCH INFO & SEATING MODAL -->
+  <div id="match-info-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-start justify-between pb-3 mb-4 border-b border-slate-100">
+        <div>
+          <span class="text-xs font-black text-brand-600 uppercase tracking-wider">Officials & Seating</span>
+          <h3 class="text-lg font-black text-slate-900 mt-0.5">Edit Match Information</h3>
         </div>
-        <h3 class="text-lg font-bold text-slate-900">Coach Authentication</h3>
-        <p class="text-xs text-slate-500 mt-1">Sign in with your Coach credentials to access Match Scoring & Management.</p>
+        <button onclick="closeMatchInfoModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
 
-      <form onsubmit="handleCoachLogin(event)" class="space-y-3">
-        <div id="login-error-alert" class="hidden p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold text-center">
+      <form onsubmit="handleSaveMatchInfo(event)" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Match #</label>
+            <input type="text" id="info-match-num" required class="w-full px-3 py-2 border rounded-xl text-sm font-mono-score font-bold">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Room #</label>
+            <input type="text" id="info-room-num" required class="w-full px-3 py-2 border rounded-xl text-sm font-bold">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Quizmaster</label>
+            <input type="text" id="info-quizmaster" required class="w-full px-3 py-2 border rounded-xl text-sm font-semibold">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Scorekeeper</label>
+            <input type="text" id="info-scorekeeper" required class="w-full px-3 py-2 border rounded-xl text-sm font-semibold">
+          </div>
+        </div>
+
+        <!-- SEAT ASSIGNMENTS -->
+        <div class="pt-2 border-t border-slate-100">
+          <label class="block text-xs font-black uppercase tracking-wider text-brand-900 mb-2" id="modal-seats-home-label">
+            Team A Seats #1 to #5:
+          </label>
+          <div class="grid grid-cols-5 gap-1.5" id="modal-seats-home-inputs"></div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-100">
+          <label class="block text-xs font-black uppercase tracking-wider text-rose-900 mb-2" id="modal-seats-opp-label">
+            Team B Seats #1 to #5:
+          </label>
+          <div class="grid grid-cols-5 gap-1.5" id="modal-seats-opp-inputs"></div>
+        </div>
+
+        <div class="pt-4 flex justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="closeMatchInfoModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-sm">Save Match Info</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. ADD TEAM FOUL MODAL -->
+  <div id="add-foul-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+      <div class="flex items-start justify-between pb-3 mb-4 border-b border-slate-100">
+        <div>
+          <span class="text-xs font-black text-rose-600 uppercase tracking-wider">Technical Penalty</span>
+          <h3 class="text-base font-black text-slate-900">Record Team Foul</h3>
+        </div>
+        <button onclick="closeAddFoulModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <form onsubmit="handleSaveFoul(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Which Team?</label>
+          <select id="foul-team-select" class="w-full px-3 py-2 border rounded-xl text-sm font-bold bg-white">
+            <option value="home">Team A</option>
+            <option value="opponent">Team B</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Foul Reason</label>
+          <input type="text" id="foul-reason-input" placeholder="e.g. Bench talking (-5) or Consultation" required class="w-full px-3 py-2 border rounded-xl text-sm font-semibold">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Penalty Points</label>
+          <select id="foul-penalty-select" class="w-full px-3 py-2 border rounded-xl text-sm font-bold bg-white">
+            <option value="5">-5 Points (Standard Foul)</option>
+            <option value="10">-10 Points (Severe Foul)</option>
+          </select>
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2">
+          <button type="button" onclick="closeAddFoulModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-xs font-black bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-sm">Apply Foul</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. COACH LOGIN MODAL (HEADER POPUP) -->
+  <div id="coach-login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+      <div class="text-center mb-4">
+        <div class="w-12 h-12 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center text-2xl mx-auto mb-2 font-black">
+          🔒
+        </div>
+        <h3 class="text-lg font-black text-slate-900">Coach Authentication</h3>
+        <p class="text-xs text-slate-500 mt-1">Sign in with Coach credentials to score matches.</p>
+      </div>
+
+      <form onsubmit="handleModalCoachLogin(event)" class="space-y-3">
+        <div id="login-error-alert" class="hidden p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold text-center">
           Invalid username or passcode.
         </div>
 
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Username</label>
-          <input type="text" id="login-username-input" placeholder="Enter username" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-semibold">
+          <input type="text" id="login-username-input" placeholder="e.g. coach or supercoach" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold">
         </div>
 
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Passcode</label>
-          <input type="password" id="login-passcode-input" placeholder="Enter passcode" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-semibold">
+          <input type="password" id="login-passcode-input" placeholder="Enter passcode" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold">
         </div>
 
         <div class="flex items-center gap-2 pt-2">
-          <button type="button" onclick="closeCoachLoginModal()" class="w-1/2 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-semibold">
+          <button type="button" onclick="closeCoachLoginModal()" class="w-1/2 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-bold">
             Cancel
           </button>
-          <button type="submit" class="w-1/2 bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-sm transition-all">
+          <button type="submit" class="w-1/2 bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-xl text-xs font-black shadow-sm transition-all">
             Sign In
           </button>
         </div>
@@ -700,13 +876,13 @@
     </div>
   </div>
 
-  <!-- SUPER COACH: ADD COACH MODAL -->
+  <!-- 6. SUPER COACH: ADD COACH MODAL -->
   <div id="add-coach-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
     <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
       <div class="flex justify-between items-center mb-4">
         <div>
-          <span class="text-xs font-bold text-amber-600 uppercase tracking-wider">Super Coach Panel</span>
-          <h3 class="text-base font-bold text-slate-900">➕ Add New Coach</h3>
+          <span class="text-xs font-black text-amber-600 uppercase tracking-wider">Super Coach Panel</span>
+          <h3 class="text-base font-black text-slate-900">➕ Add New Coach</h3>
         </div>
         <button onclick="closeAddCoachModal()" class="text-slate-400 hover:text-slate-600 text-sm">✕</button>
       </div>
@@ -727,7 +903,7 @@
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Role / Permissions</label>
           <select id="add-coach-role" class="w-full px-3 py-2 border rounded-xl text-sm bg-white font-medium">
-            <option value="coach">Regular Coach (Score matches, manage teams/kids)</option>
+            <option value="coach">Regular Coach (Scoresheet & Teams)</option>
             <option value="supercoach">Super Coach (Full access + manage other coaches)</option>
           </select>
         </div>
@@ -735,39 +911,6 @@
         <div class="pt-2 flex justify-end gap-2">
           <button type="button" onclick="closeAddCoachModal()" class="px-3 py-2 text-xs font-semibold text-slate-600">Cancel</button>
           <button type="submit" class="px-4 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm">Save Coach</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ADD SLOT MODAL (COACH ONLY) -->
-  <div id="add-slot-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-base font-bold text-slate-900">➕ Add Custom Slot</h3>
-        <button onclick="closeAddSlotModal()" class="text-slate-400 hover:text-slate-600 text-sm">✕</button>
-      </div>
-      <form onsubmit="handleAddSlot(event)" class="space-y-3">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Select Day</label>
-          <select id="add-slot-day" class="w-full px-3 py-2 border rounded-xl text-sm bg-white">
-            <option value="day-tue-2026-09-29">Tuesday, Sep 29</option>
-            <option value="day-wed-2026-09-30">Wednesday, Sept 30</option>
-          </select>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Start Time</label>
-            <input type="text" id="add-slot-start" placeholder="e.g. 8:00 PM" required class="w-full px-3 py-2 border rounded-xl text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">End Time</label>
-            <input type="text" id="add-slot-end" placeholder="e.g. 8:15 PM" required class="w-full px-3 py-2 border rounded-xl text-sm">
-          </div>
-        </div>
-        <div class="pt-2 flex justify-end gap-2">
-          <button type="button" onclick="closeAddSlotModal()" class="px-3 py-2 text-xs font-semibold text-slate-600">Cancel</button>
-          <button type="submit" class="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl">Save Slot</button>
         </div>
       </form>
     </div>

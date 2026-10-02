@@ -1,66 +1,42 @@
-# 📖 TBQ (Teen Bible Quiz) Platform
+# 📖 TBQ (Teen Bible Quiz) Match Platform & Official Scoresheet
 
-Complete ministry platform for Church Teen Bible Quiz coaches and parents:
-1. **Public Practice Signups**: 1-on-1 15-minute prep session scheduler for parents and quizzers.
-2. **Coach Match Scorekeeper**: Real-time round scoring, interruption tracking, official "Quiz Out" (5 correct answers) automation, and question audit feed.
-3. **Teams & Quizzers Manager**: Add and manage team kids, opposite church teams, and match round counts.
-4. **Super Coach Multi-Coach Administration**: Manage assistant coaches, create custom accounts, reset passcodes, and control permissions.
+Complete ministry platform for Church Teen Bible Quiz matches and official tournament scoring:
+1. **Public Match Summary (No Login Required)**: Church team names, live match score, round-by-round win/loss standings, and match status.
+2. **Official 20-Question Scoresheet (Coaches & Officials)**: Authentic tournament scoresheet grid layout featuring Seats 1 to 5 for Team A & Team B, running team totals question by question, Halftime/Timeout divider, 5-question Quiz-Out bonuses (+20), team technical fouls (-5), timeouts tracker, and printer-ready layout.
+3. **Live Question Scorer**: Rapid touch/click buzzer entry for points (10/20/30), interruptions (half-penalty), rebounds (*), and correct/incorrect results.
+4. **Teams & Quizzers Manager**: Manage team kids, opponent churches, seat assignments, and match rounds.
+5. **Super Coach Multi-Coach Administration**: Manage assistant coaches, create custom accounts, reset passcodes, and control permissions.
 
 ---
 
 ## 🌐 Live Web Links
 
 - 🚀 **Render Live App**: 👉 **[https://tbq-jbq.onrender.com](https://tbq-jbq.onrender.com)**  
-- 🌩️ **Cloudflare Tunnel (Local dev)**: 👉 **[https://dublin-hist-adding-foo.trycloudflare.com](https://dublin-hist-adding-foo.trycloudflare.com)**  
+- 🌩️ **Cloudflare Tunnel (Local dev)**: 👉 **[https://arrival-checks-entities-lobby.trycloudflare.com](https://arrival-checks-entities-lobby.trycloudflare.com)**  
 *(Open on any mobile phone, tablet, or laptop)*
 
 ---
 
 ## 🔑 Login Credentials
 
-Tap **"🔒 Coach Login"** at the top right:
+Tap **"🔒 Coach Login"** at the top right (or use the sign-in form on the main page):
 
 | Role | Username | Passcode | Permissions |
 | :--- | :--- | :--- | :--- |
-| **👑 Super Coach** | `supercoach` | `super2026` | **Full Authority**: Score matches, manage practice slots, add kids & opposite teams, **PLUS add, edit, and delete other coaches** |
-| **👤 Regular Coach** | `coach` | `coach2026` | **Team Coach**: Score matches, manage practice slots, add/remove kids and opposite teams |
-| **Public Visitor** | *(No login)* | *(None)* | **Signups Only**: Select time slot, pick quizzer name, confirm practice session |
+| **👑 Super Coach** | `supercoach` | `super2026` | **Full Authority**: Official 20-question scoresheet, live buzzer entry, timeouts/fouls, edit meet & teams, **PLUS add, edit, and delete other coaches** |
+| **👤 Regular Coach** | `coach` | `coach2026` | **Coach / Scorekeeper**: Official scoresheet, live buzzer scoring, timeouts/fouls, teams & quizzers roster |
+| **Public Visitor** | *(No login)* | *(None)* | **Match Summary Only**: View team names, current match scores, and round-by-round win/loss results |
 
 ---
 
-## 👥 Managing Kids & Teams (For Any Coach)
+## 📋 Official Scoresheet Features
 
-Navigate to the **"👥 Teams & Quizzers"** tab:
-- **Home Team Roster**:
-  - Type a name (e.g. *Caleb*, *Grace*) and click **"+ Add Kid"**.
-  - New kids immediately sync into:
-    1. The practice signups student dropdown
-    2. The live roster tracker badges
-    3. The match scorekeeper buzzing buttons
-  - Remove any kid who is no longer participating.
-- **Opposite Team Configuration**:
-  - Change Meet Title (e.g. *District Invitational*).
-  - Set Opponent Church Name (e.g. *Faith Chapel*).
-  - Add Opponent Quizzers (comma-separated list).
-  - Adjust total number of rounds in the meet (e.g. 1 to 10 rounds).
-
----
-
-## 🛡️ Managing Coaches (Super Coach Only)
-
-Logged in as `supercoach`:
-- Open the **"🛡️ Manage Coaches"** tab in the navigation bar.
-- Click **"➕ Add New Coach"** to create a login for an assistant coach or church leader.
-- Define their Name, Username, Passcode, and Role (`Coach` or `Super Coach`).
-- Delete or reset passcodes for any coach at any time.
-
----
-
-## 💻 Running Locally
-
-To launch the server and Cloudflare tunnel on your Mac:
-```bash
-cd /Users/pandiyarajanjeyabalan/Desktop/coach
-./start.sh
-```
-Press `Ctrl + C` in terminal to stop.
+- **Match Header & Officials**: Editable Match #, Room #, Quizmaster, and Scorekeeper.
+- **20-Question Grid**: Complete row-by-row table showing questions 1 to 20, point values, Seat #1 through #5 entries for both teams, and running totals calculated in real time.
+- **Halftime Zone**: Break row between Q17 and Q18.
+- **Summary Rows**:
+  - **Bonuses**: Automatic +20 for quizzers who reach 5 correct answers (Quiz Out).
+  - **Team Fouls**: Records fouls with point deduction (e.g., *Bench talking -5*).
+  - **Final Score**: Official verified total.
+  - **Timeouts**: T1 and T2 tracking with question numbers.
+- **One-Click Printing**: Formats cleanly to landscape paper / PDF for official records.
