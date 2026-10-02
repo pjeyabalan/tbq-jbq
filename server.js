@@ -775,6 +775,10 @@ app.get('/api/tbq', authenticateCoach, (req, res) => {
       meetNum: m.meetNum || m.roundNum || 1,
       roundNum: m.meetNum || m.roundNum || 1,
       room: m.room || "201",
+      teamAId: m.teamAId,
+      teamBId: m.teamBId,
+      quizmaster: m.quizmaster || "Quizmaster",
+      scorekeeper: m.scorekeeper || "Scorekeeper",
       teamAName: tA ? tA.name : "Team A",
       teamBName: tB ? tB.name : "Team B"
     };
@@ -878,6 +882,70 @@ app.post('/api/matches/add', authenticateCoach, (req, res) => {
 
   console.log(`[MATCH] Coach ${req.user.name} created Match #${newMatch.matchNumber} (Meet ${newMatch.meetNum})`);
   res.json({ success: true, match: newMatch, activeRound: calculateMatchStats(newId) });
+});
+
+// POST Update an Existing Match
+app.post('/api/matches/update', authenticateCoach, (req, res) => {
+  const { matchId, meetNum, roundNum, matchNumber, room, quizmaster, scorekeeper, teamAId, teamBId } = req.body;
+  if (!matchId || !scoresData.matches[matchId]) {
+    return res.status(404).json({ error: 'Match not found.' });
+  }
+
+  const match = scoresData.matches[matchId];
+
+  if (meetNum !== undefined || roundNum !== undefined) {
+    const num = parseInt(meetNum || roundNum) || 1;
+    match.meetNum = num;
+    match.roundNum = num;
+  }
+  if (matchNumber !== undefined) match.matchNumber = String(matchNumber).trim();
+  if (room !== undefined) match.room = String(room).trim();
+  if (quizmaster !== undefined) match.quizmaster = String(quizmaster).trim();
+  if (scorekeeper !== undefined) match.scorekeeper = String(scorekeeper).trim();
+
+  // If team changed, update team ID and seating if appropriate
+  if (teamAId && teamAId !== match.teamAId) {
+    match.teamAId = teamAId;
+    const tA = getTeamById(teamAId);
+    if (tA && tA.quizzers && tA.quizzers.length > 0) {
+      match.seats.teamA = (tA.quizzers || []).slice(0, 5);
+    }
+  }
+  if (teamBId && teamBId !== match.teamBId) {
+    match.teamBId = teamBId;
+    const tB = getTeamById(teamBId);
+    if (tB && tB.quizzers && tB.quizzers.length > 0) {
+      match.seats.teamB = (tB.quizzers || []).slice(0, 5);
+    }
+  }
+
+  saveScoresData();
+  console.log(`[MATCH] Coach ${req.user.name} updated Match #${match.matchNumber} (Meet ${match.meetNum})`);
+  res.json({ success: true, match, activeRound: calculateMatchStats(match.id) });
+});
+
+// POST Delete a Match
+app.post('/api/matches/delete', authenticateCoach, (req, res) => {
+  const { matchId } = req.body;
+  if (!matchId || !scoresData.matches[matchId]) {
+    return res.status(404).json({ error: 'Match not found.' });
+  }
+
+  const keys = Object.keys(scoresData.matches);
+  if (keys.length <= 1) {
+    return res.status(400).json({ error: 'Cannot delete the only remaining match.' });
+  }
+
+  const deletedNum = scoresData.matches[matchId].matchNumber;
+  delete scoresData.matches[matchId];
+
+  if (scoresData.activeMatchId === matchId) {
+    scoresData.activeMatchId = Object.keys(scoresData.matches)[0];
+  }
+
+  saveScoresData();
+  console.log(`[MATCH] Coach ${req.user.name} deleted Match #${deletedNum} (${matchId})`);
+  res.json({ success: true, activeMatchId: scoresData.activeMatchId });
 });
 
 // POST Update Match Details & Seating

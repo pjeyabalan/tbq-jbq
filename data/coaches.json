@@ -8,11 +8,19 @@
     "createdAt": "2026-09-28T22:00:00.000Z"
   },
   {
-    "id": "coach-assistant",
-    "name": "Team Coach",
-    "username": "coach",
-    "passcode": "coach2026",
+    "id": "coach-1790968015318",
+    "name": "Dev",
+    "username": "dev",
+    "passcode": "dev",
     "role": "coach",
-    "createdAt": "2026-09-28T22:00:00.000Z"
+    "createdAt": "2026-10-02T19:06:55.318Z"
+  },
+  {
+    "id": "coach-1790968050827",
+    "name": "Hanna",
+    "username": "hanna",
+    "passcode": "hanna",
+    "role": "coach",
+    "createdAt": "2026-10-02T19:07:30.827Z"
   }
 ]

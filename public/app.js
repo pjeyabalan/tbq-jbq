@@ -764,6 +764,8 @@ function openMatchInfoModal() {
   if (!state.tbqData || !state.tbqData.activeRound) return;
   const { activeRound } = state.tbqData;
 
+  const infoMeet = document.getElementById('info-meet-num');
+  if (infoMeet) infoMeet.value = activeRound.meetNum || activeRound.roundNum || 1;
   document.getElementById('info-match-num').value = activeRound.matchNumber || "01";
   document.getElementById('info-room-num').value = activeRound.room || '201';
   document.getElementById('info-quizmaster').value = activeRound.quizmaster || 'Pastor John';
@@ -809,6 +811,8 @@ function closeMatchInfoModal() {
 async function handleSaveMatchInfo(event) {
   event.preventDefault();
 
+  const infoMeet = document.getElementById('info-meet-num');
+  const meetNum = parseInt(infoMeet ? infoMeet.value : 1) || 1;
   const matchNumber = document.getElementById('info-match-num').value.trim();
   const room = document.getElementById('info-room-num').value.trim();
   const quizmaster = document.getElementById('info-quizmaster').value.trim();
@@ -827,6 +831,8 @@ async function handleSaveMatchInfo(event) {
       method: 'POST',
       body: JSON.stringify({
         matchId: state.activeMatchId,
+        meetNum,
+        roundNum: meetNum,
         matchNumber,
         room,
         quizmaster,
@@ -968,12 +974,21 @@ function renderTeamsManagerUI() {
               <span class="text-slate-400 font-normal"> vs </span>
               <span>${escapeHtml(m.teamBName)}</span>
             </div>
+            <div class="text-[11px] text-slate-400 mt-0.5">
+              QM: ${escapeHtml(m.quizmaster || 'TBD')} • SK: ${escapeHtml(m.scorekeeper || 'TBD')}
+            </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-2 self-end sm:self-center">
+        <div class="flex items-center gap-2 self-end sm:self-center flex-wrap">
+          <button onclick="openEditMatchModal('${m.id}')" class="text-xs bg-white hover:bg-slate-100 text-slate-700 font-bold px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs transition-all flex items-center gap-1">
+            ✏️ Edit Match
+          </button>
+          <button onclick="handleDeleteMatch('${m.id}', '${m.matchNumber}')" class="text-xs bg-white hover:bg-rose-50 text-rose-600 font-bold px-2.5 py-1.5 rounded-lg border border-rose-200 shadow-xs transition-all" title="Delete Match">
+            🗑️
+          </button>
           <button onclick="selectAndOpenMatch('${m.id}')" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-bold px-3 py-1.5 rounded-lg shadow-xs transition-all">
-            📋 Score This Match
+            📋 Score Match
           </button>
         </div>
       </div>
@@ -1030,9 +1045,9 @@ async function handleSaveTeam(event) {
   }
 }
 
-// ADD MATCH MODAL
+// ADD & EDIT MATCH MODAL
 function openAddMatchModal() {
-  const teams = (state.tbqData && state.tbqData.meet.teams) || [];
+  const teams = (state.tbqData && state.tbqData.meet && state.tbqData.meet.teams) || [];
   const selectA = document.getElementById('match-team-a-select');
   const selectB = document.getElementById('match-team-b-select');
 
@@ -1045,10 +1060,56 @@ function openAddMatchModal() {
   selectA.innerHTML = optsA;
   selectB.innerHTML = optsB;
 
+  document.getElementById('match-edit-id').value = '';
+  const badgeEl = document.getElementById('match-modal-badge');
+  if (badgeEl) badgeEl.textContent = 'Tournament Schedule';
+  const titleEl = document.getElementById('match-modal-title');
+  if (titleEl) titleEl.textContent = '➕ Add Meet / Match';
+  const submitBtn = document.getElementById('match-modal-submit-btn');
+  if (submitBtn) submitBtn.textContent = 'Save Match';
+
   const nextNum = (state.tbqData && state.tbqData.matchesList ? state.tbqData.matchesList.length + 1 : 1);
   document.getElementById('match-number-input').value = `0${nextNum}`;
   const meetInput = document.getElementById('match-meet-num');
   if (meetInput) meetInput.value = Math.ceil(nextNum / 2) || 1;
+  document.getElementById('match-room-input').value = '201';
+  document.getElementById('match-qm-input').value = 'Pastor John';
+  document.getElementById('match-sk-input').value = 'Sarah M.';
+
+  document.getElementById('add-match-modal').classList.remove('hidden');
+}
+
+function openEditMatchModal(matchId) {
+  const matches = (state.tbqData && state.tbqData.matchesList) || [];
+  const m = matches.find(item => item.id === matchId);
+  if (!m) return;
+
+  const teams = (state.tbqData && state.tbqData.meet && state.tbqData.meet.teams) || [];
+  const selectA = document.getElementById('match-team-a-select');
+  const selectB = document.getElementById('match-team-b-select');
+
+  let optsA = '';
+  let optsB = '';
+  teams.forEach(t => {
+    optsA += `<option value="${t.id}" ${t.id === m.teamAId ? 'selected' : ''}>${escapeHtml(t.name)}</option>`;
+    optsB += `<option value="${t.id}" ${t.id === m.teamBId ? 'selected' : ''}>${escapeHtml(t.name)}</option>`;
+  });
+  selectA.innerHTML = optsA;
+  selectB.innerHTML = optsB;
+
+  document.getElementById('match-edit-id').value = m.id;
+  const badgeEl = document.getElementById('match-modal-badge');
+  if (badgeEl) badgeEl.textContent = 'Update Match Details';
+  const titleEl = document.getElementById('match-modal-title');
+  if (titleEl) titleEl.textContent = `✏️ Edit Meet ${m.meetNum || m.roundNum} • Match #${m.matchNumber}`;
+  const submitBtn = document.getElementById('match-modal-submit-btn');
+  if (submitBtn) submitBtn.textContent = 'Update Match';
+
+  document.getElementById('match-meet-num').value = m.meetNum || m.roundNum || 1;
+  document.getElementById('match-number-input').value = m.matchNumber || '';
+  document.getElementById('match-room-input').value = m.room || '201';
+  document.getElementById('match-qm-input').value = m.quizmaster || '';
+  document.getElementById('match-sk-input').value = m.scorekeeper || '';
 
   document.getElementById('add-match-modal').classList.remove('hidden');
 }
@@ -1057,8 +1118,9 @@ function closeAddMatchModal() {
   document.getElementById('add-match-modal').classList.add('hidden');
 }
 
-async function handleCreateMatch(event) {
+async function handleSaveMatch(event) {
   event.preventDefault();
+  const matchId = document.getElementById('match-edit-id').value;
   const meetInput = document.getElementById('match-meet-num');
   const meetNum = parseInt(meetInput ? meetInput.value : 1) || 1;
   const matchNumber = document.getElementById('match-number-input').value.trim();
@@ -1073,30 +1135,60 @@ async function handleCreateMatch(event) {
     return;
   }
 
+  const endpoint = matchId ? '/api/matches/update' : '/api/matches/add';
+  const payload = {
+    matchId,
+    meetNum,
+    roundNum: meetNum,
+    matchNumber,
+    room,
+    teamAId,
+    teamBId,
+    quizmaster,
+    scorekeeper
+  };
+
   try {
-    const res = await authFetch('/api/matches/add', {
+    const res = await authFetch(endpoint, {
       method: 'POST',
-      body: JSON.stringify({
-        meetNum,
-        roundNum: meetNum,
-        matchNumber,
-        room,
-        teamAId,
-        teamBId,
-        quizmaster,
-        scorekeeper
-      })
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
     if (!res.ok) {
-      alert(data.error || 'Failed to add match.');
+      alert(data.error || 'Failed to save match.');
       return;
     }
     closeAddMatchModal();
-    await fetchTbqData(data.match.id);
-    switchTab('scoresheet');
+    const targetMatchId = matchId || (data.match && data.match.id);
+    await fetchTbqData(targetMatchId);
+    renderTeamsManagerUI();
   } catch (err) {
-    alert('Error adding match.');
+    alert('Error saving match.');
+  }
+}
+
+// Keep handleCreateMatch alias for backward compatibility
+const handleCreateMatch = handleSaveMatch;
+
+async function handleDeleteMatch(matchId, matchNumber) {
+  if (!confirm(`Are you sure you want to delete Match #${matchNumber}? All recorded scores for this match will be permanently deleted.`)) {
+    return;
+  }
+
+  try {
+    const res = await authFetch('/api/matches/delete', {
+      method: 'POST',
+      body: JSON.stringify({ matchId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to delete match.');
+      return;
+    }
+    await fetchTbqData(data.activeMatchId);
+    renderTeamsManagerUI();
+  } catch (err) {
+    alert('Error deleting match.');
   }
 }
 
