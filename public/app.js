@@ -394,8 +394,25 @@ function renderOfficialScoresheet() {
   for (let s = 1; s <= 5; s++) {
     const thA = document.getElementById(`th-seat-a-${s}`);
     const thB = document.getElementById(`th-seat-b-${s}`);
-    if (thA) thA.textContent = `#${s} ${seatsA[s - 1] || `Seat ${s}`}`;
-    if (thB) thB.textContent = `#${s} ${seatsB[s - 1] || `Seat ${s}`}`;
+    const nameA = seatsA[s - 1] || `Seat ${s}`;
+    const nameB = seatsB[s - 1] || `Seat ${s}`;
+    const statA = activeRound.teamA.quizzers.find(q => q.name.toLowerCase() === nameA.toLowerCase()) || { correct: 0, errors: 0 };
+    const statB = activeRound.teamB.quizzers.find(q => q.name.toLowerCase() === nameB.toLowerCase()) || { correct: 0, errors: 0 };
+
+    if (thA) {
+      let badge = '';
+      if (statA.isQuizzedOut) badge = statA.errors === 0 ? ' ⭐ QO(+20)' : ' 🎉 QO(+0)';
+      else if (statA.isErroredOut) badge = ' ❌ EO';
+      else if (statA.correct > 0 || statA.errors > 0) badge = ` (${statA.correct}C/${statA.errors}E)`;
+      thA.textContent = `#${s} ${nameA}${badge}`;
+    }
+    if (thB) {
+      let badge = '';
+      if (statB.isQuizzedOut) badge = statB.errors === 0 ? ' ⭐ QO(+20)' : ' 🎉 QO(+0)';
+      else if (statB.isErroredOut) badge = ' ❌ EO';
+      else if (statB.correct > 0 || statB.errors > 0) badge = ` (${statB.correct}C/${statB.errors}E)`;
+      thB.textContent = `#${s} ${nameB}${badge}`;
+    }
   }
 
   // 6. 20-Question Rows & Halftime
@@ -409,33 +426,94 @@ function renderSeatsSelectionGrid(activeRound) {
   const homeGrid = document.getElementById('home-seats-btn-grid');
   const oppGrid = document.getElementById('opp-seats-btn-grid');
 
-  if (!state.scoreInput.quizzer && activeRound.seats.home[0]) {
-    state.scoreInput.team = 'teamA';
-    state.scoreInput.seatNum = 1;
-    state.scoreInput.quizzer = activeRound.seats.home[0];
+  // Verify currently selected quizzer is still active/eligible
+  let isCurrentEligible = false;
+  if (state.scoreInput.quizzer) {
+    const list = state.scoreInput.team === 'teamA' ? activeRound.teamA.quizzers : activeRound.teamB.quizzers;
+    const currentStat = list.find(q => q.name.toLowerCase() === state.scoreInput.quizzer.toLowerCase());
+    if (currentStat && !currentStat.isQuizzedOut && !currentStat.isErroredOut) {
+      isCurrentEligible = true;
+    }
+  }
+
+  // If not eligible, automatically select first active eligible quizzer
+  if (!isCurrentEligible) {
+    let found = false;
+    for (let i = 0; i < activeRound.seats.home.length; i++) {
+      const name = activeRound.seats.home[i];
+      if (name) {
+        const stat = activeRound.teamA.quizzers.find(q => q.name.toLowerCase() === name.toLowerCase());
+        if (stat && !stat.isQuizzedOut && !stat.isErroredOut) {
+          state.scoreInput.team = 'teamA';
+          state.scoreInput.seatNum = i + 1;
+          state.scoreInput.quizzer = name;
+          found = true;
+          break;
+        }
+      }
+    }
+    if (!found) {
+      for (let i = 0; i < activeRound.seats.opponent.length; i++) {
+        const name = activeRound.seats.opponent[i];
+        if (name) {
+          const stat = activeRound.teamB.quizzers.find(q => q.name.toLowerCase() === name.toLowerCase());
+          if (stat && !stat.isQuizzedOut && !stat.isErroredOut) {
+            state.scoreInput.team = 'teamB';
+            state.scoreInput.seatNum = i + 1;
+            state.scoreInput.quizzer = name;
+            break;
+          }
+        }
+      }
+    }
   }
 
   // Team A seats
   let homeHtml = '';
   activeRound.seats.home.forEach((name, idx) => {
     const seatNum = idx + 1;
-    const stat = activeRound.teamA.quizzers.find(q => q.name.toLowerCase() === name.toLowerCase()) || { correct: 0, isQuizzedOut: false };
+    const stat = activeRound.teamA.quizzers.find(q => q.name.toLowerCase() === name.toLowerCase()) || { correct: 0, errors: 0, isQuizzedOut: false, isErroredOut: false };
     const isSelected = state.scoreInput.team === 'teamA' && state.scoreInput.seatNum === seatNum;
     const isQO = stat.isQuizzedOut;
+    const isEO = stat.isErroredOut;
+    const isDisabled = isQO || isEO;
+
+    let statusText = `${stat.correct}/5 C • ${stat.errors}/3 E`;
+    let statusClass = isSelected ? 'text-amber-200' : 'text-emerald-700';
+    let extraWarning = '';
+
+    if (isQO) {
+      statusText = stat.errors === 0 ? '⭐ PERFECT QO (+20)' : '🎉 QUIZ OUT (+0)';
+      statusClass = 'text-amber-800 font-black';
+    } else if (isEO) {
+      statusText = '❌ ERRORED OUT (3/3)';
+      statusClass = 'text-rose-700 font-black';
+    } else {
+      if (stat.correct === 4 && stat.errors === 2) {
+        extraWarning = '<div class="text-[9px] font-black text-amber-700 bg-amber-100/90 rounded px-1 mt-0.5 animate-pulse">⚠️ 1 to QO • 1 to EO</div>';
+      } else if (stat.correct === 4) {
+        extraWarning = '<div class="text-[9px] font-black text-amber-700 bg-amber-100/80 rounded px-1 mt-0.5">⚠️ 1 more to QO</div>';
+      } else if (stat.errors === 2) {
+        extraWarning = '<div class="text-[9px] font-black text-rose-700 bg-rose-100/80 rounded px-1 mt-0.5">⚠️ 1 error to EO</div>';
+      }
+    }
 
     homeHtml += `
-      <button type="button" ${isQO ? 'disabled' : ''} onclick="selectSeat('teamA', ${seatNum}, '${escapeHtml(name)}')" class="p-2 rounded-xl text-center border transition-all ${
+      <button type="button" ${isDisabled ? 'disabled' : ''} onclick="selectSeat('teamA', ${seatNum}, '${escapeHtml(name)}')" class="p-2 rounded-xl text-center border transition-all ${
         isQO 
-          ? 'bg-slate-100 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed' 
-          : isSelected 
-            ? 'bg-brand-600 border-brand-600 text-white shadow-md ring-2 ring-brand-400' 
-            : 'bg-white border-slate-200 text-slate-800 hover:border-brand-400 hover:bg-brand-50/50'
+          ? 'bg-amber-50/70 border-amber-300 text-amber-900 opacity-80 cursor-not-allowed' 
+          : isEO
+            ? 'bg-rose-50/70 border-rose-300 text-rose-800 opacity-80 cursor-not-allowed line-through'
+            : isSelected 
+              ? 'bg-brand-600 border-brand-600 text-white shadow-md ring-2 ring-brand-400' 
+              : 'bg-white border-slate-200 text-slate-800 hover:border-brand-400 hover:bg-brand-50/50'
       }">
         <div class="text-[10px] font-extrabold uppercase ${isSelected ? 'text-brand-200' : 'text-slate-400'}">#${seatNum}</div>
         <div class="font-extrabold text-xs truncate mt-0.5">${escapeHtml(name)}</div>
-        <div class="text-[9px] font-bold mt-1 ${isSelected ? 'text-amber-300' : (isQO ? 'text-amber-600' : 'text-emerald-600')}">
-          ${isQO ? '⭐ QUIZ OUT' : `${stat.correct}/5`}
+        <div class="text-[9px] font-bold mt-1 ${statusClass}">
+          ${statusText}
         </div>
+        ${extraWarning}
       </button>
     `;
   });
@@ -445,23 +523,48 @@ function renderSeatsSelectionGrid(activeRound) {
   let oppHtml = '';
   activeRound.seats.opponent.forEach((name, idx) => {
     const seatNum = idx + 1;
-    const stat = activeRound.teamB.quizzers.find(q => q.name.toLowerCase() === name.toLowerCase()) || { correct: 0, isQuizzedOut: false };
+    const stat = activeRound.teamB.quizzers.find(q => q.name.toLowerCase() === name.toLowerCase()) || { correct: 0, errors: 0, isQuizzedOut: false, isErroredOut: false };
     const isSelected = state.scoreInput.team === 'teamB' && state.scoreInput.seatNum === seatNum;
     const isQO = stat.isQuizzedOut;
+    const isEO = stat.isErroredOut;
+    const isDisabled = isQO || isEO;
+
+    let statusText = `${stat.correct}/5 C • ${stat.errors}/3 E`;
+    let statusClass = isSelected ? 'text-amber-200' : 'text-emerald-700';
+    let extraWarning = '';
+
+    if (isQO) {
+      statusText = stat.errors === 0 ? '⭐ PERFECT QO (+20)' : '🎉 QUIZ OUT (+0)';
+      statusClass = 'text-amber-800 font-black';
+    } else if (isEO) {
+      statusText = '❌ ERRORED OUT (3/3)';
+      statusClass = 'text-rose-700 font-black';
+    } else {
+      if (stat.correct === 4 && stat.errors === 2) {
+        extraWarning = '<div class="text-[9px] font-black text-amber-700 bg-amber-100/90 rounded px-1 mt-0.5 animate-pulse">⚠️ 1 to QO • 1 to EO</div>';
+      } else if (stat.correct === 4) {
+        extraWarning = '<div class="text-[9px] font-black text-amber-700 bg-amber-100/80 rounded px-1 mt-0.5">⚠️ 1 more to QO</div>';
+      } else if (stat.errors === 2) {
+        extraWarning = '<div class="text-[9px] font-black text-rose-700 bg-rose-100/80 rounded px-1 mt-0.5">⚠️ 1 error to EO</div>';
+      }
+    }
 
     oppHtml += `
-      <button type="button" ${isQO ? 'disabled' : ''} onclick="selectSeat('teamB', ${seatNum}, '${escapeHtml(name)}')" class="p-2 rounded-xl text-center border transition-all ${
+      <button type="button" ${isDisabled ? 'disabled' : ''} onclick="selectSeat('teamB', ${seatNum}, '${escapeHtml(name)}')" class="p-2 rounded-xl text-center border transition-all ${
         isQO 
-          ? 'bg-slate-100 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed' 
-          : isSelected 
-            ? 'bg-rose-600 border-rose-600 text-white shadow-md ring-2 ring-rose-400' 
-            : 'bg-white border-slate-200 text-slate-800 hover:border-rose-400 hover:bg-rose-50/50'
+          ? 'bg-amber-50/70 border-amber-300 text-amber-900 opacity-80 cursor-not-allowed' 
+          : isEO
+            ? 'bg-rose-50/70 border-rose-300 text-rose-800 opacity-80 cursor-not-allowed line-through'
+            : isSelected 
+              ? 'bg-rose-600 border-rose-600 text-white shadow-md ring-2 ring-rose-400' 
+              : 'bg-white border-slate-200 text-slate-800 hover:border-rose-400 hover:bg-rose-50/50'
       }">
         <div class="text-[10px] font-extrabold uppercase ${isSelected ? 'text-rose-200' : 'text-slate-400'}">#${seatNum}</div>
         <div class="font-extrabold text-xs truncate mt-0.5">${escapeHtml(name)}</div>
-        <div class="text-[9px] font-bold mt-1 ${isSelected ? 'text-amber-300' : (isQO ? 'text-amber-600' : 'text-emerald-600')}">
-          ${isQO ? '⭐ QUIZ OUT' : `${stat.correct}/5`}
+        <div class="text-[9px] font-bold mt-1 ${statusClass}">
+          ${statusText}
         </div>
+        ${extraWarning}
       </button>
     `;
   });
@@ -679,6 +782,13 @@ async function submitQuestionScore(event) {
     return;
   }
 
+  const answeredQuizzer = state.scoreInput.quizzer;
+  const isTeamA = state.scoreInput.team === 'teamA';
+  const prevList = isTeamA ? (state.tbqData.activeRound.teamA.quizzers || []) : (state.tbqData.activeRound.teamB.quizzers || []);
+  const prevStat = prevList.find(q => q.name.toLowerCase() === answeredQuizzer.toLowerCase()) || { correct: 0, errors: 0 };
+  const prevCorrect = prevStat.correct || 0;
+  const prevErrors = prevStat.errors || 0;
+
   const qNum = parseInt(document.getElementById('score-question-num').value) || 1;
   const isInterruption = document.getElementById('score-is-interruption').checked;
   const isRebound = document.getElementById('score-is-rebound').checked;
@@ -693,7 +803,7 @@ async function submitQuestionScore(event) {
         isInterruption,
         isRebound,
         team: state.scoreInput.team,
-        quizzer: state.scoreInput.quizzer,
+        quizzer: answeredQuizzer,
         seatNum: state.scoreInput.seatNum,
         isCorrect: state.scoreInput.isCorrect
       })
@@ -711,6 +821,23 @@ async function submitQuestionScore(event) {
     selectResult(true);
 
     state.tbqData.activeRound = result.activeRound;
+
+    // Check if quizzer reached Quiz Out or Error Out milestone on this answer
+    const newList = isTeamA ? (result.activeRound.teamA.quizzers || []) : (result.activeRound.teamB.quizzers || []);
+    const newStat = newList.find(q => q.name.toLowerCase() === answeredQuizzer.toLowerCase());
+
+    if (newStat) {
+      if (prevCorrect < 5 && newStat.correct >= 5) {
+        if (newStat.errors === 0) {
+          showMatchToast(`⭐ ${answeredQuizzer} has QUIZZED OUT! Perfect 5/5 (+20 Bonus Points awarded)!`, 'success');
+        } else {
+          showMatchToast(`🎉 ${answeredQuizzer} has QUIZZED OUT (Forward)! 5 correct answers. Sits back with maximum score (no +20 bonus due to ${newStat.errors} prior errors).`, 'warning');
+        }
+      } else if (prevErrors < 3 && newStat.errors >= 3) {
+        showMatchToast(`❌ ${answeredQuizzer} has ERRORED OUT (Strikes Out)! 3 errors reached. Must remain seated for remainder of match.`, 'error');
+      }
+    }
+
     renderOfficialScoresheet();
 
   } catch (err) {
@@ -1399,4 +1526,34 @@ async function handleRestoreBackupFile(event) {
     }
   };
   reader.readAsText(file);
+}
+
+// Floating match notifications (Quiz Out / Error Out toasts)
+function showMatchToast(message, type = 'info') {
+  const container = document.getElementById('match-toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  const bgClass = type === 'success' 
+    ? 'bg-emerald-50 border-emerald-300 text-emerald-950 ring-1 ring-emerald-400' 
+    : type === 'error'
+      ? 'bg-rose-50 border-rose-300 text-rose-950 ring-1 ring-rose-400'
+      : 'bg-amber-50 border-amber-300 text-amber-950 ring-1 ring-amber-400';
+
+  const icon = type === 'success' ? '⭐' : type === 'error' ? '❌' : '🎉';
+
+  toast.className = `p-3.5 rounded-xl border flex items-center justify-between gap-3 shadow-md transition-all ${bgClass}`;
+  toast.innerHTML = `
+    <div class="flex items-center gap-2.5">
+      <span class="text-xl">${icon}</span>
+      <span class="text-xs sm:text-sm font-extrabold">${escapeHtml(message)}</span>
+    </div>
+    <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-700 text-xs font-black px-1.5 py-0.5 rounded">✕</button>
+  `;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    if (toast.parentElement) toast.remove();
+  }, 7000);
 }

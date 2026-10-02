@@ -489,18 +489,18 @@ function calculateMatchStats(matchId) {
   // Quizzers individual stats map
   const teamAStats = {};
   match.seats.teamA.forEach((name, idx) => {
-    if (name) teamAStats[name] = { seat: idx + 1, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, quizOutBonus: 0 };
+    if (name) teamAStats[name] = { seat: idx + 1, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
   });
   (teamAObj.quizzers || []).forEach(name => {
-    if (!teamAStats[name]) teamAStats[name] = { seat: null, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, quizOutBonus: 0 };
+    if (!teamAStats[name]) teamAStats[name] = { seat: null, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
   });
 
   const teamBStats = {};
   match.seats.teamB.forEach((name, idx) => {
-    if (name) teamBStats[name] = { seat: idx + 1, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, quizOutBonus: 0 };
+    if (name) teamBStats[name] = { seat: idx + 1, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
   });
   (teamBObj.quizzers || []).forEach(name => {
-    if (!teamBStats[name]) teamBStats[name] = { seat: null, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, quizOutBonus: 0 };
+    if (!teamBStats[name]) teamBStats[name] = { seat: null, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
   });
 
   // Calculate 20 questions grid
@@ -568,10 +568,14 @@ function calculateMatchStats(matchId) {
           if (stat) {
             stat.errors += 1;
             stat.points -= penalty;
+            if (stat.errors >= 3) stat.isErroredOut = true;
           }
         } else {
           cellText = "0";
-          if (stat) stat.errors += 1;
+          if (stat) {
+            stat.errors += 1;
+            if (stat.errors >= 3) stat.isErroredOut = true;
+          }
         }
       }
 
@@ -590,17 +594,26 @@ function calculateMatchStats(matchId) {
     });
   }
 
-  // Quiz-Out Bonuses (+20 points for 5 correct)
+  // Quiz-Out Bonuses:
+  // ONLY Perfect Quiz-Out (5 correct with 0 errors) receives +20 bonus!
+  // If a quizzer has errors and reaches 5 correct, they Quiz Out (Forward), but receive NO bonus (+0).
   const teamABonuses = [];
   let teamABonusPts = 0;
   Object.values(teamAStats).forEach(s => {
     if (s.correct >= 5) {
-      const bonus = 20;
-      s.quizOutBonus = bonus;
-      s.points += bonus;
-      teamABonusPts += bonus;
-      const desc = s.errors === 0 ? `${s.name}: Perfect QO (+20)` : `${s.name}: Quiz Out (+20)`;
-      teamABonuses.push({ quizzer: s.name, desc, points: bonus });
+      s.isQuizzedOut = true;
+      if (s.errors === 0) {
+        const bonus = 20;
+        s.quizOutBonus = bonus;
+        s.points += bonus;
+        teamABonusPts += bonus;
+        teamABonuses.push({ quizzer: s.name, desc: `${s.name}: Perfect QO (+20)`, points: bonus });
+      } else {
+        s.quizOutBonus = 0;
+        teamABonuses.push({ quizzer: s.name, desc: `${s.name}: Quiz Out (5 correct, ${s.errors} err) (+0)`, points: 0 });
+      }
+    } else if (s.errors >= 3) {
+      s.isErroredOut = true;
     }
   });
 
@@ -608,12 +621,19 @@ function calculateMatchStats(matchId) {
   let teamBBonusPts = 0;
   Object.values(teamBStats).forEach(s => {
     if (s.correct >= 5) {
-      const bonus = 20;
-      s.quizOutBonus = bonus;
-      s.points += bonus;
-      teamBBonusPts += bonus;
-      const desc = s.errors === 0 ? `${s.name}: Perfect QO (+20)` : `${s.name}: Quiz Out (+20)`;
-      teamBBonuses.push({ quizzer: s.name, desc, points: bonus });
+      s.isQuizzedOut = true;
+      if (s.errors === 0) {
+        const bonus = 20;
+        s.quizOutBonus = bonus;
+        s.points += bonus;
+        teamBBonusPts += bonus;
+        teamBBonuses.push({ quizzer: s.name, desc: `${s.name}: Perfect QO (+20)`, points: bonus });
+      } else {
+        s.quizOutBonus = 0;
+        teamBBonuses.push({ quizzer: s.name, desc: `${s.name}: Quiz Out (5 correct, ${s.errors} err) (+0)`, points: 0 });
+      }
+    } else if (s.errors >= 3) {
+      s.isErroredOut = true;
     }
   });
 
@@ -1040,10 +1060,17 @@ app.post('/api/tbq/score', authenticateCoach, (req, res) => {
   const teamStats = isTeamA ? currentStats.teamA : currentStats.teamB;
   const quizzerStat = teamStats.quizzers.find(q => q.name.toLowerCase() === (quizzer || '').toLowerCase());
 
-  if (quizzerStat && quizzerStat.isQuizzedOut) {
-    return res.status(400).json({
-      error: `${quizzer} has already Quizzed Out (5 correct answers) and cannot answer further questions in this match.`
-    });
+  if (quizzerStat) {
+    if (quizzerStat.isQuizzedOut) {
+      return res.status(400).json({
+        error: `${quizzer} has already Quizzed Out (5 correct answers) and cannot buzz in for further questions in this match.`
+      });
+    }
+    if (quizzerStat.isErroredOut) {
+      return res.status(400).json({
+        error: `${quizzer} has already Errored Out (3 errors) and must remain seated for the remainder of this match.`
+      });
+    }
   }
 
   const newQuestion = {
