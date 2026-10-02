@@ -391,28 +391,38 @@ function renderOfficialScoresheet() {
   const seatsA = activeRound.seats.home;
   const seatsB = activeRound.seats.opponent;
 
+  const renderThBadge = (s, name, stat) => {
+    let badgeHtml = '';
+    if (stat.isQuizzedOut) {
+      badgeHtml = stat.errors === 0 
+        ? `<span class="block text-[9px] font-black text-amber-700 bg-amber-100/90 rounded px-1 mt-0.5">⭐ QO(+20)</span>` 
+        : `<span class="block text-[9px] font-black text-amber-800 bg-amber-100/80 rounded px-1 mt-0.5">🎉 QO(+0)</span>`;
+    } else if (stat.isErroredOut) {
+      badgeHtml = `<span class="block text-[9px] font-black text-rose-800 bg-rose-100 rounded px-1 mt-0.5 animate-pulse">❌ EO (3/3)</span>`;
+    } else {
+      const errStyle = stat.errors > 0 ? 'text-rose-600 font-black' : 'text-slate-400';
+      badgeHtml = `<span class="block text-[10px] font-bold mt-0.5 text-slate-500"><span class="text-emerald-700 font-extrabold">${stat.correct}C</span> / <span class="${errStyle}">${stat.errors}E</span></span>`;
+    }
+    return `
+      <div>
+        <span class="text-[10px] text-slate-400 font-bold">#${s}</span> 
+        <span class="font-extrabold">${escapeHtml(name)}</span>
+        ${badgeHtml}
+      </div>
+    `;
+  };
+
   for (let s = 1; s <= 5; s++) {
     const thA = document.getElementById(`th-seat-a-${s}`);
     const thB = document.getElementById(`th-seat-b-${s}`);
-    const nameA = seatsA[s - 1] || `Seat ${s}`;
-    const nameB = seatsB[s - 1] || `Seat ${s}`;
-    const statA = activeRound.teamA.quizzers.find(q => q.name.toLowerCase() === nameA.toLowerCase()) || { correct: 0, errors: 0 };
-    const statB = activeRound.teamB.quizzers.find(q => q.name.toLowerCase() === nameB.toLowerCase()) || { correct: 0, errors: 0 };
+    const nameA = (seatsA && seatsA[s - 1] && seatsA[s - 1].trim()) || `Seat #${s}`;
+    const nameB = (seatsB && seatsB[s - 1] && seatsB[s - 1].trim()) || `Seat #${s}`;
 
-    if (thA) {
-      let badge = '';
-      if (statA.isQuizzedOut) badge = statA.errors === 0 ? ' ⭐ QO(+20)' : ' 🎉 QO(+0)';
-      else if (statA.isErroredOut) badge = ' ❌ EO';
-      else if (statA.correct > 0 || statA.errors > 0) badge = ` (${statA.correct}C/${statA.errors}E)`;
-      thA.textContent = `#${s} ${nameA}${badge}`;
-    }
-    if (thB) {
-      let badge = '';
-      if (statB.isQuizzedOut) badge = statB.errors === 0 ? ' ⭐ QO(+20)' : ' 🎉 QO(+0)';
-      else if (statB.isErroredOut) badge = ' ❌ EO';
-      else if (statB.correct > 0 || statB.errors > 0) badge = ` (${statB.correct}C/${statB.errors}E)`;
-      thB.textContent = `#${s} ${nameB}${badge}`;
-    }
+    const statA = activeRound.teamA.quizzers.find(q => q.seat === s || (q.name && q.name.trim().toLowerCase() === nameA.toLowerCase())) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
+    const statB = activeRound.teamB.quizzers.find(q => q.seat === s || (q.name && q.name.trim().toLowerCase() === nameB.toLowerCase())) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
+
+    if (thA) thA.innerHTML = renderThBadge(s, nameA, statA);
+    if (thB) thB.innerHTML = renderThBadge(s, nameB, statB);
   }
 
   // 6. 20-Question Rows & Halftime
@@ -420,6 +430,9 @@ function renderOfficialScoresheet() {
 
   // 7. Bottom Summary
   renderScoresheetSummaryRows(activeRound);
+
+  // 8. Individual Quizzers Live Performance & Lockout Tracker
+  renderIndividualQuizzersStats(activeRound);
 }
 
 function renderSeatsSelectionGrid(activeRound) {
@@ -428,9 +441,12 @@ function renderSeatsSelectionGrid(activeRound) {
 
   // Verify currently selected quizzer is still active/eligible
   let isCurrentEligible = false;
-  if (state.scoreInput.quizzer) {
+  if (state.scoreInput.quizzer || state.scoreInput.seatNum) {
     const list = state.scoreInput.team === 'teamA' ? activeRound.teamA.quizzers : activeRound.teamB.quizzers;
-    const currentStat = list.find(q => q.name.toLowerCase() === state.scoreInput.quizzer.toLowerCase());
+    const currentStat = list.find(q => 
+      (q.seat === state.scoreInput.seatNum) || 
+      (q.name && state.scoreInput.quizzer && q.name.trim().toLowerCase() === state.scoreInput.quizzer.trim().toLowerCase())
+    );
     if (currentStat && !currentStat.isQuizzedOut && !currentStat.isErroredOut) {
       isCurrentEligible = true;
     }
@@ -439,56 +455,55 @@ function renderSeatsSelectionGrid(activeRound) {
   // If not eligible, automatically select first active eligible quizzer
   if (!isCurrentEligible) {
     let found = false;
-    for (let i = 0; i < activeRound.seats.home.length; i++) {
-      const name = activeRound.seats.home[i];
-      if (name) {
-        const stat = activeRound.teamA.quizzers.find(q => q.name.toLowerCase() === name.toLowerCase());
-        if (stat && !stat.isQuizzedOut && !stat.isErroredOut) {
-          state.scoreInput.team = 'teamA';
-          state.scoreInput.seatNum = i + 1;
-          state.scoreInput.quizzer = name;
-          found = true;
-          break;
-        }
+    for (let i = 0; i < 5; i++) {
+      const name = (activeRound.seats.home && activeRound.seats.home[i]) || `Seat #${i + 1}`;
+      const stat = activeRound.teamA.quizzers.find(q => q.seat === i + 1 || (q.name && q.name.toLowerCase() === name.toLowerCase()));
+      if (stat && !stat.isQuizzedOut && !stat.isErroredOut) {
+        state.scoreInput.team = 'teamA';
+        state.scoreInput.seatNum = i + 1;
+        state.scoreInput.quizzer = name;
+        found = true;
+        break;
       }
     }
     if (!found) {
-      for (let i = 0; i < activeRound.seats.opponent.length; i++) {
-        const name = activeRound.seats.opponent[i];
-        if (name) {
-          const stat = activeRound.teamB.quizzers.find(q => q.name.toLowerCase() === name.toLowerCase());
-          if (stat && !stat.isQuizzedOut && !stat.isErroredOut) {
-            state.scoreInput.team = 'teamB';
-            state.scoreInput.seatNum = i + 1;
-            state.scoreInput.quizzer = name;
-            break;
-          }
+      for (let i = 0; i < 5; i++) {
+        const name = (activeRound.seats.opponent && activeRound.seats.opponent[i]) || `Seat #${i + 1}`;
+        const stat = activeRound.teamB.quizzers.find(q => q.seat === i + 1 || (q.name && q.name.toLowerCase() === name.toLowerCase()));
+        if (stat && !stat.isQuizzedOut && !stat.isErroredOut) {
+          state.scoreInput.team = 'teamB';
+          state.scoreInput.seatNum = i + 1;
+          state.scoreInput.quizzer = name;
+          break;
         }
       }
     }
   }
 
-  // Team A seats
+  // Team A seats (1 to 5 guaranteed)
   let homeHtml = '';
-  activeRound.seats.home.forEach((name, idx) => {
+  for (let idx = 0; idx < 5; idx++) {
     const seatNum = idx + 1;
-    const stat = activeRound.teamA.quizzers.find(q => q.name.toLowerCase() === name.toLowerCase()) || { correct: 0, errors: 0, isQuizzedOut: false, isErroredOut: false };
+    const rawName = activeRound.seats.home && activeRound.seats.home[idx];
+    const displayName = (rawName && rawName.trim()) ? rawName.trim() : `Seat #${seatNum}`;
+    const stat = activeRound.teamA.quizzers.find(q => q.seat === seatNum || (q.name && q.name.trim().toLowerCase() === displayName.toLowerCase())) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
     const isSelected = state.scoreInput.team === 'teamA' && state.scoreInput.seatNum === seatNum;
     const isQO = stat.isQuizzedOut;
     const isEO = stat.isErroredOut;
     const isDisabled = isQO || isEO;
 
-    let statusText = `${stat.correct}/5 C • ${stat.errors}/3 E`;
-    let statusClass = isSelected ? 'text-amber-200' : 'text-emerald-700';
+    let statusHtml = '';
     let extraWarning = '';
 
     if (isQO) {
-      statusText = stat.errors === 0 ? '⭐ PERFECT QO (+20)' : '🎉 QUIZ OUT (+0)';
-      statusClass = 'text-amber-800 font-black';
+      statusHtml = `<span class="text-amber-800 font-black">${stat.errors === 0 ? '⭐ PERFECT QO (+20)' : '🎉 QUIZ OUT (+0)'}</span>`;
     } else if (isEO) {
-      statusText = '❌ ERRORED OUT (3/3)';
-      statusClass = 'text-rose-700 font-black';
+      statusHtml = `<span class="text-rose-700 font-black">❌ ERRORED OUT (3/3)</span>`;
     } else {
+      const cStyle = isSelected ? 'text-emerald-100 font-black' : 'text-emerald-700 font-extrabold';
+      const eStyle = stat.errors > 0 ? (isSelected ? 'text-rose-200 font-black underline' : 'text-rose-600 font-black') : (isSelected ? 'text-slate-200' : 'text-slate-500');
+      statusHtml = `<span class="${cStyle}">${stat.correct}/5 C</span> • <span class="${eStyle}">${stat.errors}/3 E</span>`;
+
       if (stat.correct === 4 && stat.errors === 2) {
         extraWarning = '<div class="text-[9px] font-black text-amber-700 bg-amber-100/90 rounded px-1 mt-0.5 animate-pulse">⚠️ 1 to QO • 1 to EO</div>';
       } else if (stat.correct === 4) {
@@ -499,7 +514,7 @@ function renderSeatsSelectionGrid(activeRound) {
     }
 
     homeHtml += `
-      <button type="button" ${isDisabled ? 'disabled' : ''} onclick="selectSeat('teamA', ${seatNum}, '${escapeHtml(name)}')" class="p-2 rounded-xl text-center border transition-all ${
+      <button type="button" ${isDisabled ? 'disabled' : ''} onclick="selectSeat('teamA', ${seatNum}, '${escapeHtml(displayName)}')" class="p-2 rounded-xl text-center border transition-all ${
         isQO 
           ? 'bg-amber-50/70 border-amber-300 text-amber-900 opacity-80 cursor-not-allowed' 
           : isEO
@@ -509,37 +524,40 @@ function renderSeatsSelectionGrid(activeRound) {
               : 'bg-white border-slate-200 text-slate-800 hover:border-brand-400 hover:bg-brand-50/50'
       }">
         <div class="text-[10px] font-extrabold uppercase ${isSelected ? 'text-brand-200' : 'text-slate-400'}">#${seatNum}</div>
-        <div class="font-extrabold text-xs truncate mt-0.5">${escapeHtml(name)}</div>
-        <div class="text-[9px] font-bold mt-1 ${statusClass}">
-          ${statusText}
+        <div class="font-extrabold text-xs truncate mt-0.5">${escapeHtml(displayName)}</div>
+        <div class="text-[9px] font-bold mt-1">
+          ${statusHtml}
         </div>
         ${extraWarning}
       </button>
     `;
-  });
+  }
   homeGrid.innerHTML = homeHtml;
 
-  // Team B seats
+  // Team B seats (1 to 5 guaranteed)
   let oppHtml = '';
-  activeRound.seats.opponent.forEach((name, idx) => {
+  for (let idx = 0; idx < 5; idx++) {
     const seatNum = idx + 1;
-    const stat = activeRound.teamB.quizzers.find(q => q.name.toLowerCase() === name.toLowerCase()) || { correct: 0, errors: 0, isQuizzedOut: false, isErroredOut: false };
+    const rawName = activeRound.seats.opponent && activeRound.seats.opponent[idx];
+    const displayName = (rawName && rawName.trim()) ? rawName.trim() : `Seat #${seatNum}`;
+    const stat = activeRound.teamB.quizzers.find(q => q.seat === seatNum || (q.name && q.name.trim().toLowerCase() === displayName.toLowerCase())) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
     const isSelected = state.scoreInput.team === 'teamB' && state.scoreInput.seatNum === seatNum;
     const isQO = stat.isQuizzedOut;
     const isEO = stat.isErroredOut;
     const isDisabled = isQO || isEO;
 
-    let statusText = `${stat.correct}/5 C • ${stat.errors}/3 E`;
-    let statusClass = isSelected ? 'text-amber-200' : 'text-emerald-700';
+    let statusHtml = '';
     let extraWarning = '';
 
     if (isQO) {
-      statusText = stat.errors === 0 ? '⭐ PERFECT QO (+20)' : '🎉 QUIZ OUT (+0)';
-      statusClass = 'text-amber-800 font-black';
+      statusHtml = `<span class="text-amber-800 font-black">${stat.errors === 0 ? '⭐ PERFECT QO (+20)' : '🎉 QUIZ OUT (+0)'}</span>`;
     } else if (isEO) {
-      statusText = '❌ ERRORED OUT (3/3)';
-      statusClass = 'text-rose-700 font-black';
+      statusHtml = `<span class="text-rose-700 font-black">❌ ERRORED OUT (3/3)</span>`;
     } else {
+      const cStyle = isSelected ? 'text-emerald-100 font-black' : 'text-emerald-700 font-extrabold';
+      const eStyle = stat.errors > 0 ? (isSelected ? 'text-rose-200 font-black underline' : 'text-rose-600 font-black') : (isSelected ? 'text-slate-200' : 'text-slate-500');
+      statusHtml = `<span class="${cStyle}">${stat.correct}/5 C</span> • <span class="${eStyle}">${stat.errors}/3 E</span>`;
+
       if (stat.correct === 4 && stat.errors === 2) {
         extraWarning = '<div class="text-[9px] font-black text-amber-700 bg-amber-100/90 rounded px-1 mt-0.5 animate-pulse">⚠️ 1 to QO • 1 to EO</div>';
       } else if (stat.correct === 4) {
@@ -550,7 +568,7 @@ function renderSeatsSelectionGrid(activeRound) {
     }
 
     oppHtml += `
-      <button type="button" ${isDisabled ? 'disabled' : ''} onclick="selectSeat('teamB', ${seatNum}, '${escapeHtml(name)}')" class="p-2 rounded-xl text-center border transition-all ${
+      <button type="button" ${isDisabled ? 'disabled' : ''} onclick="selectSeat('teamB', ${seatNum}, '${escapeHtml(displayName)}')" class="p-2 rounded-xl text-center border transition-all ${
         isQO 
           ? 'bg-amber-50/70 border-amber-300 text-amber-900 opacity-80 cursor-not-allowed' 
           : isEO
@@ -560,14 +578,14 @@ function renderSeatsSelectionGrid(activeRound) {
               : 'bg-white border-slate-200 text-slate-800 hover:border-rose-400 hover:bg-rose-50/50'
       }">
         <div class="text-[10px] font-extrabold uppercase ${isSelected ? 'text-rose-200' : 'text-slate-400'}">#${seatNum}</div>
-        <div class="font-extrabold text-xs truncate mt-0.5">${escapeHtml(name)}</div>
-        <div class="text-[9px] font-bold mt-1 ${statusClass}">
-          ${statusText}
+        <div class="font-extrabold text-xs truncate mt-0.5">${escapeHtml(displayName)}</div>
+        <div class="text-[9px] font-bold mt-1">
+          ${statusHtml}
         </div>
         ${extraWarning}
       </button>
     `;
-  });
+  }
   oppGrid.innerHTML = oppHtml;
 }
 
@@ -594,13 +612,22 @@ function selectResult(isCorrect) {
   state.scoreInput.isCorrect = isCorrect;
   const btnCorrect = document.getElementById('btn-result-correct');
   const btnIncorrect = document.getElementById('btn-result-incorrect');
+  const submitBtn = document.getElementById('score-submit-btn');
 
   if (isCorrect) {
     btnCorrect.className = 'result-btn py-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-black text-sm flex items-center justify-center gap-1.5 shadow-xs';
     btnIncorrect.className = 'result-btn py-3 rounded-xl border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50';
+    if (submitBtn) {
+      submitBtn.className = 'bg-brand-600 hover:bg-brand-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-sm shadow-md shadow-brand-600/20 transition-all flex items-center justify-center gap-1.5';
+      submitBtn.innerHTML = '<span>Record Correct (+Pts) ⚡</span>';
+    }
   } else {
     btnCorrect.className = 'result-btn py-3 rounded-xl border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50';
     btnIncorrect.className = 'result-btn py-3 rounded-xl border-2 border-rose-500 bg-rose-50 text-rose-900 font-black text-sm flex items-center justify-center gap-1.5 shadow-xs';
+    if (submitBtn) {
+      submitBtn.className = 'bg-rose-600 hover:bg-rose-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-sm shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-1.5';
+      submitBtn.innerHTML = '<span>Record Error (Incorrect) ❌</span>';
+    }
   }
 }
 
@@ -626,13 +653,13 @@ function renderScoresheetTableRows(activeRound) {
         item = item.trim();
         if (item.startsWith('+')) {
           const isRebound = item.includes('*');
-          return `<span class="inline-block px-1.5 py-0.5 rounded font-black font-mono-score text-[11px] ${isRebound ? 'bg-indigo-100 text-indigo-900 border border-indigo-300' : 'bg-emerald-100 text-emerald-900'}">${escapeHtml(item)}</span>`;
+          return `<span class="inline-block px-1.5 py-0.5 rounded font-black font-mono-score text-[11px] ${isRebound ? 'bg-indigo-100 text-indigo-900 border border-indigo-300' : 'bg-emerald-100 text-emerald-900 border border-emerald-300'}">${escapeHtml(item)}</span>`;
         }
         if (item.startsWith('-')) {
-          return `<span class="inline-block px-1.5 py-0.5 rounded font-black font-mono-score text-[11px] bg-rose-100 text-rose-900">${escapeHtml(item)}</span>`;
+          return `<span class="inline-block px-1.5 py-0.5 rounded font-black font-mono-score text-[11px] bg-rose-100 text-rose-900 border border-rose-300" title="Interrupted Error Penalty">${escapeHtml(item)}</span>`;
         }
-        if (item === '0' || item === 'Err') {
-          return `<span class="inline-block px-1.5 py-0.5 rounded font-bold font-mono-score text-[10px] bg-slate-200 text-slate-700">0</span>`;
+        if (item === '0' || item === '0 (Err)' || item === 'Err' || item.includes('Err')) {
+          return `<span class="inline-block px-1.5 py-0.5 rounded font-bold font-mono-score text-[10px] bg-rose-100 text-rose-800 border border-rose-200" title="Incorrect Answer (Error)">0 (Err)</span>`;
         }
         return escapeHtml(item);
       }).join(' ');
@@ -749,6 +776,132 @@ function renderScoresheetSummaryRows(activeRound) {
   `;
 }
 
+// 8. Render Individual Quizzers Live Performance & Lockout Tracker
+function renderIndividualQuizzersStats(activeRound) {
+  const panelGrid = document.getElementById('individual-quizzers-grid');
+  if (!panelGrid) return;
+
+  const buildTeamQuizzersHtml = (teamObj, seatsArr, teamKey, borderColor, headerBg) => {
+    let quizzersRowsHtml = '';
+    for (let s = 1; s <= 5; s++) {
+      const rawName = seatsArr && seatsArr[s - 1];
+      const name = (rawName && rawName.trim()) ? rawName.trim() : `Seat #${s}`;
+      const stat = (teamObj.quizzers || []).find(q => q.seat === s || (q.name && q.name.trim().toLowerCase() === name.toLowerCase())) || {
+        seat: s,
+        name,
+        correct: 0,
+        errors: 0,
+        points: 0,
+        isQuizzedOut: false,
+        isErroredOut: false
+      };
+
+      const isQO = stat.isQuizzedOut;
+      const isEO = stat.isErroredOut;
+
+      let statusBadge = '';
+      if (isQO) {
+        statusBadge = stat.errors === 0 
+          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300">⭐ Perfect QO (+20)</span>`
+          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-50 text-amber-800 border border-amber-200">🎉 Quiz Out (+0)</span>`;
+      } else if (isEO) {
+        statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">❌ Errored Out (3/3)</span>`;
+      } else if (stat.errors === 2) {
+        statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-50 text-rose-700 border border-rose-200">⚠️ 1 Error to Lockout</span>`;
+      } else if (stat.correct === 4) {
+        statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-50 text-amber-700 border border-amber-200">⚡ 1 to Quiz Out</span>`;
+      } else {
+        statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-600">Active</span>`;
+      }
+
+      // Errors visual dots
+      let errorDots = '';
+      for (let e = 1; e <= 3; e++) {
+        if (e <= stat.errors) {
+          errorDots += `<span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-600 mr-0.5" title="Error #${e}"></span>`;
+        } else {
+          errorDots += `<span class="inline-block w-2.5 h-2.5 rounded-full bg-slate-200 mr-0.5"></span>`;
+        }
+      }
+
+      const rowBg = isEO 
+        ? 'bg-rose-50/70 border-rose-200 text-rose-900 line-through opacity-85'
+        : (isQO ? 'bg-amber-50/60 border-amber-200' : 'bg-white border-slate-200');
+
+      quizzersRowsHtml += `
+        <div class="p-2.5 rounded-xl border ${rowBg} flex items-center justify-between gap-2 transition-all">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="w-6 h-6 rounded-lg bg-slate-100 font-black font-mono-score text-xs flex items-center justify-center text-slate-700 flex-shrink-0">
+              #${s}
+            </span>
+            <div class="truncate">
+              <span class="text-xs font-black text-slate-900 block truncate">${escapeHtml(name)}</span>
+              <span class="text-[10px] text-slate-500 font-mono-score font-bold">${stat.points} pts</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 flex-shrink-0">
+            <!-- Correct Count -->
+            <div class="text-center">
+              <span class="text-[11px] font-black font-mono-score text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                ${stat.correct}/5 C
+              </span>
+            </div>
+
+            <!-- Incorrect Count (Errors) -->
+            <div class="text-center flex flex-col items-center">
+              <span class="text-[11px] font-black font-mono-score ${stat.errors > 0 ? 'text-rose-700 bg-rose-50 border border-rose-200' : 'text-slate-500 bg-slate-100'} px-2 py-0.5 rounded-md">
+                ${stat.errors}/3 E
+              </span>
+              <div class="flex items-center mt-0.5">
+                ${errorDots}
+              </div>
+            </div>
+
+            <!-- Status Pill -->
+            <div>
+              ${statusBadge}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="rounded-xl border ${borderColor} overflow-hidden bg-slate-50/50">
+        <div class="${headerBg} p-3 border-b flex items-center justify-between">
+          <div class="font-black text-xs uppercase tracking-wider flex items-center gap-2">
+            <span>${escapeHtml(teamObj.name)}</span>
+          </div>
+          <span class="text-xs font-black font-mono-score px-2 py-0.5 rounded bg-white/80">
+            Total: ${teamObj.finalScore} pts
+          </span>
+        </div>
+        <div class="p-3 space-y-2">
+          ${quizzersRowsHtml}
+        </div>
+      </div>
+    `;
+  };
+
+  const htmlA = buildTeamQuizzersHtml(
+    activeRound.teamA, 
+    activeRound.seats.home, 
+    'teamA', 
+    'border-brand-200', 
+    'bg-brand-50 border-brand-200 text-brand-950'
+  );
+  const htmlB = buildTeamQuizzersHtml(
+    activeRound.teamB, 
+    activeRound.seats.opponent, 
+    'teamB', 
+    'border-rose-200', 
+    'bg-rose-50 border-rose-200 text-rose-950'
+  );
+
+  panelGrid.innerHTML = `${htmlA}${htmlB}`;
+}
+
 // Timeout toggle
 async function toggleTimeout(team, timeoutId, used) {
   const currentQ = `Q${document.getElementById('score-question-num').value || '1'}`;
@@ -783,9 +936,10 @@ async function submitQuestionScore(event) {
   }
 
   const answeredQuizzer = state.scoreInput.quizzer;
+  const answeredSeat = state.scoreInput.seatNum;
   const isTeamA = state.scoreInput.team === 'teamA';
   const prevList = isTeamA ? (state.tbqData.activeRound.teamA.quizzers || []) : (state.tbqData.activeRound.teamB.quizzers || []);
-  const prevStat = prevList.find(q => q.name.toLowerCase() === answeredQuizzer.toLowerCase()) || { correct: 0, errors: 0 };
+  const prevStat = prevList.find(q => q.seat === answeredSeat || (q.name && q.name.trim().toLowerCase() === (answeredQuizzer || '').trim().toLowerCase())) || { correct: 0, errors: 0 };
   const prevCorrect = prevStat.correct || 0;
   const prevErrors = prevStat.errors || 0;
 
@@ -804,7 +958,7 @@ async function submitQuestionScore(event) {
         isRebound,
         team: state.scoreInput.team,
         quizzer: answeredQuizzer,
-        seatNum: state.scoreInput.seatNum,
+        seatNum: answeredSeat,
         isCorrect: state.scoreInput.isCorrect
       })
     });
@@ -824,17 +978,17 @@ async function submitQuestionScore(event) {
 
     // Check if quizzer reached Quiz Out or Error Out milestone on this answer
     const newList = isTeamA ? (result.activeRound.teamA.quizzers || []) : (result.activeRound.teamB.quizzers || []);
-    const newStat = newList.find(q => q.name.toLowerCase() === answeredQuizzer.toLowerCase());
+    const newStat = newList.find(q => q.seat === answeredSeat || (q.name && q.name.trim().toLowerCase() === (answeredQuizzer || '').trim().toLowerCase()));
 
     if (newStat) {
       if (prevCorrect < 5 && newStat.correct >= 5) {
         if (newStat.errors === 0) {
-          showMatchToast(`⭐ ${answeredQuizzer} has QUIZZED OUT! Perfect 5/5 (+20 Bonus Points awarded)!`, 'success');
+          showMatchToast(`⭐ ${newStat.name || answeredQuizzer} has QUIZZED OUT! Perfect 5/5 (+20 Bonus Points awarded)!`, 'success');
         } else {
-          showMatchToast(`🎉 ${answeredQuizzer} has QUIZZED OUT (Forward)! 5 correct answers. Sits back with maximum score (no +20 bonus due to ${newStat.errors} prior errors).`, 'warning');
+          showMatchToast(`🎉 ${newStat.name || answeredQuizzer} has QUIZZED OUT (Forward)! 5 correct answers. Sits back with maximum score (no +20 bonus due to ${newStat.errors} prior errors).`, 'warning');
         }
       } else if (prevErrors < 3 && newStat.errors >= 3) {
-        showMatchToast(`❌ ${answeredQuizzer} has ERRORED OUT (Strikes Out)! 3 errors reached. Must remain seated for remainder of match.`, 'error');
+        showMatchToast(`❌ ${newStat.name || answeredQuizzer} has ERRORED OUT (Strikes Out)! 3 errors reached. Must remain seated for remainder of match.`, 'error');
       }
     }
 

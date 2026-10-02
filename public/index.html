@@ -396,8 +396,8 @@
           <button type="button" onclick="selectResult(false)" id="btn-result-incorrect" class="result-btn py-3 rounded-xl border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50">
             <span>❌ INCORRECT (Error)</span>
           </button>
-          <button type="submit" class="bg-brand-600 hover:bg-brand-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-sm shadow-md shadow-brand-600/20 transition-all flex items-center justify-center gap-1.5">
-            <span>Record Score ⚡</span>
+          <button type="submit" id="score-submit-btn" class="bg-brand-600 hover:bg-brand-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-sm shadow-md shadow-brand-600/20 transition-all flex items-center justify-center gap-1.5">
+            <span>Record Correct (+Pts) ⚡</span>
           </button>
         </div>
       </form>
@@ -530,6 +530,28 @@
         </table>
       </div>
 
+    </div>
+
+    <!-- INDIVIDUAL QUIZZERS STATS & ERROR TRACKER CARD -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 mb-6 print-shadow-none" id="individual-quizzers-panel">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-slate-100 gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-black uppercase tracking-wider bg-slate-900 text-amber-400 px-2.5 py-0.5 rounded-md">
+            🎯 Quizzers Live Tracker
+          </span>
+          <h3 class="text-sm font-black text-slate-800">
+            Individual Correct / Incorrect Answers (Errors) & Lockouts
+          </h3>
+        </div>
+        <div class="text-[11px] text-slate-500 font-semibold flex items-center gap-3">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> 5 Correct = Quiz Out</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> 3 Errors = Errored Out (Locked)</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" id="individual-quizzers-grid">
+        <!-- Rendered dynamically via JS for Team A and Team B -->
+      </div>
     </div>
 
   </main>

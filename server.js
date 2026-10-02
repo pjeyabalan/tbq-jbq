@@ -486,22 +486,77 @@ function calculateMatchStats(matchId) {
     match.fouls = { teamA: [], teamB: [] };
   }
 
-  // Quizzers individual stats map
+  // Quizzers individual stats maps - guaranteed 5 active seats
   const teamAStats = {};
-  match.seats.teamA.forEach((name, idx) => {
-    if (name) teamAStats[name] = { seat: idx + 1, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
-  });
+  for (let idx = 0; idx < 5; idx++) {
+    const rawName = match.seats.teamA[idx];
+    const name = (rawName && rawName.trim()) ? rawName.trim() : `Seat #${idx + 1}`;
+    match.seats.teamA[idx] = name;
+    teamAStats[name] = { seat: idx + 1, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
+  }
   (teamAObj.quizzers || []).forEach(name => {
-    if (!teamAStats[name]) teamAStats[name] = { seat: null, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
+    const trimmed = (name || '').trim();
+    if (trimmed && !Object.keys(teamAStats).some(k => k.toLowerCase() === trimmed.toLowerCase())) {
+      teamAStats[trimmed] = { seat: null, name: trimmed, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
+    }
   });
 
   const teamBStats = {};
-  match.seats.teamB.forEach((name, idx) => {
-    if (name) teamBStats[name] = { seat: idx + 1, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
-  });
+  for (let idx = 0; idx < 5; idx++) {
+    const rawName = match.seats.teamB[idx];
+    const name = (rawName && rawName.trim()) ? rawName.trim() : `Seat #${idx + 1}`;
+    match.seats.teamB[idx] = name;
+    teamBStats[name] = { seat: idx + 1, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
+  }
   (teamBObj.quizzers || []).forEach(name => {
-    if (!teamBStats[name]) teamBStats[name] = { seat: null, name, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
+    const trimmed = (name || '').trim();
+    if (trimmed && !Object.keys(teamBStats).some(k => k.toLowerCase() === trimmed.toLowerCase())) {
+      teamBStats[trimmed] = { seat: null, name: trimmed, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
+    }
   });
+
+  // Robust multi-tier quizzer stat resolver
+  const resolveStat = (statsMap, seatList, q) => {
+    // 1. Direct exact key match
+    if (q.quizzer && statsMap[q.quizzer]) return statsMap[q.quizzer];
+
+    // 2. Case-insensitive & trimmed key match
+    if (q.quizzer) {
+      const qClean = String(q.quizzer).trim().toLowerCase();
+      const foundKey = Object.keys(statsMap).find(k => k.trim().toLowerCase() === qClean);
+      if (foundKey) return statsMap[foundKey];
+    }
+
+    // 3. Fallback by seatNum (1-5) in seatList
+    const sIdx = (typeof q.seatNum === 'number' && q.seatNum >= 1 && q.seatNum <= 5) ? q.seatNum - 1 : -1;
+    if (sIdx !== -1 && seatList[sIdx]) {
+      const seatName = seatList[sIdx];
+      if (statsMap[seatName]) return statsMap[seatName];
+      const foundKey = Object.keys(statsMap).find(k => k.trim().toLowerCase() === seatName.trim().toLowerCase());
+      if (foundKey) return statsMap[foundKey];
+    }
+
+    // 4. By seat property on stat object
+    if (sIdx !== -1) {
+      const bySeat = Object.values(statsMap).find(s => s.seat === sIdx + 1);
+      if (bySeat) return bySeat;
+    }
+
+    // 5. Dynamic fallback so no correct answer or error is ever lost
+    const fallbackName = (q.quizzer || (sIdx !== -1 ? seatList[sIdx] : null) || 'Quizzer').trim();
+    const newStat = {
+      seat: sIdx !== -1 ? sIdx + 1 : null,
+      name: fallbackName,
+      correct: 0,
+      errors: 0,
+      points: 0,
+      isQuizzedOut: false,
+      isErroredOut: false,
+      quizOutBonus: 0
+    };
+    statsMap[fallbackName] = newStat;
+    return newStat;
+  };
 
   // Calculate 20 questions grid
   const maxQuestionRecorded = match.questions.length > 0 ? Math.max(...match.questions.map(q => q.questionNum)) : 0;
@@ -537,11 +592,11 @@ function calculateMatchStats(matchId) {
       const seatList = isTeamA ? match.seats.teamA : match.seats.teamB;
       const targetCells = isTeamA ? teamACells : teamBCells;
       const statsMap = isTeamA ? teamAStats : teamBStats;
-      const stat = statsMap[q.quizzer];
+      const stat = resolveStat(statsMap, seatList, q);
 
       let seatIdx = (typeof q.seatNum === 'number' && q.seatNum >= 1 && q.seatNum <= 5)
         ? q.seatNum - 1
-        : seatList.indexOf(q.quizzer);
+        : seatList.findIndex(name => name && q.quizzer && name.trim().toLowerCase() === String(q.quizzer).trim().toLowerCase());
       if (seatIdx === -1 || seatIdx > 4) seatIdx = 0;
 
       let cellText = "";
@@ -553,11 +608,9 @@ function calculateMatchStats(matchId) {
         if (isTeamA) teamARunning += delta;
         else teamBRunning += delta;
 
-        if (stat) {
-          stat.correct += 1;
-          stat.points += delta;
-          if (stat.correct >= 5) stat.isQuizzedOut = true;
-        }
+        stat.correct += 1;
+        stat.points += delta;
+        if (stat.correct >= 5) stat.isQuizzedOut = true;
       } else {
         if (q.isInterruption) {
           const penalty = Math.round(q.pointValue / 2);
@@ -565,17 +618,13 @@ function calculateMatchStats(matchId) {
           if (isTeamA) teamARunning -= penalty;
           else teamBRunning -= penalty;
 
-          if (stat) {
-            stat.errors += 1;
-            stat.points -= penalty;
-            if (stat.errors >= 3) stat.isErroredOut = true;
-          }
+          stat.errors += 1;
+          stat.points -= penalty;
+          if (stat.errors >= 3) stat.isErroredOut = true;
         } else {
-          cellText = "0";
-          if (stat) {
-            stat.errors += 1;
-            if (stat.errors >= 3) stat.isErroredOut = true;
-          }
+          cellText = "0 (Err)";
+          stat.errors += 1;
+          if (stat.errors >= 3) stat.isErroredOut = true;
         }
       }
 
@@ -1058,20 +1107,32 @@ app.post('/api/tbq/score', authenticateCoach, (req, res) => {
   const currentStats = calculateMatchStats(mId);
   const isTeamA = team === 'teamA' || team === 'home';
   const teamStats = isTeamA ? currentStats.teamA : currentStats.teamB;
-  const quizzerStat = teamStats.quizzers.find(q => q.name.toLowerCase() === (quizzer || '').toLowerCase());
+  const sNum = parseInt(seatNum) || 1;
+  const quizzerClean = String(quizzer || '').trim().toLowerCase();
+
+  const quizzerStat = teamStats.quizzers.find(q => 
+    (q.seat === sNum) || 
+    (q.name && quizzerClean && q.name.trim().toLowerCase() === quizzerClean)
+  );
 
   if (quizzerStat) {
     if (quizzerStat.isQuizzedOut) {
       return res.status(400).json({
-        error: `${quizzer} has already Quizzed Out (5 correct answers) and cannot buzz in for further questions in this match.`
+        error: `${quizzerStat.name || quizzer} has already Quizzed Out (5 correct answers) and cannot buzz in for further questions in this match.`
       });
     }
     if (quizzerStat.isErroredOut) {
       return res.status(400).json({
-        error: `${quizzer} has already Errored Out (3 errors) and must remain seated for the remainder of this match.`
+        error: `${quizzerStat.name || quizzer} has already Errored Out (3 errors) and must remain seated for the remainder of this match.`
       });
     }
   }
+
+  // Strict boolean check: handles true, "true", 1, "1" as true, and false, "false", 0, "0" as false
+  const isCorrectBool = isCorrect === true || isCorrect === 'true' || isCorrect === 1 || isCorrect === '1';
+  const resolvedName = (quizzer && String(quizzer).trim()) 
+    ? String(quizzer).trim() 
+    : (isTeamA ? match.seats.teamA[sNum - 1] : match.seats.teamB[sNum - 1]) || `Seat #${sNum}`;
 
   const newQuestion = {
     id: `q-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1080,9 +1141,9 @@ app.post('/api/tbq/score', authenticateCoach, (req, res) => {
     isInterruption: !!isInterruption,
     isRebound: !!isRebound,
     team: isTeamA ? 'teamA' : 'teamB',
-    quizzer: (quizzer || 'Quizzer').trim(),
-    seatNum: parseInt(seatNum) || 1,
-    isCorrect: !!isCorrect,
+    quizzer: resolvedName,
+    seatNum: sNum,
+    isCorrect: isCorrectBool,
     scoredBy: req.user.name,
     timestamp: new Date().toISOString()
   };
