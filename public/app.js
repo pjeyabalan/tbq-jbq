@@ -355,14 +355,10 @@ function renderOfficialScoresheet() {
   // 2. Header Metadata
   document.getElementById('meta-match-num').textContent = activeRound.matchNumber || "01";
   document.getElementById('meta-room-num').textContent = activeRound.room || '201';
-  document.getElementById('meta-quizmaster').textContent = activeRound.quizmaster || 'Pastor John';
-  document.getElementById('meta-scorekeeper').textContent = activeRound.scorekeeper || 'Sarah M.';
 
   // Print sync
   document.getElementById('print-match-num').textContent = activeRound.matchNumber || "01";
   document.getElementById('print-room-num').textContent = activeRound.room || '201';
-  document.getElementById('print-qm').textContent = activeRound.quizmaster || 'Pastor John';
-  document.getElementById('print-sk').textContent = activeRound.scorekeeper || 'Sarah M.';
   const superBadge = document.getElementById('super-header-badge');
   if (superBadge) superBadge.textContent = `MEET ${activeRound.meetNum || activeRound.roundNum} • M#${activeRound.matchNumber}`;
 
@@ -1053,8 +1049,6 @@ function openMatchInfoModal() {
   if (infoMeet) infoMeet.value = activeRound.meetNum || activeRound.roundNum || 1;
   document.getElementById('info-match-num').value = activeRound.matchNumber || "01";
   document.getElementById('info-room-num').value = activeRound.room || '201';
-  document.getElementById('info-quizmaster').value = activeRound.quizmaster || 'Pastor John';
-  document.getElementById('info-scorekeeper').value = activeRound.scorekeeper || 'Sarah M.';
 
   document.getElementById('modal-seats-home-label').textContent = `${activeRound.teamA.name} Seats #1 to #5:`;
   document.getElementById('modal-seats-opp-label').textContent = `${activeRound.teamB.name} Seats #1 to #5:`;
@@ -1100,8 +1094,6 @@ async function handleSaveMatchInfo(event) {
   const meetNum = parseInt(infoMeet ? infoMeet.value : 1) || 1;
   const matchNumber = document.getElementById('info-match-num').value.trim();
   const room = document.getElementById('info-room-num').value.trim();
-  const quizmaster = document.getElementById('info-quizmaster').value.trim();
-  const scorekeeper = document.getElementById('info-scorekeeper').value.trim();
 
   const seatsHome = [];
   const seatsOpp = [];
@@ -1120,8 +1112,6 @@ async function handleSaveMatchInfo(event) {
         roundNum: meetNum,
         matchNumber,
         room,
-        quizmaster,
-        scorekeeper,
         seatsHome,
         seatsOpp
       })
@@ -1265,9 +1255,6 @@ function renderTeamsManagerUI() {
               <span class="text-slate-400 font-normal"> vs </span>
               <span>${escapeHtml(m.teamBName)}</span>
             </div>
-            <div class="text-[11px] text-slate-400 mt-0.5">
-              QM: ${escapeHtml(m.quizmaster || 'TBD')} • SK: ${escapeHtml(m.scorekeeper || 'TBD')}
-            </div>
           </div>
         </div>
 
@@ -1365,8 +1352,6 @@ function openAddMatchModal() {
   const meetInput = document.getElementById('match-meet-num');
   if (meetInput) meetInput.value = Math.ceil(nextNum / 2) || 1;
   document.getElementById('match-room-input').value = '201';
-  document.getElementById('match-qm-input').value = 'Pastor John';
-  document.getElementById('match-sk-input').value = 'Sarah M.';
 
   document.getElementById('add-match-modal').classList.remove('hidden');
 }
@@ -1400,8 +1385,6 @@ function openEditMatchModal(matchId) {
   document.getElementById('match-meet-num').value = m.meetNum || m.roundNum || 1;
   document.getElementById('match-number-input').value = m.matchNumber || '';
   document.getElementById('match-room-input').value = m.room || '201';
-  document.getElementById('match-qm-input').value = m.quizmaster || '';
-  document.getElementById('match-sk-input').value = m.scorekeeper || '';
 
   document.getElementById('add-match-modal').classList.remove('hidden');
 }
@@ -1419,8 +1402,6 @@ async function handleSaveMatch(event) {
   const room = document.getElementById('match-room-input').value.trim();
   const teamAId = document.getElementById('match-team-a-select').value;
   const teamBId = document.getElementById('match-team-b-select').value;
-  const quizmaster = document.getElementById('match-qm-input').value.trim();
-  const scorekeeper = document.getElementById('match-sk-input').value.trim();
 
   if (teamAId === teamBId) {
     alert('Please select two different church teams for this match!');
@@ -1435,9 +1416,7 @@ async function handleSaveMatch(event) {
     matchNumber,
     room,
     teamAId,
-    teamBId,
-    quizmaster,
-    scorekeeper
+    teamBId
   };
 
   try {
