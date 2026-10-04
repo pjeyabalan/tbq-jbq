@@ -30,13 +30,71 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { 
+      font-family: 'Plus Jakarta Sans', sans-serif; 
+      -webkit-tap-highlight-color: transparent;
+    }
     .font-mono-score { font-family: 'JetBrains Mono', monospace; }
     
+    /* Custom mobile utilities */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .touch-scroll { -webkit-overflow-scrolling: touch; }
+
+    /* Prevent iOS Safari auto-zoom on input focus by setting minimum 16px */
+    @media screen and (max-width: 767px) {
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+    }
+
+    /* Sticky columns in scoresheet table */
+    .sticky-col-q {
+      position: sticky;
+      left: 0;
+      z-index: 10;
+    }
+    .sticky-col-pts {
+      position: sticky;
+      left: 48px;
+      z-index: 10;
+      box-shadow: 2px 0 4px -1px rgba(0, 0, 0, 0.08);
+    }
+    .sticky-head-q {
+      position: sticky;
+      left: 0;
+      z-index: 25;
+    }
+    .sticky-head-pts {
+      position: sticky;
+      left: 48px;
+      z-index: 25;
+      box-shadow: 2px 0 4px -1px rgba(0, 0, 0, 0.12);
+    }
+
+    /* On desktop (>=768px), force both team panels in the scorer to display */
+    @media (min-width: 768px) {
+      .scorer-team-panel {
+        display: block !important;
+      }
+    }
+
+    /* Active button micro-animation for touch responsiveness */
+    button:active, .touch-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Safe area padding for mobile devices with home indicator */
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+      .safe-bottom {
+        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+      }
+    }
+
     @media print {
       .no-print { display: none !important; }
       .print-only { display: block !important; }
-      body { background: white !important; color: black !important; font-size: 11px; }
+      body { background: white !important; color: black !important; font-size: 11px; padding-bottom: 0 !important; }
       .print-container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
       table { border-collapse: collapse !important; width: 100% !important; }
       th, td { border: 1px solid #333 !important; padding: 3px 5px !important; }
@@ -46,61 +104,61 @@
     .print-only { display: none; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col pb-20 md:pb-0">
 
   <!-- ========================================== -->
   <!-- TOP NAVIGATION HEADER                      -->
   <!-- ========================================== -->
   <header class="bg-brand-900 text-white shadow-lg border-b border-brand-800 no-print sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-3 flex flex-wrap md:flex-nowrap items-center justify-between gap-2 sm:gap-3">
       
       <!-- LOGO & BRAND -->
-      <div class="flex items-center space-x-3 cursor-pointer" onclick="handleLogoClick()">
-        <div id="brand-logo-box" class="w-10 h-10 rounded-xl bg-amber-400 text-brand-950 flex items-center justify-center font-black text-xl shadow-inner flex-shrink-0 transition-transform hover:scale-105">
+      <div class="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer" onclick="handleLogoClick()">
+        <div id="brand-logo-box" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-400 text-brand-950 flex items-center justify-center font-black text-lg sm:text-xl shadow-inner flex-shrink-0 transition-transform hover:scale-105">
           <span id="brand-logo-icon">📖</span>
         </div>
         <div>
-          <div class="flex items-center gap-2">
-            <span id="brand-league-badge" class="bg-amber-400/20 text-amber-300 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-amber-400/30">
+          <div class="flex items-center gap-1 sm:gap-2">
+            <span id="brand-league-badge" class="bg-amber-400/20 text-amber-300 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full border border-amber-400/30">
               TBQ Ministry
             </span>
-            <span id="user-role-badge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full border items-center gap-1"></span>
+            <span id="user-role-badge" class="hidden text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full border items-center gap-1"></span>
           </div>
-          <h1 class="text-base sm:text-lg font-black tracking-tight mt-0.5 flex items-center gap-1.5">
+          <h1 class="text-sm sm:text-lg font-black tracking-tight mt-0.5 flex items-center gap-1 sm:gap-1.5 leading-none">
             <span id="brand-league-title">Teen Bible Quiz</span>
-            <span id="brand-meet-subtitle" class="text-amber-400 font-normal text-xs sm:text-sm">Meet 1</span>
+            <span id="brand-meet-subtitle" class="text-amber-400 font-normal text-[11px] sm:text-sm">Meet 1</span>
           </h1>
         </div>
       </div>
 
       <!-- LEAGUE & MEET SELECTOR TOOLBAR -->
-      <div class="flex items-center gap-2 flex-wrap justify-center">
+      <div class="flex items-center gap-1.5 sm:gap-2">
         <!-- LEAGUE TOGGLE (TBQ vs JBQ) -->
-        <div id="league-nav-pills" class="flex items-center bg-brand-950/90 p-1 rounded-xl border border-brand-800/80 shadow-inner">
-          <button id="btn-league-tbq" onclick="handleSwitchLeague('tbq')" class="px-3 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1">
+        <div id="league-nav-pills" class="flex items-center bg-brand-950/90 p-0.5 sm:p-1 rounded-xl border border-brand-800/80 shadow-inner">
+          <button id="btn-league-tbq" onclick="handleSwitchLeague('tbq')" class="px-2.5 sm:px-3 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1">
             <span>📖 TBQ</span>
           </button>
-          <button id="btn-league-jbq" onclick="handleSwitchLeague('jbq')" class="px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1">
+          <button id="btn-league-jbq" onclick="handleSwitchLeague('jbq')" class="px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1">
             <span>🎒 JBQ</span>
           </button>
         </div>
 
         <!-- MEET SELECTOR DROPDOWN -->
-        <div class="flex items-center gap-1.5 bg-brand-950/90 px-2.5 py-1 rounded-xl border border-brand-800/80 text-xs shadow-inner">
-          <span class="text-[11px] text-brand-300 font-bold hidden sm:inline">Meet:</span>
+        <div class="flex items-center gap-1 sm:gap-1.5 bg-brand-950/90 px-2 sm:px-2.5 py-1 rounded-xl border border-brand-800/80 text-xs shadow-inner">
+          <span class="text-[11px] text-brand-300 font-bold hidden xl:inline">Meet:</span>
           <select id="global-meet-select" onchange="handleMeetChange(this.value)" class="bg-transparent text-amber-300 font-black text-xs focus:outline-none cursor-pointer pr-1">
             <!-- Dynamically populated via JS -->
           </select>
-          <button id="btn-create-meet-nav" onclick="openCreateMeetModal()" title="Create New Meet" class="hidden text-[10px] bg-amber-400 hover:bg-amber-300 text-brand-950 font-black px-2 py-0.5 rounded-md shadow-xs transition-all flex items-center gap-1">
+          <button id="btn-create-meet-nav" onclick="openCreateMeetModal()" title="Create New Meet" class="hidden text-[10px] bg-amber-400 hover:bg-amber-300 text-brand-950 font-black px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs transition-all flex items-center gap-1">
             <span>+ Meet</span>
           </button>
         </div>
       </div>
 
       <!-- NAVIGATION CONTROLS & AUTH -->
-      <div class="flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-        <!-- LOGGED-IN NAVIGATION TABS -->
-        <div id="coach-nav-tabs" class="hidden bg-brand-950/80 p-1 rounded-xl flex items-center gap-1 border border-brand-800/80">
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- LOGGED-IN NAVIGATION TABS (Visible on desktop md:flex, on mobile replaced by bottom nav) -->
+        <div id="coach-nav-tabs" class="hidden md:flex bg-brand-950/80 p-1 rounded-xl items-center gap-1 border border-brand-800/80">
           <button onclick="switchTab('scoresheet')" id="tab-btn-scoresheet" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5">
             <span>📋 Scoresheet</span>
           </button>
@@ -113,13 +171,13 @@
         </div>
 
         <!-- AUTH BUTTONS -->
-        <button id="auth-login-btn" onclick="openCoachLoginModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-extrabold px-3.5 py-1.5 rounded-xl transition-all shadow-md flex items-center gap-1.5">
+        <button id="auth-login-btn" onclick="openCoachLoginModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-extrabold px-3 py-1.5 sm:px-3.5 sm:py-1.5 rounded-xl transition-all shadow-md flex items-center gap-1">
           <span>🔒 Coach Login</span>
         </button>
 
-        <div id="auth-user-menu" class="hidden flex items-center gap-2">
+        <div id="auth-user-menu" class="hidden flex items-center gap-1.5 sm:gap-2">
           <span id="auth-user-name" class="text-xs font-bold text-brand-200 hidden sm:inline-block">Coach</span>
-          <button onclick="logoutCoach()" class="text-xs bg-rose-600/90 hover:bg-rose-600 text-white px-3 py-1.5 rounded-xl transition-colors font-bold shadow-sm">
+          <button onclick="logoutCoach()" class="text-xs bg-rose-600/90 hover:bg-rose-600 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl transition-colors font-bold shadow-sm">
             Sign Out
           </button>
         </div>
@@ -129,17 +187,17 @@
   </header>
 
   <!-- JBQ DIVISION SUB-BAR (Visible whenever JBQ is active) -->
-  <div id="jbq-division-bar" class="hidden bg-slate-900 border-b border-slate-800 text-white py-2 px-4 sm:px-6 no-print sticky top-[57px] z-30 shadow-md">
+  <div id="jbq-division-bar" class="hidden bg-slate-900 border-b border-slate-800 text-white py-1.5 sm:py-2 px-3 sm:px-6 no-print sticky top-[52px] md:top-[60px] z-30 shadow-md">
     <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
       <div class="flex items-center gap-2">
-        <span class="text-[11px] font-black text-slate-400 uppercase tracking-wider">JBQ Division:</span>
-        <button id="btn-div-b" onclick="handleDivisionSwitch('b_level')" class="px-3.5 py-1 rounded-lg text-xs font-black transition-all bg-purple-600 text-white shadow-xs flex items-center gap-1.5">
+        <span class="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider">JBQ Division:</span>
+        <button id="btn-div-b" onclick="handleDivisionSwitch('b_level')" class="px-2.5 sm:px-3.5 py-1 rounded-lg text-xs font-black transition-all bg-purple-600 text-white shadow-xs flex items-center gap-1">
           <span>⚡ B-Level</span>
-          <span class="text-[10px] bg-purple-800/90 px-1.5 py-0.2 rounded-full font-bold">1 CIC Team</span>
+          <span class="text-[9px] sm:text-[10px] bg-purple-800/90 px-1.5 py-0.2 rounded-full font-bold">1 Team</span>
         </button>
-        <button id="btn-div-c" onclick="handleDivisionSwitch('c_level')" class="px-3.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5">
+        <button id="btn-div-c" onclick="handleDivisionSwitch('c_level')" class="px-2.5 sm:px-3.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1">
           <span>🌟 C-Level</span>
-          <span class="text-[10px] bg-slate-800 px-1.5 py-0.2 rounded-full font-bold">2 CIC Teams</span>
+          <span class="text-[9px] sm:text-[10px] bg-slate-800 px-1.5 py-0.2 rounded-full font-bold">2 Teams</span>
         </button>
       </div>
       <div class="text-[11px] text-purple-300 font-medium hidden md:flex items-center gap-2">
@@ -214,6 +272,12 @@
         <p class="text-slate-400 text-xs sm:text-sm mt-1">
           Sign in to access the <strong>Official 20-Question Scoresheet</strong>, configure teams, and record buzzer answers.
         </p>
+        <div class="mt-4 pt-3 border-t border-slate-800">
+          <button type="button" onclick="autoLoginSuperCoach()" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-brand-950 font-black py-3 px-4 rounded-xl text-sm shadow-lg shadow-amber-400/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98">
+            <span>⚡ Open Official Scoresheet (One-Click)</span>
+            <span>→</span>
+          </button>
+        </div>
       </div>
 
       <form onsubmit="handleInlineLogin(event)" class="space-y-4">
@@ -246,78 +310,81 @@
   <main id="section-scoresheet" class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full hidden print-container">
 
     <!-- MATCH SELECTOR BAR (SWITCH BETWEEN MATCHES OR ADD NEW) -->
-    <div class="bg-slate-900 text-white rounded-2xl p-4 shadow-sm border border-slate-800 mb-5 no-print flex flex-col md:flex-row md:items-center justify-between gap-3">
-      <div class="flex items-center gap-2 overflow-x-auto" id="match-selector-pills">
+    <div class="bg-slate-900 text-white rounded-2xl p-3 sm:p-4 shadow-sm border border-slate-800 mb-4 sm:mb-5 no-print flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0 touch-scroll" id="match-selector-pills">
         <!-- Rendered via JS -->
       </div>
-      <div class="flex items-center gap-2 self-end md:self-auto">
-        <button onclick="openAddMatchModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-black px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1">
+      <div class="flex items-center gap-2 self-stretch sm:self-auto justify-end flex-shrink-0">
+        <button onclick="openAddMatchModal()" class="w-full sm:w-auto text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-black px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1">
           <span>➕ Add Meet / Match</span>
         </button>
       </div>
     </div>
 
     <!-- OFFICIAL MATCH HEADER CARD -->
-    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 mb-5 no-print">
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+    <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 mb-5 no-print">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-100">
         <!-- MATCH METADATA BAR -->
-        <div class="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm font-bold text-slate-800">
-          <div class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-            <span class="text-slate-500 text-[11px] uppercase tracking-wider font-extrabold">MATCH #:</span>
+        <div class="flex items-center gap-2 sm:gap-4 text-xs font-bold text-slate-800">
+          <div class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200">
+            <span class="text-slate-500 text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold">MATCH #:</span>
             <span id="meta-match-num" class="text-brand-700 font-black font-mono-score">01</span>
-          </div>
-          <div class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-            <span class="text-slate-500 text-[11px] uppercase tracking-wider font-extrabold">ROOM:</span>
-            <span id="meta-room-num" class="text-slate-900 font-black">201</span>
           </div>
         </div>
 
-        <!-- ACTIONS -->
-        <div class="flex items-center gap-2 flex-wrap">
-          <button onclick="openMatchInfoModal()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg border border-slate-300 transition-colors flex items-center gap-1">
-            <span>✏️ Edit Match Info & Seats</span>
+        <!-- ACTIONS & SAVE BUTTONS -->
+        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div id="save-status-indicator" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1.5 shadow-2xs">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Live Auto-Saved</span>
+          </div>
+          <button id="scoresheet-save-btn" onclick="handleManualSaveSheet()" class="flex-1 sm:flex-none text-xs bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black px-3.5 py-1.5 rounded-lg shadow-sm transition-all flex items-center justify-center gap-1 cursor-pointer">
+            <span>💾 Save Sheet</span>
           </button>
-          <button onclick="window.print()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-bold px-3.5 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1.5">
-            <span>🖨️ Print Scoresheet</span>
+          <button onclick="openMatchInfoModal()" class="flex-1 sm:flex-none text-xs bg-brand-50 hover:bg-brand-100 text-brand-900 border border-brand-300 font-black px-3 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer">
+            <span>✏️ Edit Seats & Match</span>
+          </button>
+          <button onclick="window.print()" class="flex-1 sm:flex-none text-xs bg-slate-800 hover:bg-slate-700 text-white font-bold px-3 py-1.5 sm:px-3.5 rounded-lg shadow-sm transition-all flex items-center justify-center gap-1 cursor-pointer">
+            <span>🖨️ Print</span>
           </button>
         </div>
       </div>
 
       <!-- TEAMS LIVE SCORE STRIP -->
-      <div class="grid grid-cols-2 gap-4 pt-4">
+      <div class="grid grid-cols-2 gap-2 sm:gap-4 pt-3 sm:pt-4">
         <!-- FIRST TEAM -->
-        <div class="bg-brand-50 border border-brand-100 rounded-xl p-3 sm:p-4 flex items-center justify-between">
-          <div>
-            <div class="flex items-center gap-1.5">
-              <span id="scoresheet-home-name" class="text-brand-950 text-sm sm:text-base font-black">Chicago Indian Church - Team 1</span>
+        <div class="bg-brand-50 border border-brand-100 rounded-xl p-2.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <div class="min-w-0">
+            <div class="flex items-center gap-1">
+              <span id="scoresheet-home-name" class="text-brand-950 text-xs sm:text-base font-black truncate block">Chicago Indian Church - Team 1</span>
             </div>
-            <div class="text-[11px] text-brand-700 font-medium mt-0.5" id="home-bonus-badge">Regulation: 0 pts</div>
+            <div class="text-[10px] sm:text-[11px] text-brand-700 font-medium truncate" id="home-bonus-badge">Regulation: 0 pts</div>
           </div>
-          <div class="text-right">
-            <div id="scoresheet-home-total" class="text-3xl sm:text-5xl font-black text-brand-900 font-mono-score">0</div>
+          <div class="text-right flex-shrink-0 self-end sm:self-auto">
+            <div id="scoresheet-home-total" class="text-2xl sm:text-4xl md:text-5xl font-black text-brand-900 font-mono-score">0</div>
           </div>
         </div>
 
         <!-- SECOND TEAM -->
-        <div class="bg-rose-50 border border-rose-100 rounded-xl p-3 sm:p-4 flex items-center justify-between">
-          <div>
-            <div class="flex items-center gap-1.5">
-              <span id="scoresheet-opp-name" class="text-rose-950 text-sm sm:text-base font-black">Team 3 (TBD)</span>
+        <div class="bg-rose-50 border border-rose-100 rounded-xl p-2.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <div class="min-w-0">
+            <div class="flex items-center gap-1">
+              <span id="scoresheet-opp-name" class="text-rose-950 text-xs sm:text-base font-black truncate block">Team 3 (TBD)</span>
             </div>
-            <div class="text-[11px] text-rose-700 font-medium mt-0.5" id="opp-bonus-badge">Regulation: 0 pts</div>
+            <div class="text-[10px] sm:text-[11px] text-rose-700 font-medium truncate" id="opp-bonus-badge">Regulation: 0 pts</div>
           </div>
-          <div class="text-right">
-            <div id="scoresheet-opp-total" class="text-3xl sm:text-5xl font-black text-rose-900 font-mono-score">0</div>
+          <div class="text-right flex-shrink-0 self-end sm:self-auto">
+            <div id="scoresheet-opp-total" class="text-2xl sm:text-4xl md:text-5xl font-black text-rose-900 font-mono-score">0</div>
           </div>
         </div>
       </div>
 
       <!-- CONTROLS: UNDO & RESET -->
-      <div class="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-slate-100">
-        <button onclick="undoLastQuestion()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg font-bold border border-slate-700 transition-colors flex items-center gap-1">
-          <span>↩️ Undo Last Question</span>
+      <div class="flex items-center justify-between sm:justify-end gap-2 mt-3 pt-2.5 border-t border-slate-100">
+        <button onclick="undoLastQuestion()" class="flex-1 sm:flex-none text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg font-bold border border-slate-700 transition-colors flex items-center justify-center gap-1">
+          <span>↩️ Undo Last</span>
         </button>
-        <button onclick="coachResetRound()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg font-bold border border-rose-200 transition-colors">
+        <button onclick="coachResetRound()" class="flex-1 sm:flex-none text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg font-bold border border-rose-200 transition-colors flex items-center justify-center gap-1">
           <span>🔄 Reset Match</span>
         </button>
       </div>
@@ -327,263 +394,311 @@
     <div id="match-toast-container" class="space-y-2 mb-4 no-print"></div>
 
     <!-- QUICK BUZZER QUESTION ENTRY BOX -->
-    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 mb-6 no-print">
-      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+    <div class="bg-white rounded-2xl p-3.5 sm:p-5 shadow-sm border border-slate-200 mb-6 no-print">
+      <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
         <div class="flex items-center gap-2">
           <span class="text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-300">
-            ⚡ Live Question Scorer
+            ⚡ Scorer
           </span>
-          <h3 class="text-base font-black text-slate-900" id="active-question-badge">
+          <h3 class="text-sm sm:text-base font-black text-slate-900" id="active-question-badge">
             Question #1
           </h3>
         </div>
-        <div class="text-xs text-slate-500 flex items-center gap-3">
-          <span>5 Correct = <strong class="text-emerald-600 font-bold">Quiz Out (+20)</strong></span>
-          <button type="button" onclick="toggleQuickScorer()" id="quick-scorer-toggle-btn" class="text-brand-600 font-bold hover:underline">
+        <div class="text-xs text-slate-500 flex items-center gap-2 sm:gap-3">
+          <span class="hidden sm:inline">5 Correct = <strong class="text-emerald-600 font-bold">Quiz Out (+20)</strong></span>
+          <button type="button" onclick="toggleQuickScorer()" id="quick-scorer-toggle-btn" class="text-brand-600 font-bold hover:underline text-xs">
             Hide Box ▴
           </button>
         </div>
       </div>
 
       <form id="quick-scorer-form" onsubmit="submitQuestionScore(event)" class="space-y-4">
-        <!-- 1. QUESTION NUMBER & POINT VALUE -->
-        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              Question #:
-            </label>
-            <input type="number" id="score-question-num" min="1" max="30" value="1" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-black text-base font-mono-score text-center bg-slate-50">
-          </div>
-          <div class="sm:col-span-3">
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              Points Value:
-            </label>
-            <div class="grid grid-cols-3 gap-2">
-              <button type="button" onclick="selectPoints(10)" id="btn-pts-10" class="pts-btn py-2 rounded-xl border border-slate-200 font-black text-sm text-slate-700 hover:bg-slate-50">
-                10 Pts
-              </button>
-              <button type="button" onclick="selectPoints(20)" id="btn-pts-20" class="pts-btn py-2 rounded-xl border-2 border-brand-500 bg-brand-50 font-black text-sm text-brand-900">
-                20 Pts
-              </button>
-              <button type="button" onclick="selectPoints(30)" id="btn-pts-30" class="pts-btn py-2 rounded-xl border border-slate-200 font-black text-sm text-slate-700 hover:bg-slate-50">
-                30 Pts
-              </button>
-            </div>
-          </div>
-        </div>
+        <!-- HIDDEN INPUTS TO PRESERVE COMPATIBILITY -->
+        <input type="number" id="score-question-num" min="1" max="30" value="1" class="hidden">
+        <input type="checkbox" id="score-is-interruption" class="hidden">
+        <input type="checkbox" id="score-is-rebound" class="hidden">
 
-        <!-- 2. TOGGLES: INTERRUPTION & REBOUND -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-2.5 flex items-center justify-between">
-            <div>
-              <span class="text-xs font-black text-amber-950 flex items-center gap-1">
-                <span>⚡ Interruption?</span>
-              </span>
-              <span class="text-[10px] text-amber-800 block">Deducts half-points (-5, -10, -15) on error</span>
-            </div>
-            <input type="checkbox" id="score-is-interruption" class="w-5 h-5 text-amber-600 rounded cursor-pointer">
-          </div>
-
-          <div class="bg-indigo-50/80 border border-indigo-200 rounded-xl p-2.5 flex items-center justify-between">
-            <div>
-              <span class="text-xs font-black text-indigo-950 flex items-center gap-1">
-                <span>⭐ Rebound Question?</span>
-              </span>
-              <span class="text-[10px] text-indigo-800 block">Answering after other team missed (marked with *)</span>
-            </div>
-            <input type="checkbox" id="score-is-rebound" class="w-5 h-5 text-indigo-600 rounded cursor-pointer">
-          </div>
-        </div>
-
-        <!-- 3. WHO BUZZED IN? (SEATS 1-5 GRID) -->
+        <!-- 1. CHOOSE STUDENT (INDIVIDUAL TILES FOR BOTH TEAMS) -->
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-            Who Answered? (Select Team & Seat 1–5):
-          </label>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <!-- LEFT TABLE SEATS -->
-            <div class="border border-brand-200 rounded-xl p-3 bg-brand-50/40">
-              <div class="text-xs font-black text-brand-900 uppercase tracking-wider mb-2 flex justify-between items-center">
-                <span id="scorer-home-label" class="truncate font-black">Left Table</span>
-                <span class="text-[10px] text-brand-700 bg-brand-100/80 px-2 py-0.5 rounded font-bold flex-shrink-0">Left Table</span>
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <span class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+              <span>👤</span>
+              <span>1. Choose Student Who Answered:</span>
+            </span>
+            <div id="selected-student-pill" class="text-xs font-black px-3 py-1 rounded-full bg-brand-600 text-white shadow-xs transition-all">
+              Selected: Tap a student below
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="scorer-tables-container">
+            <!-- LEFT TABLE STUDENTS -->
+            <div class="border-2 border-brand-300 rounded-2xl p-3 bg-brand-50/50 shadow-xs" id="scorer-home-box">
+              <div class="text-xs font-black text-brand-950 uppercase tracking-wider mb-2 flex justify-between items-center pb-1.5 border-b border-brand-200">
+                <span id="scorer-home-label" class="truncate font-black text-sm">Left Table</span>
+                <button type="button" onclick="promptAddStudent('teamA')" class="text-[11px] font-bold text-brand-700 hover:text-brand-900 bg-brand-100 hover:bg-brand-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer">
+                  ➕ Add Student
+                </button>
               </div>
-              <div class="grid grid-cols-5 gap-1.5" id="home-seats-btn-grid"></div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2" id="home-seats-btn-grid"></div>
             </div>
 
-            <!-- RIGHT TABLE SEATS -->
-            <div class="border border-rose-200 rounded-xl p-3 bg-rose-50/40">
-              <div class="text-xs font-black text-rose-900 uppercase tracking-wider mb-2 flex justify-between items-center">
-                <span id="scorer-opp-label" class="truncate font-black">Right Table</span>
-                <span class="text-[10px] text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded font-bold flex-shrink-0">Right Table</span>
+            <!-- RIGHT TABLE STUDENTS -->
+            <div class="border-2 border-rose-300 rounded-2xl p-3 bg-rose-50/50 shadow-xs" id="scorer-opp-box">
+              <div class="text-xs font-black text-rose-950 uppercase tracking-wider mb-2 flex justify-between items-center pb-1.5 border-b border-rose-200">
+                <span id="scorer-opp-label" class="truncate font-black text-sm">Right Table</span>
+                <button type="button" onclick="promptAddStudent('teamB')" class="text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-rose-100 hover:bg-rose-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer">
+                  ➕ Add Student
+                </button>
               </div>
-              <div class="grid grid-cols-5 gap-1.5" id="opp-seats-btn-grid"></div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2" id="opp-seats-btn-grid"></div>
             </div>
           </div>
         </div>
 
-        <!-- 4. ANSWER RESULT & SUBMISSION -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-          <button type="button" onclick="selectResult(true)" id="btn-result-correct" class="result-btn py-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-black text-sm flex items-center justify-center gap-1.5 shadow-xs">
-            <span>✅ CORRECT (+Points)</span>
+        <!-- 2. CONTROLS: POINTER VALUE & INTERRUPTION TOGGLE -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 sm:p-3.5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+            <!-- POINTER SELECTOR -->
+            <div>
+              <span class="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1.5">
+                2. Choose Point Value:
+              </span>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" onclick="selectPoints(10)" id="btn-pts-10" class="pts-btn py-2.5 rounded-xl border border-slate-300 bg-white font-black text-xs sm:text-sm text-slate-700 hover:bg-slate-100 cursor-pointer transition-all">
+                  10 Pts
+                </button>
+                <button type="button" onclick="selectPoints(20)" id="btn-pts-20" class="pts-btn py-2.5 rounded-xl border-2 border-brand-500 bg-brand-50 font-black text-xs sm:text-sm text-brand-900 ring-2 ring-brand-300 shadow-xs cursor-pointer transition-all">
+                  20 Pts
+                </button>
+                <button type="button" onclick="selectPoints(30)" id="btn-pts-30" class="pts-btn py-2.5 rounded-xl border border-slate-300 bg-white font-black text-xs sm:text-sm text-slate-700 hover:bg-slate-100 cursor-pointer transition-all">
+                  30 Pts
+                </button>
+              </div>
+            </div>
+
+            <!-- INTERRUPTION TOGGLE -->
+            <div>
+              <span class="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1.5">
+                3. Interruption?
+              </span>
+              <button type="button" id="btn-toggle-interruption" onclick="toggleInterruption()" class="w-full py-2.5 px-4 rounded-xl border-2 border-slate-200 bg-white text-slate-700 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 hover:bg-slate-100 cursor-pointer transition-all active:scale-95 shadow-xs">
+                <span class="text-slate-500">⚡ Interruption: NO</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. ACTION BUTTONS: DIRECT 1-TAP SCORING -->
+        <div class="grid grid-cols-2 gap-2.5 sm:gap-4 pt-1">
+          <button type="button" onclick="recordAnswer(true)" id="btn-direct-correct" class="py-3.5 px-4 rounded-2xl border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-all">
+            <span>✅ Record Correct (+20 pts)</span>
           </button>
-          <button type="button" onclick="selectResult(false)" id="btn-result-incorrect" class="result-btn py-3 rounded-xl border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50">
-            <span>❌ INCORRECT (Error)</span>
+          <button type="button" onclick="recordAnswer(false)" id="btn-direct-incorrect" class="py-3.5 px-4 rounded-2xl border-2 border-rose-500 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-rose-600/20 cursor-pointer transition-all">
+            <span>❌ Record Error</span>
           </button>
-          <button type="submit" id="score-submit-btn" class="bg-brand-600 hover:bg-brand-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-sm shadow-md shadow-brand-600/20 transition-all flex items-center justify-center gap-1.5">
-            <span>Record Correct (+Pts) ⚡</span>
-          </button>
+        </div>
+
+        <!-- HIDDEN BACKWARDS-COMPATIBLE BUTTONS -->
+        <div class="hidden">
+          <button type="button" onclick="selectResult(true)" id="btn-result-correct">Correct</button>
+          <button type="button" onclick="selectResult(false)" id="btn-result-incorrect">Incorrect</button>
+          <button type="submit" id="score-submit-btn">Submit</button>
         </div>
       </form>
     </div>
 
-    <!-- ==================================================== -->
-    <!-- THE OFFICIAL TBQ SCORESHEET TABLE                    -->
-    <!-- ==================================================== -->
-    <div class="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden mb-6 print-shadow-none">
-      
-      <!-- PRINT HEADER ONLY -->
-      <div class="print-only p-4 border-b border-black text-center">
-        <h2 class="text-xl font-black uppercase">Official TBQ Scoresheet</h2>
-        <div class="text-xs font-bold mt-1">
-          MATCH #: <span id="print-match-num">01</span> | ROOM: <span id="print-room-num">201</span>
-        </div>
-      </div>
-
-      <!-- SCORESHEET TABLE WRAPPER -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-xs text-left border-collapse" id="official-scoresheet-table">
-          <thead>
-            <!-- SUPER HEADER: TEAM A vs TEAM B -->
-            <tr class="bg-slate-900 text-white font-black text-center text-xs tracking-wider uppercase border-b border-slate-800">
-              <th colspan="2" class="p-2.5 border-r border-slate-800 bg-slate-950" id="super-header-badge">MEET 1 • M#01</th>
-              <th colspan="6" class="p-2.5 border-r border-slate-800 bg-brand-900/90 text-sm font-black tracking-tight" id="table-head-team-a">
-                Chicago Indian Church - Team 1
-              </th>
-              <th colspan="6" class="p-2.5 bg-rose-950/90 text-sm font-black tracking-tight" id="table-head-team-b">
-                Team 3 (TBD)
-              </th>
-            </tr>
-
-            <!-- SUB HEADER: COLUMNS -->
-            <tr class="bg-slate-100 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider border-b-2 border-slate-300">
-              <th class="p-2 text-center w-12 border-r border-slate-300">Q #</th>
-              <th class="p-2 text-center w-14 border-r-2 border-slate-400">PTS</th>
-
-              <!-- TEAM A: SEATS 1 TO 5 -->
-              <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-1">#1 Sam</th>
-              <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-2">#2 Mia</th>
-              <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-3">#3 Ben</th>
-              <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-4">#4 Jade</th>
-              <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-5">#5 Noah</th>
-              <th class="p-2 text-center bg-brand-100/70 text-brand-900 font-black border-r-2 border-slate-400 w-20">RUNNING<br>TOTAL</th>
-
-              <!-- TEAM B: SEATS 1 TO 5 -->
-              <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-1">#1 Leo</th>
-              <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-2">#2 Ava</th>
-              <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-3">#3 Eli</th>
-              <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-4">#4 Tim</th>
-              <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-5">#5 Han</th>
-              <th class="p-2 text-center bg-rose-100/70 text-rose-900 font-black w-20">RUNNING<br>TOTAL</th>
-            </tr>
-          </thead>
-
-          <tbody id="scoresheet-tbody" class="divide-y divide-slate-200 font-medium">
-            <!-- 20 Question Rows Rendered Dynamically -->
-          </tbody>
-
-          <!-- BOTTOM OFFICIAL SUMMARY ROWS -->
-          <tfoot class="border-t-2 border-slate-400 text-xs font-bold divide-y divide-slate-200">
-            <!-- 1. BONUSES ROW -->
-            <tr class="bg-amber-50/70">
-              <td colspan="2" class="p-2.5 font-black uppercase text-amber-900 border-r-2 border-slate-400">
-                BONUSES
-              </td>
-              <td colspan="5" class="p-2.5 text-slate-700 border-r border-slate-200" id="summary-home-bonuses">
-                Sam: Perfect QO (+20)
-              </td>
-              <td class="p-2.5 text-center font-mono-score font-black text-amber-900 bg-amber-100/60 border-r-2 border-slate-400" id="summary-home-bonus-pts">
-                +20
-              </td>
-              <td colspan="5" class="p-2.5 text-slate-700 border-r border-slate-200" id="summary-opp-bonuses">
-                None
-              </td>
-              <td class="p-2.5 text-center font-mono-score font-black text-amber-900 bg-amber-100/60" id="summary-opp-bonus-pts">
-                0
-              </td>
-            </tr>
-
-            <!-- 2. TEAM FOULS ROW -->
-            <tr class="bg-slate-50">
-              <td colspan="2" class="p-2.5 font-black uppercase text-slate-800 border-r-2 border-slate-400 flex items-center justify-between">
-                <span>TEAM FOULS</span>
-                <button type="button" onclick="openAddFoulModal()" class="no-print text-[10px] text-brand-600 hover:underline">+ Add</button>
-              </td>
-              <td colspan="5" class="p-2.5 text-slate-600 border-r border-slate-200" id="summary-home-fouls">
-                None
-              </td>
-              <td class="p-2.5 text-center font-mono-score font-black text-rose-700 bg-slate-100 border-r-2 border-slate-400" id="summary-home-foul-pts">
-                0
-              </td>
-              <td colspan="5" class="p-2.5 text-slate-600 border-r border-slate-200" id="summary-opp-fouls">
-                Bench talking (-5)
-              </td>
-              <td class="p-2.5 text-center font-mono-score font-black text-rose-700 bg-slate-100" id="summary-opp-foul-pts">
-                -5
-              </td>
-            </tr>
-
-            <!-- 3. FINAL SCORE ROW -->
-            <tr class="bg-slate-900 text-white font-black text-sm">
-              <td colspan="2" class="p-3 uppercase tracking-wider text-amber-400 border-r-2 border-slate-700">
-                FINAL SCORE
-              </td>
-              <td colspan="5" class="p-3 text-slate-300 border-r border-slate-700" id="summary-home-final-label">
-                Official Result
-              </td>
-              <td class="p-3 text-center font-mono-score text-xl font-black text-amber-400 bg-brand-950 border-r-2 border-slate-700" id="summary-home-final-pts">
-                220
-              </td>
-              <td colspan="5" class="p-3 text-slate-300 border-r border-slate-700" id="summary-opp-final-label">
-                Official Result
-              </td>
-              <td class="p-3 text-center font-mono-score text-xl font-black text-rose-300 bg-rose-950" id="summary-opp-final-pts">
-                145
-              </td>
-            </tr>
-
-            <!-- 4. TIMEOUTS ROW -->
-            <tr class="bg-slate-50 text-[11px]">
-              <td colspan="2" class="p-2.5 font-black uppercase text-slate-700 border-r-2 border-slate-400">
-                TIMEOUTS
-              </td>
-              <td colspan="6" class="p-2.5 border-r-2 border-slate-400" id="summary-home-timeouts"></td>
-              <td colspan="6" class="p-2.5" id="summary-opp-timeouts"></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-    </div>
-
-    <!-- INDIVIDUAL QUIZZERS STATS & ERROR TRACKER CARD -->
-    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 mb-6 print-shadow-none" id="individual-quizzers-panel">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-slate-100 gap-2">
+    <!-- 1. MATCH TIMELINE & RECENT QUESTIONS FEED -->
+    <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 mb-6 no-print">
+      <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-black uppercase tracking-wider bg-slate-900 text-amber-400 px-2.5 py-0.5 rounded-md">
-            🎯 Quizzers Live Tracker
+          <span class="text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-800 px-2.5 py-0.5 rounded-md border border-slate-200">
+            📋 Questions
           </span>
-          <h3 class="text-sm font-black text-slate-800">
-            Individual Correct / Incorrect Answers (Errors) & Lockouts
+          <h3 class="text-sm font-black text-slate-900">
+            Match Timeline
           </h3>
         </div>
-        <div class="text-[11px] text-slate-500 font-semibold flex items-center gap-3">
-          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> 5 Correct = Quiz Out</span>
-          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> 3 Errors = Errored Out (Locked)</span>
-        </div>
+        <span class="text-xs text-slate-500 font-semibold">Tap Edit on any question card to revise</span>
       </div>
+      <div id="scoresheet-mobile-feed" class="space-y-2.5">
+        <!-- Rendered dynamically via JS for 20 questions -->
+      </div>
+    </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" id="individual-quizzers-grid">
-        <!-- Rendered dynamically via JS for Team A and Team B -->
+    <!-- 2. COLLAPSIBLE OFFICIAL 14-COL TABLE & AUDITOR SUMMARY (TUCKED AWAY TO KEEP MAIN SCREEN CLEAN) -->
+    <details class="mt-4 border border-slate-200 rounded-2xl bg-white overflow-hidden text-xs shadow-sm no-print mb-6">
+      <summary class="p-3.5 bg-slate-50 hover:bg-slate-100 font-black text-slate-700 cursor-pointer flex items-center justify-between transition-colors select-none">
+        <span class="flex items-center gap-2">
+          <span>📊</span>
+          <span>View Full 14-Column Table & Official Breakdown (Auditor View)</span>
+        </span>
+        <span class="text-slate-400 font-bold">Click to view ▼</span>
+      </summary>
+      <div class="p-3 border-t border-slate-200 space-y-4">
+        
+        <!-- VIEW SWITCHER & TABLE ACTIONS TOOLBAR -->
+        <div class="p-2.5 sm:p-3 bg-slate-100 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-black text-slate-700 uppercase tracking-wider">Scoresheet View:</span>
+            <div class="inline-flex bg-white rounded-lg p-0.5 border border-slate-300 shadow-xs text-xs font-bold">
+              <button type="button" onclick="setScoresheetViewMode('feed')" id="view-mode-btn-feed" class="px-2.5 py-1 rounded-md text-xs font-black transition-all bg-brand-600 text-white shadow-xs flex items-center gap-1">
+                <span>📱 Feed</span>
+              </button>
+              <button type="button" onclick="setScoresheetViewMode('table')" id="view-mode-btn-table" class="px-2.5 py-1 rounded-md text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1">
+                <span>📊 Table</span>
+              </button>
+            </div>
+          </div>
+          <div class="text-[11px] text-slate-500 font-semibold" id="scoresheet-view-hint">
+            <span>💡 Official scoresheet layout</span>
+          </div>
+        </div>
+
+        <!-- 2. SCORESHEET TABLE WRAPPER WITH STICKY COLUMNS -->
+        <div id="scoresheet-table-container" class="overflow-x-auto touch-scroll no-scrollbar">
+          <table class="w-full text-xs text-left border-collapse min-w-[760px]" id="official-scoresheet-table">
+            <thead id="scoresheet-thead">
+              <!-- SUPER HEADER: TEAM A vs TEAM B -->
+              <tr class="bg-slate-900 text-white font-black text-center text-xs tracking-wider uppercase border-b border-slate-800">
+                <th colspan="2" class="p-2.5 border-r border-slate-800 bg-slate-950 sticky-head-q" id="super-header-badge">MEET 1 • M#01</th>
+                <th colspan="6" class="p-2.5 border-r border-slate-800 bg-brand-900/90 text-sm font-black tracking-tight" id="table-head-team-a">
+                  Chicago Indian Church - Team 1
+                </th>
+                <th colspan="6" class="p-2.5 bg-rose-950/90 text-sm font-black tracking-tight" id="table-head-team-b">
+                  Team 3 (TBD)
+                </th>
+              </tr>
+
+              <!-- SUB HEADER: COLUMNS -->
+              <tr class="bg-slate-100 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider border-b-2 border-slate-300">
+                <th class="p-2 text-center w-12 border-r border-slate-300 sticky-head-q bg-slate-100">Q #</th>
+                <th class="p-2 text-center w-14 border-r-2 border-slate-400 sticky-head-pts bg-slate-100">PTS</th>
+
+                <!-- TEAM A: SEATS 1 TO 5 -->
+                <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-1">#1 Sam</th>
+                <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-2">#2 Mia</th>
+                <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-3">#3 Ben</th>
+                <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-4">#4 Jade</th>
+                <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-5">#5 Noah</th>
+                <th class="p-2 text-center bg-brand-100/70 text-brand-900 font-black border-r-2 border-slate-400 w-20">RUNNING<br>TOTAL</th>
+
+                <!-- TEAM B: SEATS 1 TO 5 -->
+                <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-1">#1 Leo</th>
+                <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-2">#2 Ava</th>
+                <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-3">#3 Eli</th>
+                <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-4">#4 Tim</th>
+                <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-5">#5 Han</th>
+                <th class="p-2 text-center bg-rose-100/70 text-rose-900 font-black w-20">RUNNING<br>TOTAL</th>
+              </tr>
+            </thead>
+
+            <tbody id="scoresheet-tbody" class="divide-y divide-slate-200 font-medium">
+              <!-- 20 Question Rows Rendered Dynamically -->
+            </tbody>
+
+            <!-- BOTTOM OFFICIAL SUMMARY ROWS -->
+            <tfoot class="border-t-2 border-slate-400 text-xs font-bold divide-y divide-slate-200">
+              <!-- 1. BONUSES ROW -->
+              <tr class="bg-amber-50/70">
+                <td colspan="2" class="p-2.5 font-black uppercase text-amber-900 border-r-2 border-slate-400 sticky-col-q bg-amber-50 shadow-sm">
+                  BONUSES
+                </td>
+                <td colspan="5" class="p-2.5 text-slate-700 border-r border-slate-200" id="summary-home-bonuses">
+                  Sam: Perfect QO (+20)
+                </td>
+                <td class="p-2.5 text-center font-mono-score font-black text-amber-900 bg-amber-100/60 border-r-2 border-slate-400" id="summary-home-bonus-pts">
+                  +20
+                </td>
+                <td colspan="5" class="p-2.5 text-slate-700 border-r border-slate-200" id="summary-opp-bonuses">
+                  None
+                </td>
+                <td class="p-2.5 text-center font-mono-score font-black text-amber-900 bg-amber-100/60" id="summary-opp-bonus-pts">
+                  0
+                </td>
+              </tr>
+
+              <!-- 2. TEAM FOULS ROW -->
+              <tr class="bg-slate-50">
+                <td colspan="2" class="p-2.5 font-black uppercase text-slate-800 border-r-2 border-slate-400 flex items-center justify-between sticky-col-q bg-slate-50 shadow-sm">
+                  <span>TEAM FOULS</span>
+                  <button type="button" onclick="openAddFoulModal()" class="no-print text-[10px] text-brand-600 hover:underline">+ Add</button>
+                </td>
+                <td colspan="5" class="p-2.5 text-slate-600 border-r border-slate-200" id="summary-home-fouls">
+                  None
+                </td>
+                <td class="p-2.5 text-center font-mono-score font-black text-rose-700 bg-slate-100 border-r-2 border-slate-400" id="summary-home-foul-pts">
+                  0
+                </td>
+                <td colspan="5" class="p-2.5 text-slate-600 border-r border-slate-200" id="summary-opp-fouls">
+                  Bench talking (-5)
+                </td>
+                <td class="p-2.5 text-center font-mono-score font-black text-rose-700 bg-slate-100" id="summary-opp-foul-pts">
+                  -5
+                </td>
+              </tr>
+
+              <!-- 3. FINAL SCORE ROW -->
+              <tr class="bg-slate-900 text-white font-black text-sm">
+                <td colspan="2" class="p-3 uppercase tracking-wider text-amber-400 border-r-2 border-slate-700 sticky-col-q bg-slate-900 shadow-sm">
+                  FINAL SCORE
+                </td>
+                <td colspan="5" class="p-3 text-slate-300 border-r border-slate-700" id="summary-home-final-label">
+                  Official Result
+                </td>
+                <td class="p-3 text-center font-mono-score text-xl font-black text-amber-400 bg-brand-950 border-r-2 border-slate-700" id="summary-home-final-pts">
+                  220
+                </td>
+                <td colspan="5" class="p-3 text-slate-300 border-r border-slate-700" id="summary-opp-final-label">
+                  Official Result
+                </td>
+                <td class="p-3 text-center font-mono-score text-xl font-black text-rose-300 bg-rose-950" id="summary-opp-final-pts">
+                  145
+                </td>
+              </tr>
+
+              <!-- 4. TIMEOUTS ROW -->
+              <tr class="bg-slate-50 text-[11px]">
+                <td colspan="2" class="p-2.5 font-black uppercase text-slate-700 border-r-2 border-slate-400 sticky-col-q bg-slate-50 shadow-sm">
+                  TIMEOUTS
+                </td>
+                <td colspan="6" class="p-2.5 border-r-2 border-slate-400" id="summary-home-timeouts"></td>
+                <td colspan="6" class="p-2.5" id="summary-opp-timeouts"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- INDIVIDUAL QUIZZERS STATS & ERROR TRACKER CARD -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200" id="individual-quizzers-panel">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-slate-100 gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-black uppercase tracking-wider bg-slate-900 text-amber-400 px-2.5 py-0.5 rounded-md">
+                🎯 Quizzers Live Tracker
+              </span>
+              <h3 class="text-sm font-black text-slate-800">
+                Individual Correct / Incorrect Answers & Lockouts
+              </h3>
+            </div>
+            <div class="text-[11px] text-slate-500 font-semibold flex items-center gap-3">
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> 5 Correct = Quiz Out</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> 3 Errors = Errored Out</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" id="individual-quizzers-grid">
+            <!-- Rendered dynamically via JS for Team A and Team B -->
+          </div>
+        </div>
+
+      </div>
+    </details>
+
+    <!-- PRINT ONLY VERSION OF SCORESHEET TABLE -->
+    <div class="print-only">
+      <div class="p-4 border-b border-black text-center">
+        <h2 class="text-xl font-black uppercase">Official TBQ Scoresheet</h2>
+        <div class="text-xs font-bold mt-1">
+          MATCH #: <span id="print-match-num">01</span>
+        </div>
       </div>
     </div>
 
@@ -599,9 +714,12 @@
         <h2 class="text-xl sm:text-2xl font-black text-slate-900">👥 4 Teams & Tournament Meets Schedule</h2>
         <p class="text-slate-500 text-xs sm:text-sm">Configure church teams, enter quizzers' names tomorrow morning, and set up meet pairings.</p>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         <button onclick="openEditTeamModal()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-bold px-3.5 py-2 rounded-xl shadow-sm">
           ➕ Add Team
+        </button>
+        <button onclick="clearAllTeams()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3.5 py-2 rounded-xl shadow-sm transition-colors">
+          🗑️ Clear All Teams
         </button>
         <button onclick="openAddMatchModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-black px-3.5 py-2 rounded-xl shadow-sm">
           ➕ Add Meet / Match
@@ -755,9 +873,12 @@
           <p class="text-[11px] text-slate-400 mt-1">Easily paste or type the names announced tomorrow morning!</p>
         </div>
 
-        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
-          <button type="button" onclick="closeEditTeamModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
-          <button type="submit" class="px-5 py-2 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-sm">Save Team</button>
+        <div class="pt-3 flex justify-between items-center gap-2 border-t border-slate-100">
+          <button type="button" id="modal-delete-team-btn" onclick="handleDeleteTeamFromModal()" class="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl hidden transition-colors">🗑️ Delete Team</button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" onclick="closeEditTeamModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+            <button type="submit" class="px-5 py-2 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-sm">Save Team</button>
+          </div>
         </div>
       </form>
     </div>
@@ -777,7 +898,7 @@
       <form onsubmit="handleSaveMatch(event)" class="space-y-3">
         <input type="hidden" id="match-edit-id" value="">
 
-        <div class="grid grid-cols-3 gap-2">
+        <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Meet #</label>
             <input type="number" id="match-meet-num" min="1" max="20" value="1" required class="w-full px-3 py-2 border rounded-xl text-sm font-bold text-center">
@@ -786,13 +907,9 @@
             <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Match #</label>
             <input type="text" id="match-number-input" placeholder="e.g. 03" required class="w-full px-3 py-2 border rounded-xl text-sm font-bold font-mono-score text-center">
           </div>
-          <div>
-            <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Room #</label>
-            <input type="text" id="match-room-input" placeholder="201" value="201" required class="w-full px-3 py-2 border rounded-xl text-sm font-bold text-center">
-          </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Left Table Team</label>
             <select id="match-team-a-select" class="w-full px-3 py-2 border rounded-xl text-xs font-bold bg-white"></select>
@@ -811,51 +928,51 @@
     </div>
   </div>
 
-  <!-- 3. EDIT MATCH INFO & SEATING MODAL -->
+  <!-- 3. EDIT MATCH INFO & STUDENTS MODAL -->
   <div id="match-info-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
       <div class="flex items-start justify-between pb-3 mb-4 border-b border-slate-100">
         <div>
-          <span class="text-xs font-black text-brand-600 uppercase tracking-wider">Room & Seating</span>
+          <span class="text-xs font-black text-brand-600 uppercase tracking-wider">Match Details & Students</span>
           <h3 class="text-lg font-black text-slate-900 mt-0.5">Edit Match Information</h3>
         </div>
         <button onclick="closeMatchInfoModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
 
       <form onsubmit="handleSaveMatchInfo(event)" class="space-y-4">
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Meet #</label>
-            <input type="number" id="info-meet-num" min="1" max="20" required class="w-full px-3 py-2 border rounded-xl text-sm font-bold text-center">
+            <input type="number" id="info-meet-num" min="1" max="20" required class="w-full px-2 sm:px-3 py-2 border rounded-xl text-sm font-bold text-center">
           </div>
           <div>
             <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Match #</label>
-            <input type="text" id="info-match-num" required class="w-full px-3 py-2 border rounded-xl text-sm font-mono-score font-bold text-center">
-          </div>
-          <div>
-            <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Room #</label>
-            <input type="text" id="info-room-num" required class="w-full px-3 py-2 border rounded-xl text-sm font-bold text-center">
+            <input type="text" id="info-match-num" required class="w-full px-2 sm:px-3 py-2 border rounded-xl text-sm font-mono-score font-bold text-center">
           </div>
         </div>
 
-        <!-- SEAT ASSIGNMENTS -->
+        <!-- STUDENTS LISTS -->
         <div class="pt-2 border-t border-slate-100">
-          <label class="block text-xs font-black uppercase tracking-wider text-brand-900 mb-2" id="modal-seats-home-label">
-            Team A Seats #1 to #5:
+          <label class="block text-xs font-black uppercase tracking-wider text-brand-900 mb-1" id="modal-students-home-label">
+            Team A Students:
           </label>
-          <div class="grid grid-cols-5 gap-1.5" id="modal-seats-home-inputs"></div>
+          <p class="text-[11px] text-slate-500 mb-1.5">Enter student names separated by commas (e.g. Noah, Prakash, Jade):</p>
+          <textarea id="modal-students-home-input" rows="2" placeholder="Noah, Prakash, Jade" class="w-full px-3 py-2 border rounded-xl text-xs font-bold text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500"></textarea>
         </div>
 
         <div class="pt-2 border-t border-slate-100">
-          <label class="block text-xs font-black uppercase tracking-wider text-rose-900 mb-2" id="modal-seats-opp-label">
-            Team B Seats #1 to #5:
+          <label class="block text-xs font-black uppercase tracking-wider text-rose-900 mb-1" id="modal-students-opp-label">
+            Team B Students:
           </label>
-          <div class="grid grid-cols-5 gap-1.5" id="modal-seats-opp-inputs"></div>
+          <p class="text-[11px] text-slate-500 mb-1.5">Enter student names separated by commas (e.g. Leo, Ava, Eli, Timothy, Hannah):</p>
+          <textarea id="modal-students-opp-input" rows="2" placeholder="Leo, Ava, Eli, Timothy, Hannah" class="w-full px-3 py-2 border rounded-xl text-xs font-bold text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rose-500"></textarea>
         </div>
 
         <div class="pt-4 flex justify-end gap-2 border-t border-slate-100">
           <button type="button" onclick="closeMatchInfoModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
-          <button type="submit" class="px-5 py-2 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-sm">Save Match Info</button>
+          <button type="submit" class="px-5 py-2 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-sm flex items-center gap-1 cursor-pointer">
+            <span>💾 Save Match & Students</span>
+          </button>
         </div>
       </form>
     </div>
@@ -1023,6 +1140,30 @@
     </div>
   </div>
 
-  <script src="/app.js"></script>
+  <!-- ========================================== -->
+  <!-- MOBILE BOTTOM NAVIGATION BAR               -->
+  <!-- ========================================== -->
+  <nav id="mobile-bottom-nav" class="hidden md:hidden fixed bottom-0 left-0 right-0 z-40 bg-brand-950/95 backdrop-blur-md border-t border-brand-800 shadow-2xl py-1.5 px-3 safe-bottom no-print">
+    <div class="flex items-center justify-around max-w-md mx-auto">
+      <button onclick="switchTab('scoresheet')" id="mob-tab-btn-scoresheet" class="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all text-amber-400">
+        <span class="text-base leading-none">📋</span>
+        <span class="text-[10px] mt-0.5 font-extrabold">Scoresheet</span>
+      </button>
+      <button onclick="switchTab('teams')" id="mob-tab-btn-teams" class="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all text-brand-300 hover:text-white">
+        <span class="text-base leading-none">👥</span>
+        <span class="text-[10px] mt-0.5 font-extrabold">Teams</span>
+      </button>
+      <button onclick="switchTab('coaches')" id="mob-tab-btn-coaches" class="hidden flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all text-amber-300 hover:text-amber-100">
+        <span class="text-base leading-none">🛡️</span>
+        <span class="text-[10px] mt-0.5 font-extrabold">Coaches</span>
+      </button>
+      <button onclick="logoutCoach()" class="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-xs font-bold transition-all text-rose-300 hover:text-rose-100">
+        <span class="text-base leading-none">🚪</span>
+        <span class="text-[10px] mt-0.5 font-extrabold">Sign Out</span>
+      </button>
+    </div>
+  </nav>
+
+  <script src="/app.js?v=20261003_10"></script>
 </body>
 </html>

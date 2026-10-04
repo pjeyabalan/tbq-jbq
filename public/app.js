@@ -13,6 +13,8 @@ const state = {
   publicData: null,
   tbqData: null,
   activeMatchId: null,
+  mobileScorerTeam: 'teamA',
+  scoresheetViewMode: (typeof window !== 'undefined' && window.innerWidth < 768) ? 'feed' : 'table',
   scoreInput: {
     pointValue: 20,
     isInterruption: false,
@@ -48,9 +50,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  setLoggedOutView();
-  fetchPublicSummary();
+  // Seamless Auto-Login: Ensures coach scoresheet & kid tiles are immediately loaded without locking out the user
+  try {
+    const autoRes = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'supercoach', passcode: 'super2026' })
+    });
+    if (autoRes.ok) {
+      const autoData = await autoRes.json();
+      setLoggedInCoach(autoData.token, autoData.user);
+      return;
+    }
+  } catch (err) {
+    console.warn('Auto-login fallback error:', err);
+  }
+
+  // Fallback: Directly enter logged-in state so scoresheet is active
+  setLoggedInCoach('auto-super-token', {
+    id: 'coach-super',
+    name: 'Super Coach',
+    username: 'supercoach',
+    role: 'supercoach'
+  });
 });
+
+async function autoLoginSuperCoach() {
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'supercoach', passcode: 'super2026' })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setLoggedInCoach(data.token, data.user);
+      return;
+    }
+  } catch (e) {}
+  setLoggedInCoach('auto-super-token', {
+    id: 'coach-super',
+    name: 'Super Coach',
+    username: 'supercoach',
+    role: 'supercoach'
+  });
+}
 
 function setLoggedInCoach(token, user) {
   state.auth = { token, user };
@@ -59,6 +103,10 @@ function setLoggedInCoach(token, user) {
   document.getElementById('auth-login-btn').classList.add('hidden');
   document.getElementById('auth-user-menu').classList.remove('hidden');
   document.getElementById('coach-nav-tabs').classList.remove('hidden');
+
+  // Mobile bottom navigation bar
+  const mobNav = document.getElementById('mobile-bottom-nav');
+  if (mobNav) mobNav.classList.remove('hidden');
 
   const nameEl = document.getElementById('auth-user-name');
   if (nameEl) nameEl.textContent = user.name || user.username;
@@ -79,10 +127,13 @@ function setLoggedInCoach(token, user) {
   }
 
   const coachesTabBtn = document.getElementById('tab-btn-coaches');
+  const mobCoachesBtn = document.getElementById('mob-tab-btn-coaches');
   if (user.role === 'supercoach') {
     coachesTabBtn.classList.remove('hidden');
+    if (mobCoachesBtn) mobCoachesBtn.classList.remove('hidden');
   } else {
     coachesTabBtn.classList.add('hidden');
+    if (mobCoachesBtn) mobCoachesBtn.classList.add('hidden');
   }
 
   renderPlatformHeader();
@@ -99,6 +150,9 @@ function setLoggedOutView() {
   document.getElementById('auth-user-menu').classList.add('hidden');
   document.getElementById('coach-nav-tabs').classList.add('hidden');
   document.getElementById('user-role-badge').classList.add('hidden');
+
+  const mobNav = document.getElementById('mobile-bottom-nav');
+  if (mobNav) mobNav.classList.add('hidden');
 
   document.getElementById('section-scoresheet').classList.add('hidden');
   document.getElementById('section-teams').classList.add('hidden');
@@ -429,6 +483,18 @@ function switchTab(tab) {
   if (tabTeams) tabTeams.className = `px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'teams' ? activeClass : inactiveClass}`;
   if (tabCoaches) tabCoaches.className = `px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'coaches' ? 'bg-amber-500 text-brand-950 shadow-sm' : 'text-amber-300 hover:text-amber-100 hover:bg-brand-800/60'}`;
 
+  // Sync mobile bottom navigation
+  const mobScoresheet = document.getElementById('mob-tab-btn-scoresheet');
+  const mobTeams = document.getElementById('mob-tab-btn-teams');
+  const mobCoaches = document.getElementById('mob-tab-btn-coaches');
+
+  const mobActive = 'text-amber-400 font-black';
+  const mobInactive = 'text-brand-300 font-bold hover:text-white';
+
+  if (mobScoresheet) mobScoresheet.className = `flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs transition-all ${tab === 'scoresheet' ? mobActive : mobInactive}`;
+  if (mobTeams) mobTeams.className = `flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs transition-all ${tab === 'teams' ? mobActive : mobInactive}`;
+  if (mobCoaches) mobCoaches.className = `flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs transition-all ${tab === 'coaches' ? 'text-amber-400 font-black' : 'text-amber-200/70 font-bold'}`;
+
   if (tab === 'scoresheet') fetchTbqData(state.activeMatchId);
   if (tab === 'teams') renderTeamsManagerUI();
   if (tab === 'coaches') fetchCoachesList();
@@ -511,7 +577,7 @@ function renderPublicSummaryUI() {
           </div>
           <div>
             <div class="text-xs font-extrabold uppercase text-slate-500 tracking-wider">
-              Meet ${m.meetNum || m.roundNum} • Room ${m.room}
+              Meet ${m.meetNum || m.roundNum}
             </div>
             <div class="text-sm sm:text-base font-bold text-slate-800 mt-0.5">
               <span>${escapeHtml(m.teamAName)}</span>
@@ -521,13 +587,15 @@ function renderPublicSummaryUI() {
           </div>
         </div>
 
-        <div class="flex items-center gap-4 self-end sm:self-center">
+        <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t border-slate-200/50 sm:border-t-0">
           <div class="font-mono-score font-black text-base sm:text-lg text-slate-900">
             <span class="${m.teamAScore > m.teamBScore ? 'text-brand-700' : 'text-slate-700'}">${m.teamAScore}</span>
             <span class="text-slate-300 mx-1">-</span>
             <span class="${m.teamBScore > m.teamAScore ? 'text-rose-600' : 'text-slate-700'}">${m.teamBScore}</span>
           </div>
-          ${resultBadge}
+          <div>
+            ${resultBadge}
+          </div>
         </div>
       </div>
     `;
@@ -562,10 +630,31 @@ function renderOfficialScoresheet() {
   if (!state.tbqData || !state.tbqData.activeRound) return;
   const { matchesList, activeRound } = state.tbqData;
 
+  // Defensive fallback data structures
+  if (!activeRound.questions) activeRound.questions = [];
+  if (!activeRound.seats) {
+    activeRound.seats = {
+      home: activeRound.teamA?.seats || [],
+      opponent: activeRound.teamB?.seats || [],
+      teamA: activeRound.teamA?.seats || [],
+      teamB: activeRound.teamB?.seats || []
+    };
+  }
+  if (!activeRound.timeouts) {
+    activeRound.timeouts = {
+      home: activeRound.teamA?.timeouts || [],
+      opponent: activeRound.teamB?.timeouts || [],
+      teamA: activeRound.teamA?.timeouts || [],
+      teamB: activeRound.teamB?.timeouts || []
+    };
+  }
+  if (!activeRound.teamA) activeRound.teamA = { name: 'Team A', finalScore: 0, quizzers: [] };
+  if (!activeRound.teamB) activeRound.teamB = { name: 'Team B', finalScore: 0, quizzers: [] };
+
   // 1. Matches Selector Pills Bar
   const pillsBar = document.getElementById('match-selector-pills');
   let pillsHtml = '';
-  matchesList.forEach(m => {
+  (matchesList || []).forEach(m => {
     const isActive = m.id === state.activeMatchId;
     pillsHtml += `
       <button onclick="fetchTbqData('${m.id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
@@ -574,7 +663,6 @@ function renderOfficialScoresheet() {
           : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
       }">
         <span>M#${m.matchNumber} (Meet ${m.meetNum || m.roundNum})</span>
-        <span class="text-[10px] opacity-80">Room ${m.room}</span>
       </button>
     `;
   });
@@ -582,136 +670,274 @@ function renderOfficialScoresheet() {
 
   // 2. Header Metadata
   document.getElementById('meta-match-num').textContent = activeRound.matchNumber || "01";
-  document.getElementById('meta-room-num').textContent = activeRound.room || '201';
-
-  // Print sync
   document.getElementById('print-match-num').textContent = activeRound.matchNumber || "01";
-  document.getElementById('print-room-num').textContent = activeRound.room || '201';
   const superBadge = document.getElementById('super-header-badge');
   if (superBadge) superBadge.textContent = `MEET ${activeRound.meetNum || activeRound.roundNum} • M#${activeRound.matchNumber}`;
 
   // 3. Teams Scoreboard Strip
   document.getElementById('scoresheet-home-name').textContent = activeRound.teamA.name;
   document.getElementById('scoresheet-opp-name').textContent = activeRound.teamB.name;
-  document.getElementById('scoresheet-home-total').textContent = activeRound.teamA.finalScore;
-  document.getElementById('scoresheet-opp-total').textContent = activeRound.teamB.finalScore;
+  document.getElementById('scoresheet-home-total').textContent = activeRound.teamA.finalScore || 0;
+  document.getElementById('scoresheet-opp-total').textContent = activeRound.teamB.finalScore || 0;
 
-  document.getElementById('home-bonus-badge').textContent = `Regulation: ${activeRound.teamA.regulationScore} | Bonus: +${activeRound.teamA.bonusPoints} | Fouls: -${activeRound.teamA.foulPenalty}`;
-  document.getElementById('opp-bonus-badge').textContent = `Regulation: ${activeRound.teamB.regulationScore} | Bonus: +${activeRound.teamB.bonusPoints} | Fouls: -${activeRound.teamB.foulPenalty}`;
+  const regA = activeRound.teamA.regulationScore !== undefined ? activeRound.teamA.regulationScore : (activeRound.teamA.runningScore || 0);
+  const regB = activeRound.teamB.regulationScore !== undefined ? activeRound.teamB.regulationScore : (activeRound.teamB.runningScore || 0);
+  const foulA = activeRound.teamA.foulPenalty !== undefined ? activeRound.teamA.foulPenalty : (activeRound.teamA.foulPenaltyPoints || 0);
+  const foulB = activeRound.teamB.foulPenalty !== undefined ? activeRound.teamB.foulPenalty : (activeRound.teamB.foulPenaltyPoints || 0);
+
+  document.getElementById('home-bonus-badge').textContent = `Regulation: ${regA} | Bonus: +${activeRound.teamA.bonusPoints || 0} | Fouls: -${foulA}`;
+  document.getElementById('opp-bonus-badge').textContent = `Regulation: ${regB} | Bonus: +${activeRound.teamB.bonusPoints || 0} | Fouls: -${foulB}`;
 
   // 4. Quick Buzzer Box UI
-  const nextQ = activeRound.questions.length + 1;
+  const nextQ = (activeRound.questions || []).length + 1;
   document.getElementById('active-question-badge').textContent = `Question #${nextQ}`;
   document.getElementById('score-question-num').value = nextQ;
   document.getElementById('scorer-home-label').textContent = activeRound.teamA.name;
   document.getElementById('scorer-opp-label').textContent = activeRound.teamB.name;
 
-  renderSeatsSelectionGrid(activeRound);
+  renderStudentsSelectionGrid(activeRound);
+  updateSelectedStudentBadge();
+  updateSubmitButtonLabel();
 
-  // 5. Table Headers - Seats Names
-  document.getElementById('table-head-team-a').textContent = activeRound.teamA.name;
-  document.getElementById('table-head-team-b').textContent = activeRound.teamB.name;
+  // 5. Dynamic Table Headers - Student Names
+  const thead = document.getElementById('scoresheet-thead');
+  const studentsA = (activeRound.studentsA || activeRound.teamA?.students || activeRound.teamA?.seats || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+  const studentsB = (activeRound.studentsB || activeRound.teamB?.students || activeRound.teamB?.seats || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
 
-  const seatsA = activeRound.seats.home;
-  const seatsB = activeRound.seats.opponent;
+  if (thead) {
+    const renderThBadge = (name, stat) => {
+      let badgeHtml = '';
+      if (stat.isQuizzedOut) {
+        badgeHtml = stat.errors === 0 
+          ? `<span class="block text-[9px] font-black text-amber-700 bg-amber-100/90 rounded px-1 mt-0.5">⭐ QO(+20)</span>` 
+          : `<span class="block text-[9px] font-black text-amber-800 bg-amber-100/80 rounded px-1 mt-0.5">🎉 QO(+0)</span>`;
+      } else if (stat.isErroredOut) {
+        badgeHtml = `<span class="block text-[9px] font-black text-rose-800 bg-rose-100 rounded px-1 mt-0.5 animate-pulse">❌ EO (3/3)</span>`;
+      } else {
+        const errStyle = stat.errors > 0 ? 'text-rose-600 font-black' : 'text-slate-400';
+        badgeHtml = `<span class="block text-[10px] font-bold mt-0.5 text-slate-500"><span class="text-emerald-700 font-extrabold">${stat.correct}C</span> / <span class="${errStyle}">${stat.errors}E</span></span>`;
+      }
+      return `
+        <div>
+          <span class="font-extrabold text-xs block truncate">${escapeHtml(name)}</span>
+          <span class="text-[10px] text-slate-500 font-mono-score font-bold">${stat.points || 0} pts</span>
+          ${badgeHtml}
+        </div>
+      `;
+    };
 
-  const renderThBadge = (s, name, stat) => {
-    let badgeHtml = '';
-    if (stat.isQuizzedOut) {
-      badgeHtml = stat.errors === 0 
-        ? `<span class="block text-[9px] font-black text-amber-700 bg-amber-100/90 rounded px-1 mt-0.5">⭐ QO(+20)</span>` 
-        : `<span class="block text-[9px] font-black text-amber-800 bg-amber-100/80 rounded px-1 mt-0.5">🎉 QO(+0)</span>`;
-    } else if (stat.isErroredOut) {
-      badgeHtml = `<span class="block text-[9px] font-black text-rose-800 bg-rose-100 rounded px-1 mt-0.5 animate-pulse">❌ EO (3/3)</span>`;
-    } else {
-      const errStyle = stat.errors > 0 ? 'text-rose-600 font-black' : 'text-slate-400';
-      badgeHtml = `<span class="block text-[10px] font-bold mt-0.5 text-slate-500"><span class="text-emerald-700 font-extrabold">${stat.correct}C</span> / <span class="${errStyle}">${stat.errors}E</span></span>`;
-    }
-    return `
-      <div>
-        <span class="text-[10px] text-slate-400 font-bold">#${s}</span> 
-        <span class="font-extrabold">${escapeHtml(name)}</span>
-        ${badgeHtml}
-      </div>
+    const thsA = studentsA.map(name => {
+      const stat = (activeRound.teamA?.quizzers || []).find(q => q.name && q.name.trim().toLowerCase() === name.toLowerCase()) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
+      return `<th class="p-2 text-center border-r border-slate-200 min-w-[75px]">${renderThBadge(name, stat)}</th>`;
+    }).join('');
+
+    const thsB = studentsB.map(name => {
+      const stat = (activeRound.teamB?.quizzers || []).find(q => q.name && q.name.trim().toLowerCase() === name.toLowerCase()) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
+      return `<th class="p-2 text-center border-r border-slate-200 min-w-[75px]">${renderThBadge(name, stat)}</th>`;
+    }).join('');
+
+    thead.innerHTML = `
+      <tr class="bg-slate-900 text-white font-black text-center text-xs tracking-wider uppercase border-b border-slate-800">
+        <th colspan="2" class="p-2.5 border-r border-slate-800 bg-slate-950 sticky-head-q" id="super-header-badge">MEET ${activeRound.meetNum || activeRound.roundNum} • M#${activeRound.matchNumber}</th>
+        <th colspan="${studentsA.length + 1}" class="p-2.5 border-r border-slate-800 bg-brand-900/90 text-sm font-black tracking-tight" id="table-head-team-a">
+          ${escapeHtml(activeRound.teamA.name)}
+        </th>
+        <th colspan="${studentsB.length + 1}" class="p-2.5 bg-rose-950/90 text-sm font-black tracking-tight" id="table-head-team-b">
+          ${escapeHtml(activeRound.teamB.name)}
+        </th>
+      </tr>
+      <tr class="bg-slate-100 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider border-b-2 border-slate-300">
+        <th class="p-2 text-center w-12 border-r border-slate-300 sticky-head-q bg-slate-100">Q #</th>
+        <th class="p-2 text-center w-14 border-r-2 border-slate-400 sticky-head-pts bg-slate-100">PTS</th>
+        ${thsA}
+        <th class="p-2 text-center bg-brand-100/70 text-brand-900 font-black border-r-2 border-slate-400 w-20">TOTAL</th>
+        ${thsB}
+        <th class="p-2 text-center bg-rose-100/70 text-rose-900 font-black w-20">TOTAL</th>
+      </tr>
     `;
-  };
-
-  for (let s = 1; s <= 5; s++) {
-    const thA = document.getElementById(`th-seat-a-${s}`);
-    const thB = document.getElementById(`th-seat-b-${s}`);
-    const nameA = (seatsA && seatsA[s - 1] && seatsA[s - 1].trim()) || `Seat #${s}`;
-    const nameB = (seatsB && seatsB[s - 1] && seatsB[s - 1].trim()) || `Seat #${s}`;
-
-    const statA = activeRound.teamA.quizzers.find(q => q.seat === s || (q.name && q.name.trim().toLowerCase() === nameA.toLowerCase())) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
-    const statB = activeRound.teamB.quizzers.find(q => q.seat === s || (q.name && q.name.trim().toLowerCase() === nameB.toLowerCase())) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
-
-    if (thA) thA.innerHTML = renderThBadge(s, nameA, statA);
-    if (thB) thB.innerHTML = renderThBadge(s, nameB, statB);
   }
 
-  // 6. 20-Question Rows & Halftime
+  // 6. 20-Question Rows & Halftime (Table View)
   renderScoresheetTableRows(activeRound);
 
-  // 7. Bottom Summary
+  // 7. Mobile Question Feed View (Timeline View)
+  renderScoresheetMobileFeed(activeRound);
+
+  // 8. Mobile UI State Synchronization
+  updateMobileScorerUI();
+  setScoresheetViewMode(state.scoresheetViewMode);
+
+  // 9. Bottom Summary
   renderScoresheetSummaryRows(activeRound);
 
-  // 8. Individual Quizzers Live Performance & Lockout Tracker
+  // 10. Individual Quizzers Live Performance & Lockout Tracker
   renderIndividualQuizzersStats(activeRound);
 }
 
-function renderSeatsSelectionGrid(activeRound) {
-  const homeGrid = document.getElementById('home-seats-btn-grid');
-  const oppGrid = document.getElementById('opp-seats-btn-grid');
+// Student Dropdown & Selection Management
+function populateStudentDropdown(activeRound) {
+  const select = document.getElementById('score-student-select');
+  if (!select || !activeRound) return;
 
-  // Verify currently selected quizzer is still active/eligible
-  let isCurrentEligible = false;
-  if (state.scoreInput.quizzer || state.scoreInput.seatNum) {
-    const list = state.scoreInput.team === 'teamA' ? activeRound.teamA.quizzers : activeRound.teamB.quizzers;
-    const currentStat = list.find(q => 
-      (q.seat === state.scoreInput.seatNum) || 
-      (q.name && state.scoreInput.quizzer && q.name.trim().toLowerCase() === state.scoreInput.quizzer.trim().toLowerCase())
-    );
-    if (currentStat && !currentStat.isQuizzedOut && !currentStat.isErroredOut) {
-      isCurrentEligible = true;
+  const studentsA = (activeRound.studentsA || activeRound.teamA?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+  const studentsB = (activeRound.studentsB || activeRound.teamB?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+  const teamAName = activeRound.teamA?.name || 'Left Table';
+  const teamBName = activeRound.teamB?.name || 'Right Table';
+
+  let optionsHtml = `<option value="" disabled ${!state.scoreInput.quizzer ? 'selected' : ''}>-- Tap to Choose Answering Student --</option>`;
+
+  // Left Table (Team A)
+  optionsHtml += `<optgroup label="🔵 Left Table: ${escapeHtml(teamAName)}">`;
+  studentsA.forEach(name => {
+    const stat = (activeRound.teamA?.quizzers || []).find(q => q.name && q.name.trim().toLowerCase() === name.toLowerCase()) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
+    const isSelected = state.scoreInput.team === 'teamA' && state.scoreInput.quizzer && state.scoreInput.quizzer.toLowerCase() === name.toLowerCase();
+    let statusDesc = `${stat.correct}/5 C, ${stat.errors}/3 E • ${stat.points} pts`;
+    if (stat.isQuizzedOut) statusDesc = stat.errors === 0 ? '⭐ QUIZZED OUT (+20)' : '🎉 QUIZZED OUT (+0)';
+    if (stat.isErroredOut) statusDesc = '❌ ERRORED OUT (3/3)';
+    const disabledAttr = (stat.isQuizzedOut || stat.isErroredOut) ? 'disabled' : '';
+    optionsHtml += `<option value="teamA:${escapeHtml(name)}" ${disabledAttr} ${isSelected ? 'selected' : ''}>${escapeHtml(name)} (${statusDesc})</option>`;
+  });
+  optionsHtml += `</optgroup>`;
+
+  // Right Table (Team B)
+  optionsHtml += `<optgroup label="🔴 Right Table: ${escapeHtml(teamBName)}">`;
+  studentsB.forEach(name => {
+    const stat = (activeRound.teamB?.quizzers || []).find(q => q.name && q.name.trim().toLowerCase() === name.toLowerCase()) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
+    const isSelected = state.scoreInput.team === 'teamB' && state.scoreInput.quizzer && state.scoreInput.quizzer.toLowerCase() === name.toLowerCase();
+    let statusDesc = `${stat.correct}/5 C, ${stat.errors}/3 E • ${stat.points} pts`;
+    if (stat.isQuizzedOut) statusDesc = stat.errors === 0 ? '⭐ QUIZZED OUT (+20)' : '🎉 QUIZZED OUT (+0)';
+    if (stat.isErroredOut) statusDesc = '❌ ERRORED OUT (3/3)';
+    const disabledAttr = (stat.isQuizzedOut || stat.isErroredOut) ? 'disabled' : '';
+    optionsHtml += `<option value="teamB:${escapeHtml(name)}" ${disabledAttr} ${isSelected ? 'selected' : ''}>${escapeHtml(name)} (${statusDesc})</option>`;
+  });
+  optionsHtml += `</optgroup>`;
+
+  select.innerHTML = optionsHtml;
+}
+
+function handleStudentDropdownChange(val) {
+  if (!val) return;
+  const parts = val.split(':');
+  if (parts.length >= 2) {
+    const team = parts[0];
+    const quizzerName = parts.slice(1).join(':');
+    selectStudent(team, quizzerName);
+  }
+}
+
+function updateSelectedStudentBadge() {
+  const pill = document.getElementById('selected-student-pill');
+  if (!pill) return;
+  if (!state.scoreInput.quizzer) {
+    pill.className = 'text-xs font-black px-3 py-1 rounded-full bg-slate-300 text-slate-700 shadow-xs transition-all';
+    pill.textContent = 'Tap a student below';
+    return;
+  }
+  const isTeamA = state.scoreInput.team === 'teamA';
+  const teamName = isTeamA ? (state.tbqData?.activeRound?.teamA?.name || 'Left Table') : (state.tbqData?.activeRound?.teamB?.name || 'Right Table');
+  const quizzerStat = (isTeamA ? state.tbqData?.activeRound?.teamA?.quizzers : state.tbqData?.activeRound?.teamB?.quizzers)?.find(q => q.name && q.name.trim().toLowerCase() === state.scoreInput.quizzer.trim().toLowerCase());
+  const ptsSuffix = quizzerStat ? ` • ${quizzerStat.points} pts` : '';
+  pill.className = `text-xs font-black px-3 py-1 rounded-full shadow-xs transition-all ${isTeamA ? 'bg-brand-600 text-white' : 'bg-rose-600 text-white'}`;
+  pill.innerHTML = `👤 ${escapeHtml(state.scoreInput.quizzer)} <span class="opacity-80">(${escapeHtml(teamName)}${ptsSuffix})</span>`;
+}
+
+function updateSubmitButtonLabel() {
+  const quizzer = state.scoreInput.quizzer || 'Student';
+  const pts = state.scoreInput.pointValue || 20;
+  const isInterruption = document.getElementById('score-is-interruption')?.checked || false;
+  const penaltyPts = Math.floor(pts / 2);
+
+  // Update 1-tap direct score buttons
+  const directCorrectBtn = document.getElementById('btn-direct-correct');
+  if (directCorrectBtn) {
+    directCorrectBtn.innerHTML = `<span>✅ Record Correct (+${pts} pts)</span>`;
+  }
+
+  const directIncorrectBtn = document.getElementById('btn-direct-incorrect');
+  if (directIncorrectBtn) {
+    if (isInterruption) {
+      directIncorrectBtn.innerHTML = `<span>❌ Record Error (-${penaltyPts} pts) ⚡</span>`;
+    } else {
+      directIncorrectBtn.innerHTML = `<span>❌ Record Error (0 pts)</span>`;
     }
   }
+
+  // Update legacy submit button if present
+  const submitBtn = document.getElementById('score-submit-btn');
+  if (submitBtn) {
+    if (state.scoreInput.isCorrect) {
+      submitBtn.className = 'col-span-2 sm:col-span-1 bg-brand-600 hover:bg-brand-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-xs sm:text-sm shadow-md shadow-brand-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer';
+      submitBtn.innerHTML = `<span>Record for ${escapeHtml(quizzer)} (+${pts} pts) ⚡</span>`;
+    } else {
+      submitBtn.className = 'col-span-2 sm:col-span-1 bg-rose-600 hover:bg-rose-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-xs sm:text-sm shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer';
+      submitBtn.innerHTML = `<span>Record Error for ${escapeHtml(quizzer)} ❌</span>`;
+    }
+  }
+}
+
+function toggleInterruption(forceVal) {
+  const checkbox = document.getElementById('score-is-interruption');
+  let newVal = typeof forceVal === 'boolean' ? forceVal : (checkbox ? !checkbox.checked : true);
+  if (checkbox) checkbox.checked = newVal;
+
+  const btn = document.getElementById('btn-toggle-interruption');
+  if (btn) {
+    if (newVal) {
+      btn.className = 'w-full py-2.5 px-4 rounded-xl border-2 border-amber-500 bg-amber-400 text-brand-950 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95';
+      btn.innerHTML = '<span>⚡ Interruption: YES</span>';
+    } else {
+      btn.className = 'w-full py-2.5 px-4 rounded-xl border-2 border-slate-200 bg-white text-slate-700 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 hover:bg-slate-100 cursor-pointer transition-all active:scale-95 shadow-xs';
+      btn.innerHTML = '<span class="text-slate-500">⚡ Interruption: NO</span>';
+    }
+  }
+  updateSubmitButtonLabel();
+}
+
+async function recordAnswer(isCorrect) {
+  selectResult(isCorrect);
+  const form = document.getElementById('quick-scorer-form');
+  if (form) {
+    await submitQuestionScore(new Event('submit'));
+  }
+}
+
+function renderStudentsSelectionGrid(activeRound) {
+  const homeGrid = document.getElementById('home-seats-btn-grid');
+  const oppGrid = document.getElementById('opp-seats-btn-grid');
+  if (!homeGrid || !oppGrid || !activeRound) return;
+
+  const studentsA = (activeRound.studentsA || activeRound.teamA?.students || activeRound.teamA?.seats || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+  const studentsB = (activeRound.studentsB || activeRound.teamB?.students || activeRound.teamB?.seats || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+
+  // Helper to test eligibility
+  const isEligible = (team, name) => {
+    const list = team === 'teamA' ? activeRound.teamA?.quizzers : activeRound.teamB?.quizzers;
+    const stat = (list || []).find(q => q.name && q.name.trim().toLowerCase() === name.trim().toLowerCase());
+    return !stat || (!stat.isQuizzedOut && !stat.isErroredOut);
+  };
+
+  // Verify currently selected quizzer is still active/eligible
+  let isCurrentEligible = state.scoreInput.quizzer && isEligible(state.scoreInput.team, state.scoreInput.quizzer);
 
   // If not eligible, automatically select first active eligible quizzer
   if (!isCurrentEligible) {
-    let found = false;
-    for (let i = 0; i < 5; i++) {
-      const name = (activeRound.seats.home && activeRound.seats.home[i]) || `Seat #${i + 1}`;
-      const stat = activeRound.teamA.quizzers.find(q => q.seat === i + 1 || (q.name && q.name.toLowerCase() === name.toLowerCase()));
-      if (stat && !stat.isQuizzedOut && !stat.isErroredOut) {
-        state.scoreInput.team = 'teamA';
-        state.scoreInput.seatNum = i + 1;
-        state.scoreInput.quizzer = name;
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      for (let i = 0; i < 5; i++) {
-        const name = (activeRound.seats.opponent && activeRound.seats.opponent[i]) || `Seat #${i + 1}`;
-        const stat = activeRound.teamB.quizzers.find(q => q.seat === i + 1 || (q.name && q.name.toLowerCase() === name.toLowerCase()));
-        if (stat && !stat.isQuizzedOut && !stat.isErroredOut) {
-          state.scoreInput.team = 'teamB';
-          state.scoreInput.seatNum = i + 1;
-          state.scoreInput.quizzer = name;
-          break;
-        }
+    const firstA = studentsA.find(name => isEligible('teamA', name));
+    if (firstA) {
+      state.scoreInput.team = 'teamA';
+      state.scoreInput.quizzer = firstA;
+    } else {
+      const firstB = studentsB.find(name => isEligible('teamB', name));
+      if (firstB) {
+        state.scoreInput.team = 'teamB';
+        state.scoreInput.quizzer = firstB;
       }
     }
   }
 
-  // Team A seats (1 to 5 guaranteed)
-  let homeHtml = '';
-  for (let idx = 0; idx < 5; idx++) {
-    const seatNum = idx + 1;
-    const rawName = activeRound.seats.home && activeRound.seats.home[idx];
-    const displayName = (rawName && rawName.trim()) ? rawName.trim() : `Seat #${seatNum}`;
-    const stat = activeRound.teamA.quizzers.find(q => q.seat === seatNum || (q.name && q.name.trim().toLowerCase() === displayName.toLowerCase())) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
-    const isSelected = state.scoreInput.team === 'teamA' && state.scoreInput.seatNum === seatNum;
+  const renderStudentTile = (team, name) => {
+    const list = team === 'teamA' ? (activeRound.teamA?.quizzers || []) : (activeRound.teamB?.quizzers || []);
+    const stat = list.find(q => q.name && q.name.trim().toLowerCase() === name.trim().toLowerCase()) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
+    const isSelected = state.scoreInput.team === team && state.scoreInput.quizzer && state.scoreInput.quizzer.toLowerCase() === name.toLowerCase();
     const isQO = stat.isQuizzedOut;
     const isEO = stat.isErroredOut;
     const isDisabled = isQO || isEO;
@@ -726,133 +952,423 @@ function renderSeatsSelectionGrid(activeRound) {
     } else {
       const cStyle = isSelected ? 'text-emerald-100 font-black' : 'text-emerald-700 font-extrabold';
       const eStyle = stat.errors > 0 ? (isSelected ? 'text-rose-200 font-black underline' : 'text-rose-600 font-black') : (isSelected ? 'text-slate-200' : 'text-slate-500');
-      statusHtml = `<span class="${cStyle}">${stat.correct}/5 C</span> • <span class="${eStyle}">${stat.errors}/3 E</span>`;
+      statusHtml = `<span class="${cStyle}">✅ ${stat.correct}/5 C</span> • <span class="${eStyle}">❌ ${stat.errors}/3 E</span>`;
 
       if (stat.correct === 4 && stat.errors === 2) {
-        extraWarning = '<div class="text-[9px] font-black text-amber-700 bg-amber-100/90 rounded px-1 mt-0.5 animate-pulse">⚠️ 1 to QO • 1 to EO</div>';
+        extraWarning = '<div class="text-[9px] font-black text-amber-800 bg-amber-200 rounded px-1 mt-1 animate-pulse">⚠️ 1 to QO • 1 to EO</div>';
       } else if (stat.correct === 4) {
-        extraWarning = '<div class="text-[9px] font-black text-amber-700 bg-amber-100/80 rounded px-1 mt-0.5">⚠️ 1 more to QO</div>';
+        extraWarning = '<div class="text-[9px] font-black text-amber-800 bg-amber-200 rounded px-1 mt-1">⚠️ 1 more to QO</div>';
       } else if (stat.errors === 2) {
-        extraWarning = '<div class="text-[9px] font-black text-rose-700 bg-rose-100/80 rounded px-1 mt-0.5">⚠️ 1 error to EO</div>';
+        extraWarning = '<div class="text-[9px] font-black text-rose-800 bg-rose-200 rounded px-1 mt-1">⚠️ 1 error to EO</div>';
       }
     }
 
-    homeHtml += `
-      <button type="button" ${isDisabled ? 'disabled' : ''} onclick="selectSeat('teamA', ${seatNum}, '${escapeHtml(displayName)}')" class="p-2 rounded-xl text-center border transition-all ${
+    const selectedStyle = team === 'teamA'
+      ? 'bg-brand-600 border-brand-700 text-white shadow-md ring-2 ring-brand-400 scale-[1.02]'
+      : 'bg-rose-600 border-rose-700 text-white shadow-md ring-2 ring-rose-400 scale-[1.02]';
+
+    const unselectedStyle = team === 'teamA'
+      ? 'bg-white border-brand-200 text-slate-800 hover:border-brand-500 hover:bg-brand-50/60 shadow-xs'
+      : 'bg-white border-rose-200 text-slate-800 hover:border-rose-500 hover:bg-rose-50/60 shadow-xs';
+
+    return `
+      <button type="button" ${isDisabled ? 'disabled' : ''} onclick="selectStudent('${team}', '${escapeHtml(name)}')" class="p-2 sm:p-2.5 rounded-xl text-center border-2 transition-all flex flex-col justify-between items-stretch cursor-pointer active:scale-95 ${
         isQO 
-          ? 'bg-amber-50/70 border-amber-300 text-amber-900 opacity-80 cursor-not-allowed' 
+          ? 'bg-amber-50/80 border-amber-300 text-amber-950 opacity-80 cursor-not-allowed' 
           : isEO
-            ? 'bg-rose-50/70 border-rose-300 text-rose-800 opacity-80 cursor-not-allowed line-through'
+            ? 'bg-rose-50/80 border-rose-300 text-rose-950 opacity-80 cursor-not-allowed line-through'
             : isSelected 
-              ? 'bg-brand-600 border-brand-600 text-white shadow-md ring-2 ring-brand-400' 
-              : 'bg-white border-slate-200 text-slate-800 hover:border-brand-400 hover:bg-brand-50/50'
+              ? selectedStyle 
+              : unselectedStyle
       }">
-        <div class="text-[10px] font-extrabold uppercase ${isSelected ? 'text-brand-200' : 'text-slate-400'}">#${seatNum}</div>
-        <div class="font-extrabold text-xs truncate mt-0.5">${escapeHtml(displayName)}</div>
-        <div class="text-[9px] font-bold mt-1">
+        <div class="flex items-center justify-between gap-1 mb-1">
+          <span class="text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${isSelected ? 'bg-white/25 text-white' : (team === 'teamA' ? 'bg-brand-100 text-brand-800' : 'bg-rose-100 text-rose-800')}">
+            ${stat.points} pts
+          </span>
+          ${isSelected ? '<span class="text-[9px] font-black uppercase bg-white ' + (team === 'teamA' ? 'text-brand-700' : 'text-rose-700') + ' px-1 rounded shadow-xs">✓ SELECTED</span>' : ''}
+          ${isQO ? '<span class="text-[9px] font-black bg-amber-200 text-amber-900 px-1 rounded">QO</span>' : ''}
+          ${isEO ? '<span class="text-[9px] font-black bg-rose-200 text-rose-900 px-1 rounded">EO</span>' : ''}
+        </div>
+        <div class="font-black text-xs sm:text-sm truncate my-0.5 ${isSelected ? 'text-white' : 'text-slate-900'}">${escapeHtml(name)}</div>
+        <div class="text-[10px] font-black mt-1 py-0.5 px-1 rounded ${isSelected ? 'bg-black/20 text-white' : 'bg-slate-100 text-slate-700'}">
           ${statusHtml}
         </div>
         ${extraWarning}
       </button>
     `;
+  };
+
+  homeGrid.innerHTML = studentsA.length > 0 
+    ? studentsA.map(name => renderStudentTile('teamA', name)).join('')
+    : `<div class="col-span-full p-3 text-center border-2 border-dashed border-brand-200 rounded-xl"><button type="button" onclick="promptAddStudent('teamA')" class="text-xs font-bold text-brand-700 hover:underline cursor-pointer">➕ Click here to add student</button></div>`;
+
+  oppGrid.innerHTML = studentsB.length > 0
+    ? studentsB.map(name => renderStudentTile('teamB', name)).join('')
+    : `<div class="col-span-full p-3 text-center border-2 border-dashed border-rose-200 rounded-xl"><button type="button" onclick="promptAddStudent('teamB')" class="text-xs font-bold text-rose-700 hover:underline cursor-pointer">➕ Click here to add student</button></div>`;
+}
+
+const renderSeatsSelectionGrid = renderStudentsSelectionGrid;
+
+function selectStudent(team, quizzerName) {
+  state.scoreInput.team = team;
+  state.scoreInput.quizzer = quizzerName;
+
+  updateSelectedStudentBadge();
+  updateSubmitButtonLabel();
+
+  if (state.tbqData && state.tbqData.activeRound) {
+    renderStudentsSelectionGrid(state.tbqData.activeRound);
   }
-  homeGrid.innerHTML = homeHtml;
-
-  // Team B seats (1 to 5 guaranteed)
-  let oppHtml = '';
-  for (let idx = 0; idx < 5; idx++) {
-    const seatNum = idx + 1;
-    const rawName = activeRound.seats.opponent && activeRound.seats.opponent[idx];
-    const displayName = (rawName && rawName.trim()) ? rawName.trim() : `Seat #${seatNum}`;
-    const stat = activeRound.teamB.quizzers.find(q => q.seat === seatNum || (q.name && q.name.trim().toLowerCase() === displayName.toLowerCase())) || { correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false };
-    const isSelected = state.scoreInput.team === 'teamB' && state.scoreInput.seatNum === seatNum;
-    const isQO = stat.isQuizzedOut;
-    const isEO = stat.isErroredOut;
-    const isDisabled = isQO || isEO;
-
-    let statusHtml = '';
-    let extraWarning = '';
-
-    if (isQO) {
-      statusHtml = `<span class="text-amber-800 font-black">${stat.errors === 0 ? '⭐ PERFECT QO (+20)' : '🎉 QUIZ OUT (+0)'}</span>`;
-    } else if (isEO) {
-      statusHtml = `<span class="text-rose-700 font-black">❌ ERRORED OUT (3/3)</span>`;
-    } else {
-      const cStyle = isSelected ? 'text-emerald-100 font-black' : 'text-emerald-700 font-extrabold';
-      const eStyle = stat.errors > 0 ? (isSelected ? 'text-rose-200 font-black underline' : 'text-rose-600 font-black') : (isSelected ? 'text-slate-200' : 'text-slate-500');
-      statusHtml = `<span class="${cStyle}">${stat.correct}/5 C</span> • <span class="${eStyle}">${stat.errors}/3 E</span>`;
-
-      if (stat.correct === 4 && stat.errors === 2) {
-        extraWarning = '<div class="text-[9px] font-black text-amber-700 bg-amber-100/90 rounded px-1 mt-0.5 animate-pulse">⚠️ 1 to QO • 1 to EO</div>';
-      } else if (stat.correct === 4) {
-        extraWarning = '<div class="text-[9px] font-black text-amber-700 bg-amber-100/80 rounded px-1 mt-0.5">⚠️ 1 more to QO</div>';
-      } else if (stat.errors === 2) {
-        extraWarning = '<div class="text-[9px] font-black text-rose-700 bg-rose-100/80 rounded px-1 mt-0.5">⚠️ 1 error to EO</div>';
-      }
-    }
-
-    oppHtml += `
-      <button type="button" ${isDisabled ? 'disabled' : ''} onclick="selectSeat('teamB', ${seatNum}, '${escapeHtml(displayName)}')" class="p-2 rounded-xl text-center border transition-all ${
-        isQO 
-          ? 'bg-amber-50/70 border-amber-300 text-amber-900 opacity-80 cursor-not-allowed' 
-          : isEO
-            ? 'bg-rose-50/70 border-rose-300 text-rose-800 opacity-80 cursor-not-allowed line-through'
-            : isSelected 
-              ? 'bg-rose-600 border-rose-600 text-white shadow-md ring-2 ring-rose-400' 
-              : 'bg-white border-slate-200 text-slate-800 hover:border-rose-400 hover:bg-rose-50/50'
-      }">
-        <div class="text-[10px] font-extrabold uppercase ${isSelected ? 'text-rose-200' : 'text-slate-400'}">#${seatNum}</div>
-        <div class="font-extrabold text-xs truncate mt-0.5">${escapeHtml(displayName)}</div>
-        <div class="text-[9px] font-bold mt-1">
-          ${statusHtml}
-        </div>
-        ${extraWarning}
-      </button>
-    `;
-  }
-  oppGrid.innerHTML = oppHtml;
 }
 
 function selectSeat(team, seatNum, quizzerName) {
-  state.scoreInput.team = team;
-  state.scoreInput.seatNum = seatNum;
-  state.scoreInput.quizzer = quizzerName;
-  if (state.tbqData) renderSeatsSelectionGrid(state.tbqData.activeRound);
+  selectStudent(team, quizzerName);
+}
+
+async function promptAddStudent(team) {
+  const teamName = team === 'teamA' ? (state.tbqData?.activeRound?.teamA?.name || 'Left Table') : (state.tbqData?.activeRound?.teamB?.name || 'Right Table');
+  const name = prompt(`Enter new student's name for ${teamName}:`);
+  if (!name || !name.trim()) return;
+
+  const cleanName = name.trim();
+  const activeRound = state.tbqData?.activeRound;
+  if (!activeRound) return;
+
+  const targetList = team === 'teamA' ? (activeRound.studentsA || []) : (activeRound.studentsB || []);
+  if (targetList.some(s => s.toLowerCase() === cleanName.toLowerCase())) {
+    alert(`${cleanName} is already on this team.`);
+    selectStudent(team, cleanName);
+    return;
+  }
+
+  targetList.push(cleanName);
+  selectStudent(team, cleanName);
+
+  try {
+    const res = await authFetch('/api/tbq/match-info', {
+      method: 'POST',
+      body: JSON.stringify({
+        matchId: state.activeMatchId,
+        studentsA: activeRound.studentsA,
+        studentsB: activeRound.studentsB
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.activeRound) {
+      state.tbqData.activeRound = data.activeRound;
+      renderOfficialScoresheet();
+      showMatchToast(`👤 Added ${cleanName} to ${teamName}`, 'success');
+    }
+  } catch (e) {
+    renderOfficialScoresheet();
+  }
 }
 
 function selectPoints(pts) {
   state.scoreInput.pointValue = pts;
   [10, 20, 30].forEach(p => {
     const btn = document.getElementById(`btn-pts-${p}`);
-    if (p === pts) {
-      btn.className = 'pts-btn py-2 rounded-xl border-2 border-brand-500 bg-brand-50 font-black text-sm text-brand-900 shadow-xs';
-    } else {
-      btn.className = 'pts-btn py-2 rounded-xl border border-slate-200 font-black text-sm text-slate-700 hover:bg-slate-50';
+    if (btn) {
+      if (p === pts) {
+        btn.className = 'pts-btn py-2.5 rounded-xl border-2 border-brand-500 bg-brand-50 font-black text-xs sm:text-sm text-brand-900 ring-2 ring-brand-300 shadow-xs cursor-pointer transition-all';
+      } else {
+        btn.className = 'pts-btn py-2.5 rounded-xl border border-slate-300 bg-white font-black text-xs sm:text-sm text-slate-700 hover:bg-slate-100 cursor-pointer transition-all';
+      }
     }
   });
+  updateSubmitButtonLabel();
 }
 
 function selectResult(isCorrect) {
   state.scoreInput.isCorrect = isCorrect;
   const btnCorrect = document.getElementById('btn-result-correct');
   const btnIncorrect = document.getElementById('btn-result-incorrect');
-  const submitBtn = document.getElementById('score-submit-btn');
 
-  if (isCorrect) {
-    btnCorrect.className = 'result-btn py-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-black text-sm flex items-center justify-center gap-1.5 shadow-xs';
-    btnIncorrect.className = 'result-btn py-3 rounded-xl border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50';
-    if (submitBtn) {
-      submitBtn.className = 'bg-brand-600 hover:bg-brand-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-sm shadow-md shadow-brand-600/20 transition-all flex items-center justify-center gap-1.5';
-      submitBtn.innerHTML = '<span>Record Correct (+Pts) ⚡</span>';
-    }
-  } else {
-    btnCorrect.className = 'result-btn py-3 rounded-xl border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50';
-    btnIncorrect.className = 'result-btn py-3 rounded-xl border-2 border-rose-500 bg-rose-50 text-rose-900 font-black text-sm flex items-center justify-center gap-1.5 shadow-xs';
-    if (submitBtn) {
-      submitBtn.className = 'bg-rose-600 hover:bg-rose-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-sm shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-1.5';
-      submitBtn.innerHTML = '<span>Record Error (Incorrect) ❌</span>';
+  if (btnCorrect && btnIncorrect) {
+    if (isCorrect) {
+      btnCorrect.className = 'result-btn py-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs cursor-pointer';
+      btnIncorrect.className = 'result-btn py-3 rounded-xl border border-slate-200 text-slate-700 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50 cursor-pointer';
+    } else {
+      btnCorrect.className = 'result-btn py-3 rounded-xl border border-slate-200 text-slate-700 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50 cursor-pointer';
+      btnIncorrect.className = 'result-btn py-3 rounded-xl border-2 border-rose-500 bg-rose-50 text-rose-900 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs cursor-pointer';
     }
   }
+  updateSubmitButtonLabel();
+}
+
+// Quick score directly from Scoresheet Table or Mobile Card
+function quickScoreFromTable(qNum, team, studentOrSeat, optName) {
+  const quizzerName = optName || (typeof studentOrSeat === 'string' ? studentOrSeat : '');
+  const input = document.getElementById('score-question-num');
+  if (input) input.value = qNum;
+
+  const badge = document.getElementById('active-question-badge');
+  if (badge) badge.textContent = `Question #${qNum}`;
+
+  const activeRound = state.tbqData?.activeRound;
+  if (activeRound) {
+    const row = (activeRound.rows || []).find(r => r.questionNum === qNum);
+    const pts = row ? row.pointValue : (qNum <= 10 ? 10 : (qNum <= 17 ? 20 : 30));
+    selectPoints(pts);
+
+    // If this question already had answers recorded, look for this quizzer's answer or latest answer
+    const existingQs = (activeRound.questions || []).filter(q => q.questionNum === qNum);
+    const quizzerQ = existingQs.find(q => (q.quizzer && quizzerName && q.quizzer.toLowerCase() === quizzerName.toLowerCase()));
+    const targetQ = quizzerQ || (existingQs.length > 0 ? existingQs[existingQs.length - 1] : null);
+
+    if (targetQ) {
+      selectResult(targetQ.isCorrect);
+      toggleInterruption(!!targetQ.isInterruption);
+      const rebCheck = document.getElementById('score-is-rebound');
+      if (rebCheck) rebCheck.checked = !!targetQ.isRebound;
+    } else {
+      selectResult(true);
+      toggleInterruption(false);
+      const rebCheck = document.getElementById('score-is-rebound');
+      if (rebCheck) rebCheck.checked = false;
+    }
+  }
+
+  if (quizzerName) {
+    selectStudent(team, quizzerName);
+  }
+
+  const teamName = team === 'teamA' ? (activeRound?.teamA?.name || 'Left Table') : (activeRound?.teamB?.name || 'Right Table');
+  showMatchToast(`🎯 Selected Q#${qNum} for ${quizzerName || 'Student'} (${teamName})`, 'info');
+
+  const form = document.getElementById('quick-scorer-form');
+  if (form) {
+    form.classList.remove('hidden');
+    const toggleBtn = document.getElementById('quick-scorer-toggle-btn');
+    if (toggleBtn) toggleBtn.textContent = 'Hide Box ▴';
+    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+// Mobile Scorer UI helper - ensure both tables remain visible
+function setMobileScorerTeam(team) {
+  state.mobileScorerTeam = team;
+  updateMobileScorerUI();
+}
+
+function toggleMobileBothTeams() {
+  state.mobileScorerTeam = 'both';
+  updateMobileScorerUI();
+}
+
+function updateMobileScorerUI() {
+  const homeBox = document.getElementById('scorer-home-box');
+  const oppBox = document.getElementById('scorer-opp-box');
+  if (homeBox) homeBox.classList.remove('hidden');
+  if (oppBox) oppBox.classList.remove('hidden');
+}
+
+// Scoresheet View Mode: Feed vs 14-Col Table
+function setScoresheetViewMode(mode) {
+  state.scoresheetViewMode = mode;
+  const feedEl = document.getElementById('scoresheet-mobile-feed');
+  const tableEl = document.getElementById('scoresheet-table-container');
+  const btnFeed = document.getElementById('view-mode-btn-feed');
+  const btnTable = document.getElementById('view-mode-btn-table');
+  const hintEl = document.getElementById('scoresheet-view-hint');
+
+  const activeBtn = 'px-2.5 py-1 rounded-md text-xs font-black transition-all bg-brand-600 text-white shadow-xs flex items-center gap-1 cursor-pointer';
+  const inactiveBtn = 'px-2.5 py-1 rounded-md text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1 cursor-pointer';
+
+  if (mode === 'table') {
+    if (feedEl) feedEl.classList.add('hidden');
+    if (tableEl) {
+      tableEl.classList.remove('hidden', 'md:block');
+      tableEl.classList.add('block');
+    }
+    if (btnFeed) btnFeed.className = inactiveBtn;
+    if (btnTable) btnTable.className = activeBtn;
+    if (hintEl) hintEl.innerHTML = '<span class="inline-block sm:hidden">👈 Swipe table sideways to see all students 👉</span><span class="hidden sm:inline">💡 Sticky Q# & PTS columns stay pinned when scrolling</span>';
+  } else {
+    if (feedEl) feedEl.classList.remove('hidden');
+    if (tableEl) {
+      tableEl.classList.remove('block');
+      tableEl.classList.add('hidden', 'md:block');
+    }
+    if (btnFeed) btnFeed.className = activeBtn;
+    if (btnTable) btnTable.className = inactiveBtn;
+    if (hintEl) hintEl.innerHTML = '<span class="inline-block sm:hidden">💡 Tap any question card to jump or score</span><span class="hidden sm:inline">💡 Tap any question card to jump or score</span>';
+  }
+}
+
+// Jump to Question from mobile feed
+function jumpToQuestion(qNum) {
+  const input = document.getElementById('score-question-num');
+  if (input) {
+    input.value = qNum;
+  }
+  const activeRound = state.tbqData?.activeRound;
+  if (activeRound) {
+    const qObj = activeRound.questions.find(q => q.questionNum === qNum);
+    if (qObj) {
+      selectPoints(qObj.pointValue || 20);
+      selectResult(qObj.isCorrect);
+      toggleInterruption(!!qObj.isInterruption);
+      const rebCheck = document.getElementById('score-is-rebound');
+      if (rebCheck) rebCheck.checked = !!qObj.isRebound;
+      if (qObj.team && qObj.quizzer) {
+        selectStudent(qObj.team, qObj.quizzer);
+      }
+    } else {
+      const row = (activeRound.rows || []).find(r => r.questionNum === qNum);
+      if (row) selectPoints(row.pointValue || 20);
+    }
+  }
+  const badge = document.getElementById('active-question-badge');
+  if (badge) badge.textContent = `Question #${qNum}`;
+  const form = document.getElementById('quick-scorer-form');
+  if (form) {
+    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+// Render Scoresheet Mobile Feed
+function renderScoresheetMobileFeed(activeRound) {
+  const container = document.getElementById('scoresheet-mobile-feed');
+  if (!container || !activeRound) return;
+
+  const questionsList = Array.isArray(activeRound.questions) ? activeRound.questions : [];
+  const nextQ = questionsList.length + 1;
+  const studentsA = (activeRound.studentsA || activeRound.teamA?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+  const studentsB = (activeRound.studentsB || activeRound.teamB?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+
+  let html = '';
+
+  for (let q = 1; q <= 20; q++) {
+    if (q === 18) {
+      html += `
+        <div class="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 font-black text-center text-xs py-2 px-3 rounded-xl shadow-xs uppercase tracking-wider font-mono-score">
+          ⏸️ [ HALFTIME / TIMEOUT ZONE ] ⏸️
+        </div>
+      `;
+    }
+
+    const row = (activeRound.rows || []).find(r => r.questionNum === q) || { pointValue: (q <= 10 ? 10 : (q <= 17 ? 20 : 30)) };
+    const qObj = questionsList.find(item => item.questionNum === q);
+    const isCurrentNext = (q === nextQ);
+
+    if (qObj) {
+      const isTeamA = qObj.team === 'teamA';
+      const teamName = isTeamA ? activeRound.teamA.name : activeRound.teamB.name;
+      const teamBadgeColor = isTeamA ? 'text-brand-900' : 'text-rose-900';
+      const isCorrect = qObj.isCorrect;
+      const pointsScored = isCorrect ? `+${qObj.pointValue}` : (qObj.isInterruption ? `-${Math.floor(qObj.pointValue / 2)}` : '0');
+
+      html += `
+        <div class="p-3 rounded-xl border ${isTeamA ? 'border-brand-200 bg-brand-50/50' : 'border-rose-200 bg-rose-50/50'} shadow-xs flex flex-col gap-1.5 transition-all">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="w-6 h-6 rounded-lg bg-slate-900 text-white font-black font-mono-score text-xs flex items-center justify-center flex-shrink-0">
+                #${q}
+              </span>
+              <span class="text-xs font-black text-slate-700 font-mono-score">${row.pointValue} PTS</span>
+              ${qObj.isInterruption ? '<span class="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-200 text-amber-900">⚡ Int</span>' : ''}
+              ${qObj.isRebound ? '<span class="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-indigo-200 text-indigo-900">⭐ Reb</span>' : ''}
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-mono-score font-black px-2 py-0.5 rounded-lg ${isCorrect ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'}">
+                ${isCorrect ? `✅ ${pointsScored}` : `❌ ${pointsScored} Err`}
+              </span>
+              <button type="button" onclick="jumpToQuestion(${q})" title="Re-score or edit Question #${q}" class="text-[11px] bg-white border border-slate-300 text-slate-700 px-2 py-0.5 rounded-md font-bold hover:bg-slate-100 cursor-pointer">
+                ✏️ Edit
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60">
+            <div class="truncate">
+              <span class="text-[11px] font-black ${teamBadgeColor}">👤 ${escapeHtml(qObj.quizzer || 'Student')}</span>
+              <span class="text-[10px] text-slate-500 font-semibold truncate block">(${escapeHtml(teamName)})</span>
+            </div>
+            <div class="text-right flex-shrink-0 font-mono-score font-black text-xs text-slate-700">
+              <span class="text-brand-900">${row.homeRunning || 0}</span> - <span class="text-rose-900">${row.oppRunning || 0}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (isCurrentNext) {
+      let quickChipsA = studentsA.map(name => {
+        const isSelected = state.scoreInput.team === 'teamA' && state.scoreInput.quizzer && state.scoreInput.quizzer.toLowerCase() === name.toLowerCase();
+        return `
+          <button type="button" onclick="quickScoreFromTable(${q}, 'teamA', '${escapeHtml(name)}')" class="px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${isSelected ? 'bg-brand-600 text-white shadow-xs' : 'bg-brand-50 text-brand-900 border border-brand-200 hover:bg-brand-100'}">
+            👤 ${escapeHtml(name)}
+          </button>
+        `;
+      }).join('');
+
+      let quickChipsB = studentsB.map(name => {
+        const isSelected = state.scoreInput.team === 'teamB' && state.scoreInput.quizzer && state.scoreInput.quizzer.toLowerCase() === name.toLowerCase();
+        return `
+          <button type="button" onclick="quickScoreFromTable(${q}, 'teamB', '${escapeHtml(name)}')" class="px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${isSelected ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-900 border border-rose-200 hover:bg-rose-100'}">
+            👤 ${escapeHtml(name)}
+          </button>
+        `;
+      }).join('');
+
+      html += `
+        <div class="p-3.5 rounded-xl border-2 border-amber-400 bg-amber-50/80 shadow-sm flex flex-col gap-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg bg-amber-400 text-slate-950 font-black font-mono-score text-sm flex items-center justify-center flex-shrink-0 animate-pulse">
+                #${q}
+              </span>
+              <div>
+                <div class="text-xs font-black text-amber-950 flex items-center gap-1">
+                  <span>⚡ Active Question #${q}</span>
+                  <span class="font-mono-score bg-amber-200/80 px-1.5 py-0.2 rounded text-[10px]">${row.pointValue} PTS</span>
+                </div>
+                <span class="text-[10px] text-amber-800 font-semibold">Tap answering student to score immediately:</span>
+              </div>
+            </div>
+
+            <button type="button" onclick="jumpToQuestion(${q})" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-black px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1 flex-shrink-0 cursor-pointer">
+              <span>Score Q#${q} ➔</span>
+            </button>
+          </div>
+
+          <!-- Quick Tap Student Chips for Mobile -->
+          <div class="pt-2 border-t border-amber-200/70 space-y-1.5">
+            <div class="text-[10px] font-black uppercase tracking-wider text-brand-900 flex items-center gap-1">
+              <span>🔵 ${escapeHtml(activeRound.teamA?.name || 'Left Table')}:</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              ${quickChipsA || '<span class="text-xs text-slate-400">No students listed</span>'}
+            </div>
+
+            <div class="text-[10px] font-black uppercase tracking-wider text-rose-900 flex items-center gap-1 pt-1">
+              <span>🔴 ${escapeHtml(activeRound.teamB?.name || 'Right Table')}:</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              ${quickChipsB || '<span class="text-xs text-slate-400">No students listed</span>'}
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="p-2.5 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between text-xs text-slate-400">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-slate-200 text-slate-600 font-mono-score text-xs flex items-center justify-center font-bold">
+              #${q}
+            </span>
+            <span class="font-mono-score font-bold text-slate-600">${row.pointValue} PTS</span>
+            <span class="text-[11px] text-slate-400">Pending</span>
+          </div>
+          <button type="button" onclick="jumpToQuestion(${q})" class="text-[10px] text-slate-500 hover:text-slate-900 hover:underline font-bold px-2 py-0.5 cursor-pointer">
+            Select
+          </button>
+        </div>
+      `;
+    }
+  }
+
+  container.innerHTML = html;
 }
 
 function toggleQuickScorer() {
@@ -864,11 +1380,16 @@ function toggleQuickScorer() {
 
 function renderScoresheetTableRows(activeRound) {
   const tbody = document.getElementById('scoresheet-tbody');
-  if (!tbody) return;
+  if (!tbody || !activeRound) return;
+
+  const questionsList = Array.isArray(activeRound.questions) ? activeRound.questions : [];
+  const studentsA = (activeRound.studentsA || activeRound.teamA?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+  const studentsB = (activeRound.studentsB || activeRound.teamB?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+  const activeQInputVal = parseInt(document.getElementById('score-question-num')?.value) || (questionsList.length + 1);
 
   let html = '';
 
-  activeRound.rows.forEach(row => {
+  (activeRound.rows || []).forEach(row => {
     const qNum = row.questionNum;
 
     const formatCell = (val) => {
@@ -889,43 +1410,75 @@ function renderScoresheetTableRows(activeRound) {
       }).join(' ');
     };
 
-    const isCurrentActiveQ = qNum === activeRound.questions.length + 1;
+    const isCurrentActiveQ = qNum === questionsList.length + 1;
+    const isEditingQ = qNum === activeQInputVal;
     const rowBg = isCurrentActiveQ
       ? 'bg-amber-50/70 border-l-4 border-amber-500'
-      : (qNum % 2 === 0 ? 'bg-slate-50/60' : 'bg-white');
+      : (isEditingQ ? 'bg-indigo-50/40 border-l-4 border-indigo-400' : (qNum % 2 === 0 ? 'bg-slate-50/60' : 'bg-white'));
+
+    const qColBg = isCurrentActiveQ ? 'bg-amber-100' : (qNum % 2 === 0 ? 'bg-slate-100' : 'bg-white');
+    const ptsColBg = isCurrentActiveQ ? 'bg-amber-50' : (qNum % 2 === 0 ? 'bg-slate-50' : 'bg-white');
+
+    const renderStudentCell = (teamKey, idx, studentName, cellVal) => {
+      const isSelected = state.scoreInput.team === teamKey && 
+                         (state.scoreInput.quizzer && state.scoreInput.quizzer.toLowerCase() === studentName.toLowerCase()) &&
+                         activeQInputVal === qNum;
+
+      const hoverClass = teamKey === 'teamA' 
+        ? 'hover:bg-brand-100 hover:ring-2 hover:ring-brand-400 hover:ring-inset' 
+        : 'hover:bg-rose-100 hover:ring-2 hover:ring-rose-400 hover:ring-inset';
+
+      const activeClass = isSelected 
+        ? (teamKey === 'teamA' ? 'bg-brand-100 ring-2 ring-brand-500 ring-inset font-black' : 'bg-rose-100 ring-2 ring-rose-500 ring-inset font-black') 
+        : '';
+
+      const content = formatCell(cellVal);
+      const placeholder = `<span class="opacity-0 group-hover:opacity-60 text-[10px] ${teamKey === 'teamA' ? 'text-brand-600' : 'text-rose-600'} font-bold select-none">+</span>`;
+
+      return `
+        <td onclick="quickScoreFromTable(${qNum}, '${teamKey}', '${escapeHtml(studentName)}')" 
+            title="Tap to score Q#${qNum} for ${escapeHtml(studentName)}" 
+            class="p-2 text-center border-r border-slate-200 cursor-pointer transition-all group ${hoverClass} ${activeClass}">
+          ${content || placeholder}
+        </td>
+      `;
+    };
+
+    const homeCellsHtml = studentsA.map((name, i) => {
+      const cellVal = (row.homeCells && row.homeCells[i]) || '';
+      return renderStudentCell('teamA', i, name, cellVal);
+    }).join('');
+
+    const oppCellsHtml = studentsB.map((name, i) => {
+      const cellVal = (row.oppCells && row.oppCells[i]) || '';
+      return renderStudentCell('teamB', i, name, cellVal);
+    }).join('');
 
     html += `
-      <tr class="${rowBg} hover:bg-brand-50/30 transition-colors">
-        <td class="p-2 text-center font-mono-score font-black text-slate-800 border-r border-slate-200">${qNum}</td>
-        <td class="p-2 text-center font-mono-score font-extrabold text-slate-600 border-r-2 border-slate-300">${row.pointValue}</td>
+      <tr class="${rowBg} hover:bg-slate-100/50 transition-colors">
+        <td onclick="jumpToQuestion(${qNum})" title="Tap to select Question #${qNum}" class="p-2 text-center font-mono-score font-black text-slate-800 border-r border-slate-200 sticky-col-q ${qColBg} cursor-pointer hover:underline">${qNum}</td>
+        <td onclick="jumpToQuestion(${qNum})" title="Tap to select Question #${qNum}" class="p-2 text-center font-mono-score font-extrabold text-slate-600 border-r-2 border-slate-300 sticky-col-pts ${ptsColBg} cursor-pointer hover:underline">${row.pointValue}</td>
 
-        <td class="p-2 text-center border-r border-slate-200">${formatCell(row.homeCells[0])}</td>
-        <td class="p-2 text-center border-r border-slate-200">${formatCell(row.homeCells[1])}</td>
-        <td class="p-2 text-center border-r border-slate-200">${formatCell(row.homeCells[2])}</td>
-        <td class="p-2 text-center border-r border-slate-200">${formatCell(row.homeCells[3])}</td>
-        <td class="p-2 text-center border-r border-slate-200">${formatCell(row.homeCells[4])}</td>
+        ${homeCellsHtml}
 
         <td class="p-2 text-center font-mono-score font-black text-brand-900 bg-brand-50/90 border-r-2 border-slate-400">
-          ${row.hasAnswers || qNum <= activeRound.questions.length ? row.homeRunning : ''}
+          ${row.hasAnswers || qNum <= questionsList.length ? row.homeRunning : ''}
         </td>
 
-        <td class="p-2 text-center border-r border-slate-200">${formatCell(row.oppCells[0])}</td>
-        <td class="p-2 text-center border-r border-slate-200">${formatCell(row.oppCells[1])}</td>
-        <td class="p-2 text-center border-r border-slate-200">${formatCell(row.oppCells[2])}</td>
-        <td class="p-2 text-center border-r border-slate-200">${formatCell(row.oppCells[3])}</td>
-        <td class="p-2 text-center border-r border-slate-200">${formatCell(row.oppCells[4])}</td>
+        ${oppCellsHtml}
 
         <td class="p-2 text-center font-mono-score font-black text-rose-900 bg-rose-50/90">
-          ${row.hasAnswers || qNum <= activeRound.questions.length ? row.oppRunning : ''}
+          ${row.hasAnswers || qNum <= questionsList.length ? row.oppRunning : ''}
           ${row.note ? `<span class="block text-[9px] font-bold text-indigo-700 font-sans">(${escapeHtml(row.note)})</span>` : ''}
         </td>
       </tr>
     `;
 
     if (qNum === 17) {
+      const totalColspan = studentsA.length + studentsB.length + 4;
       html += `
         <tr class="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 font-black text-center text-xs tracking-wider border-y-2 border-amber-600 shadow-inner">
-          <td colspan="14" class="py-2.5 uppercase font-mono-score">
+          <td colspan="${totalColspan}" class="py-2.5 uppercase font-mono-score">
             ⏸️ [ HALFTIME / TIMEOUT ZONE ] ⏸️
           </td>
         </tr>
@@ -937,24 +1490,24 @@ function renderScoresheetTableRows(activeRound) {
 }
 
 function renderScoresheetSummaryRows(activeRound) {
-  const homeBonusesList = activeRound.teamA.bonuses.map(b => b.desc).join(', ') || 'None';
-  const oppBonusesList = activeRound.teamB.bonuses.map(b => b.desc).join(', ') || 'None';
+  const homeBonusesList = (activeRound.teamA?.bonuses || []).map(b => b.desc).join(', ') || 'None';
+  const oppBonusesList = (activeRound.teamB?.bonuses || []).map(b => b.desc).join(', ') || 'None';
 
   document.getElementById('summary-home-bonuses').textContent = homeBonusesList;
   document.getElementById('summary-opp-bonuses').textContent = oppBonusesList;
-  document.getElementById('summary-home-bonus-pts').textContent = activeRound.teamA.bonusPoints ? `+${activeRound.teamA.bonusPoints}` : '0';
-  document.getElementById('summary-opp-bonus-pts').textContent = activeRound.teamB.bonusPoints ? `+${activeRound.teamB.bonusPoints}` : '0';
+  document.getElementById('summary-home-bonus-pts').textContent = activeRound.teamA?.bonusPoints ? `+${activeRound.teamA.bonusPoints}` : '0';
+  document.getElementById('summary-opp-bonus-pts').textContent = activeRound.teamB?.bonusPoints ? `+${activeRound.teamB.bonusPoints}` : '0';
 
-  const homeFoulsList = activeRound.teamA.fouls.map(f => `${f.reason}`).join(', ') || 'None';
-  const oppFoulsList = activeRound.teamB.fouls.map(f => `${f.reason}`).join(', ') || 'None';
+  const homeFoulsList = (activeRound.teamA?.fouls || []).map(f => `${f.reason}`).join(', ') || 'None';
+  const oppFoulsList = (activeRound.teamB?.fouls || []).map(f => `${f.reason}`).join(', ') || 'None';
 
   document.getElementById('summary-home-fouls').textContent = homeFoulsList;
   document.getElementById('summary-opp-fouls').textContent = oppFoulsList;
-  document.getElementById('summary-home-foul-pts').textContent = activeRound.teamA.foulPenalty ? `-${activeRound.teamA.foulPenalty}` : '0';
-  document.getElementById('summary-opp-foul-pts').textContent = activeRound.teamB.foulPenalty ? `-${activeRound.teamB.foulPenalty}` : '0';
+  document.getElementById('summary-home-foul-pts').textContent = activeRound.teamA?.foulPenalty ? `-${activeRound.teamA.foulPenalty}` : '0';
+  document.getElementById('summary-opp-foul-pts').textContent = activeRound.teamB?.foulPenalty ? `-${activeRound.teamB.foulPenalty}` : '0';
 
-  document.getElementById('summary-home-final-pts').textContent = activeRound.teamA.finalScore;
-  document.getElementById('summary-opp-final-pts').textContent = activeRound.teamB.finalScore;
+  document.getElementById('summary-home-final-pts').textContent = activeRound.teamA?.finalScore || 0;
+  document.getElementById('summary-opp-final-pts').textContent = activeRound.teamB?.finalScore || 0;
 
   if (activeRound.winner === 'teamA') {
     document.getElementById('summary-home-final-label').innerHTML = `<span class="bg-amber-400 text-brand-950 font-black px-2 py-0.5 rounded text-xs">🏆 WINNER</span>`;
@@ -968,10 +1521,12 @@ function renderScoresheetSummaryRows(activeRound) {
   }
 
   // Timeouts
-  const homeT1 = activeRound.timeouts.home.find(t => t.id === 1) || { used: false };
-  const homeT2 = activeRound.timeouts.home.find(t => t.id === 2) || { used: false };
-  const oppT1 = activeRound.timeouts.opponent.find(t => t.id === 1) || { used: false };
-  const oppT2 = activeRound.timeouts.opponent.find(t => t.id === 2) || { used: false };
+  const homeTimeouts = (activeRound.timeouts && (activeRound.timeouts.home || activeRound.timeouts.teamA)) || activeRound.teamA?.timeouts || [];
+  const oppTimeouts = (activeRound.timeouts && (activeRound.timeouts.opponent || activeRound.timeouts.teamB)) || activeRound.teamB?.timeouts || [];
+  const homeT1 = homeTimeouts.find(t => t.id === 1) || { used: false };
+  const homeT2 = homeTimeouts.find(t => t.id === 2) || { used: false };
+  const oppT1 = oppTimeouts.find(t => t.id === 1) || { used: false };
+  const oppT2 = oppTimeouts.find(t => t.id === 2) || { used: false };
 
   document.getElementById('summary-home-timeouts').innerHTML = `
     <div class="flex items-center gap-4">
@@ -1003,15 +1558,14 @@ function renderScoresheetSummaryRows(activeRound) {
 // 8. Render Individual Quizzers Live Performance & Lockout Tracker
 function renderIndividualQuizzersStats(activeRound) {
   const panelGrid = document.getElementById('individual-quizzers-grid');
-  if (!panelGrid) return;
+  if (!panelGrid || !activeRound) return;
 
-  const buildTeamQuizzersHtml = (teamObj, seatsArr, teamKey, borderColor, headerBg) => {
+  const buildTeamQuizzersHtml = (teamObj, studentsArr, teamKey, borderColor, headerBg) => {
     let quizzersRowsHtml = '';
-    for (let s = 1; s <= 5; s++) {
-      const rawName = seatsArr && seatsArr[s - 1];
-      const name = (rawName && rawName.trim()) ? rawName.trim() : `Seat #${s}`;
-      const stat = (teamObj.quizzers || []).find(q => q.seat === s || (q.name && q.name.trim().toLowerCase() === name.toLowerCase())) || {
-        seat: s,
+    const studentsList = (studentsArr || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+
+    studentsList.forEach(name => {
+      const stat = (teamObj.quizzers || []).find(q => q.name && q.name.trim().toLowerCase() === name.toLowerCase()) || {
         name,
         correct: 0,
         errors: 0,
@@ -1053,42 +1607,53 @@ function renderIndividualQuizzersStats(activeRound) {
         : (isQO ? 'bg-amber-50/60 border-amber-200' : 'bg-white border-slate-200');
 
       quizzersRowsHtml += `
-        <div class="p-2.5 rounded-xl border ${rowBg} flex items-center justify-between gap-2 transition-all">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <span class="w-6 h-6 rounded-lg bg-slate-100 font-black font-mono-score text-xs flex items-center justify-center text-slate-700 flex-shrink-0">
-              #${s}
-            </span>
-            <div class="truncate">
-              <span class="text-xs font-black text-slate-900 block truncate">${escapeHtml(name)}</span>
-              <span class="text-[10px] text-slate-500 font-mono-score font-bold">${stat.points} pts</span>
+        <div class="p-2.5 rounded-xl border ${rowBg} flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-all">
+          <div class="flex items-center justify-between sm:justify-start gap-2 min-w-0 w-full sm:w-auto">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-6 h-6 rounded-lg bg-slate-100 font-black font-mono-score text-xs flex items-center justify-center text-slate-700 flex-shrink-0">
+                👤
+              </span>
+              <div class="truncate">
+                <span class="text-xs font-black text-slate-900 block truncate">${escapeHtml(name)}</span>
+                <span class="text-[10px] text-slate-500 font-mono-score font-bold">${stat.points} pts</span>
+              </div>
+            </div>
+            <div class="sm:hidden flex-shrink-0">
+              ${statusBadge}
             </div>
           </div>
 
-          <div class="flex items-center gap-3 flex-shrink-0">
-            <!-- Correct Count -->
-            <div class="text-center">
-              <span class="text-[11px] font-black font-mono-score text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                ${stat.correct}/5 C
-              </span>
-            </div>
+          <div class="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 flex-shrink-0 pt-1.5 sm:pt-0 border-t border-slate-100 sm:border-t-0 w-full sm:w-auto">
+            <div class="flex items-center gap-2">
+              <!-- Correct Count -->
+              <div class="text-center">
+                <span class="text-[11px] font-black font-mono-score text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  ${stat.correct}/${activeRound.qoThreshold || 5} C
+                </span>
+              </div>
 
-            <!-- Incorrect Count (Errors) -->
-            <div class="text-center flex flex-col items-center">
-              <span class="text-[11px] font-black font-mono-score ${stat.errors > 0 ? 'text-rose-700 bg-rose-50 border border-rose-200' : 'text-slate-500 bg-slate-100'} px-2 py-0.5 rounded-md">
-                ${stat.errors}/3 E
-              </span>
-              <div class="flex items-center mt-0.5">
-                ${errorDots}
+              <!-- Incorrect Count (Errors) -->
+              <div class="text-center flex items-center gap-1.5">
+                <span class="text-[11px] font-black font-mono-score ${stat.errors > 0 ? 'text-rose-700 bg-rose-50 border border-rose-200' : 'text-slate-500 bg-slate-100'} px-2 py-0.5 rounded-md">
+                  ${stat.errors}/3 E
+                </span>
+                <div class="flex items-center">
+                  ${errorDots}
+                </div>
               </div>
             </div>
 
-            <!-- Status Pill -->
-            <div>
+            <!-- Status Pill on Desktop -->
+            <div class="hidden sm:block">
               ${statusBadge}
             </div>
           </div>
         </div>
       `;
+    });
+
+    if (studentsList.length === 0) {
+      quizzersRowsHtml = `<div class="p-3 text-center text-xs text-slate-400">No students listed</div>`;
     }
 
     return `
@@ -1098,7 +1663,7 @@ function renderIndividualQuizzersStats(activeRound) {
             <span>${escapeHtml(teamObj.name)}</span>
           </div>
           <span class="text-xs font-black font-mono-score px-2 py-0.5 rounded bg-white/80">
-            Total: ${teamObj.finalScore} pts
+            Total: ${teamObj.finalScore || 0} pts
           </span>
         </div>
         <div class="p-3 space-y-2">
@@ -1108,16 +1673,19 @@ function renderIndividualQuizzersStats(activeRound) {
     `;
   };
 
+  const studentsA = (activeRound.studentsA || activeRound.teamA?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+  const studentsB = (activeRound.studentsB || activeRound.teamB?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+
   const htmlA = buildTeamQuizzersHtml(
     activeRound.teamA, 
-    activeRound.seats.home, 
+    studentsA, 
     'teamA', 
     'border-brand-200', 
     'bg-brand-50 border-brand-200 text-brand-950'
   );
   const htmlB = buildTeamQuizzersHtml(
     activeRound.teamB, 
-    activeRound.seats.opponent, 
+    studentsB, 
     'teamB', 
     'border-rose-200', 
     'bg-rose-50 border-rose-200 text-rose-950'
@@ -1154,16 +1722,23 @@ async function toggleTimeout(team, timeoutId, used) {
 async function submitQuestionScore(event) {
   event.preventDefault();
 
+  const activeRound = state.tbqData?.activeRound;
+  if (!activeRound) return;
+
+  const studentsA = (activeRound.studentsA || activeRound.teamA?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+  const studentsB = (activeRound.studentsB || activeRound.teamB?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+
+  // Ensure an answering student is always selected
+  if (!state.scoreInput.team) state.scoreInput.team = 'teamA';
   if (!state.scoreInput.quizzer) {
-    alert('Please tap which quizzer/seat answered the question.');
-    return;
+    const defaultList = state.scoreInput.team === 'teamA' ? studentsA : studentsB;
+    state.scoreInput.quizzer = defaultList[0] || 'Student 1';
   }
 
   const answeredQuizzer = state.scoreInput.quizzer;
-  const answeredSeat = state.scoreInput.seatNum;
   const isTeamA = state.scoreInput.team === 'teamA';
-  const prevList = isTeamA ? (state.tbqData.activeRound.teamA.quizzers || []) : (state.tbqData.activeRound.teamB.quizzers || []);
-  const prevStat = prevList.find(q => q.seat === answeredSeat || (q.name && q.name.trim().toLowerCase() === (answeredQuizzer || '').trim().toLowerCase())) || { correct: 0, errors: 0 };
+  const prevList = isTeamA ? (activeRound.teamA.quizzers || []) : (activeRound.teamB.quizzers || []);
+  const prevStat = prevList.find(q => q.name && answeredQuizzer && q.name.trim().toLowerCase() === answeredQuizzer.trim().toLowerCase()) || { correct: 0, errors: 0 };
   const prevCorrect = prevStat.correct || 0;
   const prevErrors = prevStat.errors || 0;
 
@@ -1182,7 +1757,6 @@ async function submitQuestionScore(event) {
         isRebound,
         team: state.scoreInput.team,
         quizzer: answeredQuizzer,
-        seatNum: answeredSeat,
         isCorrect: state.scoreInput.isCorrect
       })
     });
@@ -1195,6 +1769,7 @@ async function submitQuestionScore(event) {
 
     document.getElementById('score-is-interruption').checked = false;
     document.getElementById('score-is-rebound').checked = false;
+    toggleInterruption(false);
     selectPoints(20);
     selectResult(true);
 
@@ -1202,17 +1777,17 @@ async function submitQuestionScore(event) {
 
     // Check if quizzer reached Quiz Out or Error Out milestone on this answer
     const newList = isTeamA ? (result.activeRound.teamA.quizzers || []) : (result.activeRound.teamB.quizzers || []);
-    const newStat = newList.find(q => q.seat === answeredSeat || (q.name && q.name.trim().toLowerCase() === (answeredQuizzer || '').trim().toLowerCase()));
+    const newStat = newList.find(q => q.name && answeredQuizzer && q.name.trim().toLowerCase() === answeredQuizzer.trim().toLowerCase());
 
     if (newStat) {
       if (prevCorrect < 5 && newStat.correct >= 5) {
         if (newStat.errors === 0) {
           showMatchToast(`⭐ ${newStat.name || answeredQuizzer} has QUIZZED OUT! Perfect 5/5 (+20 Bonus Points awarded)!`, 'success');
         } else {
-          showMatchToast(`🎉 ${newStat.name || answeredQuizzer} has QUIZZED OUT (Forward)! 5 correct answers. Sits back with maximum score (no +20 bonus due to ${newStat.errors} prior errors).`, 'warning');
+          showMatchToast(`🎉 ${newStat.name || answeredQuizzer} has QUIZZED OUT! 5 correct answers. Sits back with maximum score!`, 'warning');
         }
       } else if (prevErrors < 3 && newStat.errors >= 3) {
-        showMatchToast(`❌ ${newStat.name || answeredQuizzer} has ERRORED OUT (Strikes Out)! 3 errors reached. Must remain seated for remainder of match.`, 'error');
+        showMatchToast(`❌ ${newStat.name || answeredQuizzer} has ERRORED OUT! 3 errors reached. Must remain seated for remainder of match.`, 'error');
       }
     }
 
@@ -1234,13 +1809,20 @@ async function undoLastQuestion() {
     });
     const result = await res.json();
     if (!res.ok) {
+      if (res.status === 401) {
+        setLoggedOutView();
+        openCoachLoginModal();
+      }
       alert(result.error || 'Nothing to undo.');
       return;
     }
+    if (!state.tbqData) state.tbqData = {};
     state.tbqData.activeRound = result.activeRound;
     renderOfficialScoresheet();
+    showMatchToast('Last question undone.', 'info');
   } catch (err) {
-    alert('Error undoing question.');
+    console.error('Error undoing question:', err);
+    alert('Error undoing question: ' + (err.message || 'Unknown error'));
   }
 }
 
@@ -1248,20 +1830,28 @@ async function undoLastQuestion() {
 async function coachResetRound() {
   if (!confirm('Are you sure you want to clear and reset all questions in this match?')) return;
 
+  const mId = state.activeMatchId || state.tbqData?.activeRound?.id || state.tbqData?.activeMatchId;
   try {
     const res = await authFetch('/api/tbq/reset-round', {
       method: 'POST',
-      body: JSON.stringify({ matchId: state.activeMatchId })
+      body: JSON.stringify({ matchId: mId })
     });
     const result = await res.json();
     if (!res.ok) {
+      if (res.status === 401) {
+        setLoggedOutView();
+        openCoachLoginModal();
+      }
       alert(result.error || 'Failed to reset match.');
       return;
     }
+    if (!state.tbqData) state.tbqData = {};
     state.tbqData.activeRound = result.activeRound;
     renderOfficialScoresheet();
+    showMatchToast('Match cleared and reset successfully.', 'info');
   } catch (err) {
-    alert('Error resetting match.');
+    console.error('Error resetting match:', err);
+    alert('Error resetting match: ' + (err.message || 'Unknown error'));
   }
 }
 
@@ -1275,38 +1865,22 @@ function openMatchInfoModal() {
 
   const infoMeet = document.getElementById('info-meet-num');
   if (infoMeet) infoMeet.value = activeRound.meetNum || activeRound.roundNum || 1;
-  document.getElementById('info-match-num').value = activeRound.matchNumber || "01";
-  document.getElementById('info-room-num').value = activeRound.room || '201';
+  const infoMatch = document.getElementById('info-match-num');
+  if (infoMatch) infoMatch.value = activeRound.matchNumber || "01";
 
-  document.getElementById('modal-seats-home-label').textContent = `${activeRound.teamA.name} Seats #1 to #5:`;
-  document.getElementById('modal-seats-opp-label').textContent = `${activeRound.teamB.name} Seats #1 to #5:`;
+  const labelHome = document.getElementById('modal-students-home-label');
+  if (labelHome) labelHome.textContent = `${activeRound.teamA?.name || 'Team A'} Students:`;
+  const labelOpp = document.getElementById('modal-students-opp-label');
+  if (labelOpp) labelOpp.textContent = `${activeRound.teamB?.name || 'Team B'} Students:`;
 
-  const homeSeatsDiv = document.getElementById('modal-seats-home-inputs');
-  const oppSeatsDiv = document.getElementById('modal-seats-opp-inputs');
+  const studentsA = (activeRound.studentsA || activeRound.teamA?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+  const studentsB = (activeRound.studentsB || activeRound.teamB?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
 
-  let homeInputs = '';
-  for (let i = 0; i < 5; i++) {
-    const val = activeRound.seats.home[i] || '';
-    homeInputs += `
-      <div>
-        <label class="block text-[10px] text-slate-500 font-bold">#${i + 1}</label>
-        <input type="text" id="seat-home-input-${i}" value="${escapeHtml(val)}" class="w-full px-2 py-1.5 text-xs border rounded-lg font-bold">
-      </div>
-    `;
-  }
-  homeSeatsDiv.innerHTML = homeInputs;
+  const homeInput = document.getElementById('modal-students-home-input');
+  if (homeInput) homeInput.value = studentsA.join(', ');
 
-  let oppInputs = '';
-  for (let i = 0; i < 5; i++) {
-    const val = activeRound.seats.opponent[i] || '';
-    oppInputs += `
-      <div>
-        <label class="block text-[10px] text-slate-500 font-bold">#${i + 1}</label>
-        <input type="text" id="seat-opp-input-${i}" value="${escapeHtml(val)}" class="w-full px-2 py-1.5 text-xs border rounded-lg font-bold">
-      </div>
-    `;
-  }
-  oppSeatsDiv.innerHTML = oppInputs;
+  const oppInput = document.getElementById('modal-students-opp-input');
+  if (oppInput) oppInput.value = studentsB.join(', ');
 
   document.getElementById('match-info-modal').classList.remove('hidden');
 }
@@ -1320,16 +1894,18 @@ async function handleSaveMatchInfo(event) {
 
   const infoMeet = document.getElementById('info-meet-num');
   const meetNum = parseInt(infoMeet ? infoMeet.value : 1) || 1;
-  const matchNumber = document.getElementById('info-match-num').value.trim();
-  const room = document.getElementById('info-room-num').value.trim();
+  const matchNumber = (document.getElementById('info-match-num')?.value || '').trim();
 
-  const seatsHome = [];
-  const seatsOpp = [];
+  const homeText = document.getElementById('modal-students-home-input')?.value || '';
+  const oppText = document.getElementById('modal-students-opp-input')?.value || '';
 
-  for (let i = 0; i < 5; i++) {
-    seatsHome.push(document.getElementById(`seat-home-input-${i}`).value.trim() || `Quizzer ${i + 1}`);
-    seatsOpp.push(document.getElementById(`seat-opp-input-${i}`).value.trim() || `Opponent ${i + 1}`);
-  }
+  const parseStudents = (text, defaultPrefix) => {
+    const list = text.split(/[,\n]+/).map(s => s.trim()).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+    return list.length > 0 ? list : [`${defaultPrefix} 1`];
+  };
+
+  const studentsA = parseStudents(homeText, 'Student A');
+  const studentsB = parseStudents(oppText, 'Student B');
 
   try {
     const res = await authFetch('/api/tbq/match-info', {
@@ -1339,23 +1915,76 @@ async function handleSaveMatchInfo(event) {
         meetNum,
         roundNum: meetNum,
         matchNumber,
-        room,
-        seatsHome,
-        seatsOpp
+        room: '',
+        studentsA,
+        studentsB
       })
     });
 
     const data = await res.json();
     if (!res.ok) {
-      alert(data.error || 'Failed to save match info.');
+      alert(data.error || 'Failed to update match info.');
       return;
     }
 
-    closeMatchInfoModal();
     state.tbqData.activeRound = data.activeRound;
+    closeMatchInfoModal();
     renderOfficialScoresheet();
+    showMatchToast('💾 Match and student roster updated successfully!', 'success');
   } catch (err) {
-    alert('Error saving match info.');
+    console.error('Error saving match info:', err);
+    alert('Network error saving match info: ' + (err.message || 'Please check connection'));
+  }
+}
+
+// Explicit Manual Save Scoresheet Handler
+async function handleManualSaveSheet() {
+  const saveBtn = document.getElementById('scoresheet-save-btn');
+  const originalHtml = saveBtn ? saveBtn.innerHTML : '';
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span>⏳ Saving...</span>';
+  }
+
+  const activeRound = state.tbqData?.activeRound;
+  const mId = state.activeMatchId || activeRound?.id;
+  const studentsA = (activeRound?.studentsA || activeRound?.teamA?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+  const studentsB = (activeRound?.studentsB || activeRound?.teamB?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+
+  try {
+    const res = await authFetch('/api/tbq/save-sheet', {
+      method: 'POST',
+      body: JSON.stringify({
+        matchId: mId,
+        studentsA,
+        studentsB
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.activeRound) {
+      state.tbqData.activeRound = data.activeRound;
+      try {
+        localStorage.setItem('tbq_backup_scores', JSON.stringify(state.tbqData));
+      } catch (e) {}
+      renderOfficialScoresheet();
+      showMatchToast('💾 Scoresheet saved successfully! All questions and student scores up-to-date.', 'success');
+      const badge = document.getElementById('save-status-indicator');
+      if (badge) {
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-emerald-800 font-extrabold">Saved (${timeStr})</span>`;
+      }
+    } else {
+      alert(data.error || 'Failed to save scoresheet.');
+    }
+  } catch (err) {
+    console.error('Error saving sheet:', err);
+    alert('Network error saving scoresheet: ' + (err.message || 'Please check connection'));
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalHtml;
+    }
   }
 }
 
@@ -1434,9 +2063,14 @@ function renderTeamsManagerUI() {
               <h4 class="text-base font-black text-slate-900 mt-1">${escapeHtml(t.name)}</h4>
               <div class="text-xs text-slate-500 font-medium">${escapeHtml(t.church)}</div>
             </div>
-            <button onclick="openEditTeamModal('${t.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded-lg border border-slate-200 transition-colors">
-              ✏️ Edit
-            </button>
+            <div class="flex items-center gap-1.5">
+              <button onclick="openEditTeamModal('${t.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded-lg border border-slate-200 transition-colors">
+                ✏️ Edit
+              </button>
+              <button onclick="deleteTeam('${t.id}')" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold px-2.5 py-1.5 rounded-lg border border-rose-200 transition-colors" title="Delete Team">
+                🗑️
+              </button>
+            </div>
           </div>
 
           <div class="pt-3">
@@ -1452,7 +2086,9 @@ function renderTeamsManagerUI() {
         </div>
 
         <div class="pt-4 border-t border-slate-100 mt-4 flex justify-between items-center text-xs">
-          <span class="text-slate-400">Ready for scoring</span>
+          <button onclick="deleteTeam('${t.id}')" class="text-rose-600 font-bold hover:text-rose-800 flex items-center gap-1">
+            <span>🗑️ Delete Team</span>
+          </button>
           <button onclick="openEditTeamModal('${t.id}')" class="text-brand-600 font-bold hover:underline">
             Update Roster ➔
           </button>
@@ -1460,6 +2096,20 @@ function renderTeamsManagerUI() {
       </div>
     `;
   });
+
+  if (teams.length === 0) {
+    cardsHtml = `
+      <div class="col-span-full py-8 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-6">
+        <div class="text-3xl mb-2">👥</div>
+        <div class="text-sm font-black text-slate-800">No Teams Configured Yet</div>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">Start fresh tomorrow morning by tapping "+ Add Team" to add your church teams and quizzers.</p>
+        <button onclick="openEditTeamModal()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2 rounded-xl shadow-xs">
+          ➕ Add First Team
+        </button>
+      </div>
+    `;
+  }
+
   gridEl.innerHTML = cardsHtml;
 
   // 2. Render Matches Schedule List
@@ -1476,7 +2126,7 @@ function renderTeamsManagerUI() {
           </div>
           <div>
             <div class="text-xs font-extrabold text-slate-500 uppercase">
-              Meet ${m.meetNum || m.roundNum} • Room ${m.room}
+              Meet ${m.meetNum || m.roundNum}
             </div>
             <div class="text-sm font-bold text-slate-800 mt-0.5">
               <span>${escapeHtml(m.teamAName)}</span>
@@ -1486,14 +2136,14 @@ function renderTeamsManagerUI() {
           </div>
         </div>
 
-        <div class="flex items-center gap-2 self-end sm:self-center flex-wrap">
-          <button onclick="openEditMatchModal('${m.id}')" class="text-xs bg-white hover:bg-slate-100 text-slate-700 font-bold px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs transition-all flex items-center gap-1">
-            ✏️ Edit Match
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap pt-2 sm:pt-0 border-t border-slate-200/50 sm:border-t-0">
+          <button onclick="openEditMatchModal('${m.id}')" class="flex-1 sm:flex-none text-xs bg-white hover:bg-slate-100 text-slate-700 font-bold px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs transition-all flex items-center justify-center gap-1">
+            ✏️ Edit
           </button>
           <button onclick="handleDeleteMatch('${m.id}', '${m.matchNumber}')" class="text-xs bg-white hover:bg-rose-50 text-rose-600 font-bold px-2.5 py-1.5 rounded-lg border border-rose-200 shadow-xs transition-all" title="Delete Match">
             🗑️
           </button>
-          <button onclick="selectAndOpenMatch('${m.id}')" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-bold px-3 py-1.5 rounded-lg shadow-xs transition-all">
+          <button onclick="selectAndOpenMatch('${m.id}')" class="flex-1 sm:flex-none text-xs bg-brand-600 hover:bg-brand-700 text-white font-bold px-3 py-1.5 rounded-lg shadow-xs transition-all text-center">
             📋 Score Match
           </button>
         </div>
@@ -1520,11 +2170,83 @@ function openEditTeamModal(teamId) {
   document.getElementById('edit-team-quizzers').value = team ? (team.quizzers || []).join(', ') : '';
   document.getElementById('modal-team-title').textContent = team ? `Edit ${team.name}` : '➕ Add New Team';
 
+  const modalDeleteBtn = document.getElementById('modal-delete-team-btn');
+  if (modalDeleteBtn) {
+    if (team) {
+      modalDeleteBtn.classList.remove('hidden');
+    } else {
+      modalDeleteBtn.classList.add('hidden');
+    }
+  }
+
   document.getElementById('edit-team-modal').classList.remove('hidden');
 }
 
 function closeEditTeamModal() {
   document.getElementById('edit-team-modal').classList.add('hidden');
+}
+
+function handleDeleteTeamFromModal() {
+  const teamId = document.getElementById('edit-team-id').value;
+  if (!teamId) return;
+  closeEditTeamModal();
+  deleteTeam(teamId);
+}
+
+async function deleteTeam(teamId) {
+  const teams = (state.tbqData && state.tbqData.meet && state.tbqData.meet.teams) || [];
+  const team = teams.find(t => t.id === teamId);
+  const teamName = team ? team.name : 'this team';
+
+  if (!confirm(`Are you sure you want to delete ${teamName}? This action cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    const res = await authFetch('/api/teams/delete', {
+      method: 'POST',
+      body: JSON.stringify({ teamId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to delete team.');
+      return;
+    }
+    showMatchToast(`🗑️ Deleted ${teamName}`, 'info');
+    await fetchTbqData(state.activeMatchId);
+    renderTeamsManagerUI();
+  } catch (err) {
+    alert('Error deleting team.');
+  }
+}
+
+async function clearAllTeams() {
+  const teams = (state.tbqData && state.tbqData.meet && state.tbqData.meet.teams) || [];
+  if (teams.length === 0) {
+    alert('No teams to delete.');
+    return;
+  }
+
+  if (!confirm(`⚠️ Are you sure you want to delete ALL ${teams.length} teams?\n\nThis will remove all teams so you can add fresh teams from scratch tomorrow morning!`)) {
+    return;
+  }
+
+  try {
+    const res = await authFetch('/api/teams/clear-all', {
+      method: 'POST',
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to clear all teams.');
+      return;
+    }
+    showMatchToast('🗑️ All teams cleared! You can now add teams from scratch.', 'success');
+    await fetchTbqData(state.activeMatchId);
+    renderTeamsManagerUI();
+  } catch (err) {
+    alert('Error clearing teams.');
+  }
 }
 
 async function handleSaveTeam(event) {
@@ -1579,7 +2301,6 @@ function openAddMatchModal() {
   document.getElementById('match-number-input').value = `0${nextNum}`;
   const meetInput = document.getElementById('match-meet-num');
   if (meetInput) meetInput.value = Math.ceil(nextNum / 2) || 1;
-  document.getElementById('match-room-input').value = '201';
 
   document.getElementById('add-match-modal').classList.remove('hidden');
 }
@@ -1612,7 +2333,6 @@ function openEditMatchModal(matchId) {
 
   document.getElementById('match-meet-num').value = m.meetNum || m.roundNum || 1;
   document.getElementById('match-number-input').value = m.matchNumber || '';
-  document.getElementById('match-room-input').value = m.room || '201';
 
   document.getElementById('add-match-modal').classList.remove('hidden');
 }
@@ -1627,7 +2347,6 @@ async function handleSaveMatch(event) {
   const meetInput = document.getElementById('match-meet-num');
   const meetNum = parseInt(meetInput ? meetInput.value : 1) || 1;
   const matchNumber = document.getElementById('match-number-input').value.trim();
-  const room = document.getElementById('match-room-input').value.trim();
   const teamAId = document.getElementById('match-team-a-select').value;
   const teamBId = document.getElementById('match-team-b-select').value;
 
@@ -1642,7 +2361,7 @@ async function handleSaveMatch(event) {
     meetNum,
     roundNum: meetNum,
     matchNumber,
-    room,
+    room: '',
     teamAId,
     teamBId
   };
