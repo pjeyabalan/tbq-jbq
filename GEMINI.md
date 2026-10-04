@@ -37,6 +37,17 @@ This document contains binding architectural and functional rules for Google Ant
    - Do NOT clutter the match screen with unnecessary complex tables, dummy seats, or unwanted room configurations.
    - Everything needed for scoring is on screen: student name, pointer value, interruption toggle, and result.
 
+6. **Interruption Re-Read & Rebound Scoring (2 Quizzers on the Same Question)**:
+   - When a question is interrupted and the quizzer answers incorrectly (`❌ Error` with half-point penalty):
+     - The question is re-read for the **opposite team**.
+     - The scorer remains on the **same Question #** (does NOT auto-advance to the next question).
+     - The system prompts that the opposite team can now answer (rebound mode) with the opposite team pre-selected.
+     - The coach can score a 2nd quizzer for the same question:
+       - **Both can be negative** (e.g. first quizzer interrupted error penalty `-half`, second quizzer error penalty `-half` or `0`).
+       - **Or one negative and one positive** (first quizzer interrupted error penalty `-half`, second quizzer correct `+points`).
+     - If the opposite team does not buzz in, provide an immediate `⏭️ Skip Rebound / Next Question` action.
+     - Both quizzer scores, points, and errors are recorded for that question in the match log and scoresheet.
+
 ---
 
 ## Pre-Completion Verification

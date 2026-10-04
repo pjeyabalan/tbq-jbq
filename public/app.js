@@ -626,6 +626,67 @@ async function fetchTbqData(matchId) {
   }
 }
 
+async function skipRebound(qNum) {
+  try {
+    const res = await authFetch('/api/tbq/skip-rebound', {
+      method: 'POST',
+      body: JSON.stringify({
+        matchId: state.activeMatchId,
+        questionNum: qNum
+      })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      state.tbqData.activeRound = data.activeRound;
+      renderOfficialScoresheet();
+      showMatchToast(`⏭️ Skipped rebound on Q#${qNum}. Next question active.`, 'info');
+    }
+  } catch (err) {
+    console.error('Error skipping rebound:', err);
+  }
+}
+
+function renderReboundBanner(activeRound, currentQ, reboundStatus) {
+  let banner = document.getElementById('rebound-alert-banner');
+  if (!banner) {
+    const form = document.getElementById('quick-scorer-form');
+    if (form) {
+      banner = document.createElement('div');
+      banner.id = 'rebound-alert-banner';
+      form.insertBefore(banner, form.firstChild);
+    }
+  }
+  if (!banner) return;
+
+  if (reboundStatus && reboundStatus.isPending) {
+    const oppTeamName = reboundStatus.team === 'teamA' ? activeRound.teamA.name : activeRound.teamB.name;
+    const origTeamName = reboundStatus.originalTeam === 'teamA' ? activeRound.teamA.name : activeRound.teamB.name;
+    banner.className = 'p-3 rounded-2xl bg-amber-50 border-2 border-amber-400 text-amber-950 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shadow-sm transition-all mb-2';
+    banner.innerHTML = `
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl animate-pulse flex-shrink-0">⚡</span>
+        <div class="text-xs">
+          <div class="font-black text-amber-900 uppercase tracking-wide flex items-center gap-1.5">
+            <span>Q#${currentQ} RE-READ REBOUND</span>
+            <span class="bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded text-[10px]">Opposite Team Turn</span>
+          </div>
+          <div class="text-slate-700 mt-0.5">
+            <strong>${escapeHtml(reboundStatus.originalQuizzer || 'Quizzer')}</strong> (${escapeHtml(origTeamName)}) errored on interruption (-${reboundStatus.penalty} pts).
+            <span class="font-bold text-brand-900 block sm:inline">Now scoring for ${escapeHtml(oppTeamName)}!</span>
+          </div>
+        </div>
+      </div>
+      <button type="button" onclick="skipRebound(${currentQ})" class="text-xs bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold px-3 py-2 rounded-xl shadow-2xs transition-all cursor-pointer whitespace-nowrap active:scale-95 text-center flex items-center justify-center gap-1">
+        <span>⏭️ Skip Rebound (Go to Q#${currentQ + 1})</span>
+      </button>
+    `;
+    banner.classList.remove('hidden');
+  } else {
+    banner.className = 'hidden';
+    banner.innerHTML = '';
+  }
+}
+
 function renderOfficialScoresheet() {
   if (!state.tbqData || !state.tbqData.activeRound) return;
   const { matchesList, activeRound } = state.tbqData;
@@ -689,11 +750,32 @@ function renderOfficialScoresheet() {
   document.getElementById('opp-bonus-badge').textContent = `Regulation: ${regB} | Bonus: +${activeRound.teamB.bonusPoints || 0} | Fouls: -${foulB}`;
 
   // 4. Quick Buzzer Box UI
-  const nextQ = (activeRound.questions || []).length + 1;
-  document.getElementById('active-question-badge').textContent = `Question #${nextQ}`;
-  document.getElementById('score-question-num').value = nextQ;
+  const reboundStatus = activeRound.reboundStatus || { isPending: false };
+  const currentQ = activeRound.pendingQuestionNum || (activeRound.questions ? activeRound.questions.length + 1 : 1);
+  const qNumInput = document.getElementById('score-question-num');
+  if (qNumInput) qNumInput.value = currentQ;
+  const activeQBadge = document.getElementById('active-question-badge');
+  if (activeQBadge) {
+    activeQBadge.textContent = reboundStatus.isPending 
+      ? `Question #${currentQ} (Rebound Opportunity)` 
+      : `Question #${currentQ}`;
+  }
   document.getElementById('scorer-home-label').textContent = activeRound.teamA.name;
   document.getElementById('scorer-opp-label').textContent = activeRound.teamB.name;
+
+  renderReboundBanner(activeRound, currentQ, reboundStatus);
+
+  if (reboundStatus.isPending) {
+    state.scoreInput.team = reboundStatus.team;
+    state.scoreInput.isRebound = true;
+    const rebCheck = document.getElementById('score-is-rebound');
+    if (rebCheck) rebCheck.checked = true;
+    selectPoints(reboundStatus.pointValue || 20);
+  } else {
+    state.scoreInput.isRebound = false;
+    const rebCheck = document.getElementById('score-is-rebound');
+    if (rebCheck) rebCheck.checked = false;
+  }
 
   renderStudentsSelectionGrid(activeRound);
   updateSelectedStudentBadge();
@@ -916,20 +998,64 @@ function renderStudentsSelectionGrid(activeRound) {
     return !stat || (!stat.isQuizzedOut && !stat.isErroredOut);
   };
 
-  // Verify currently selected quizzer is still active/eligible
-  let isCurrentEligible = state.scoreInput.quizzer && isEligible(state.scoreInput.team, state.scoreInput.quizzer);
+  const reboundStatus = activeRound.reboundStatus || { isPending: false };
+  const homeBox = document.getElementById('scorer-home-box');
+  const oppBox = document.getElementById('scorer-opp-box');
+  const homeLabel = document.getElementById('scorer-home-label');
+  const oppLabel = document.getElementById('scorer-opp-label');
 
-  // If not eligible, automatically select first active eligible quizzer
-  if (!isCurrentEligible) {
-    const firstA = studentsA.find(name => isEligible('teamA', name));
-    if (firstA) {
-      state.scoreInput.team = 'teamA';
-      state.scoreInput.quizzer = firstA;
-    } else {
-      const firstB = studentsB.find(name => isEligible('teamB', name));
-      if (firstB) {
-        state.scoreInput.team = 'teamB';
-        state.scoreInput.quizzer = firstB;
+  if (reboundStatus.isPending) {
+    const targetTeam = reboundStatus.team;
+    state.scoreInput.team = targetTeam;
+    const targetStudents = targetTeam === 'teamA' ? studentsA : studentsB;
+
+    const isTargetValid = state.scoreInput.quizzer && 
+      targetStudents.some(s => s.toLowerCase() === state.scoreInput.quizzer.toLowerCase()) &&
+      isEligible(targetTeam, state.scoreInput.quizzer);
+
+    if (!isTargetValid) {
+      const eligibleStudent = targetStudents.find(name => isEligible(targetTeam, name));
+      state.scoreInput.quizzer = eligibleStudent || targetStudents[0] || '';
+    }
+
+    if (homeBox && oppBox) {
+      if (targetTeam === 'teamA') {
+        homeBox.className = 'border-2 border-amber-400 ring-4 ring-amber-300 rounded-2xl p-3 bg-amber-50/70 shadow-md transition-all';
+        oppBox.className = 'border-2 border-slate-200 rounded-2xl p-3 bg-slate-50/60 opacity-75 shadow-xs transition-all';
+        if (homeLabel) homeLabel.innerHTML = `${escapeHtml(activeRound.teamA.name)} <span class="ml-1 text-[10px] bg-amber-300 text-amber-950 px-2 py-0.5 rounded-full font-black animate-pulse">⚡ REBOUND TURN</span>`;
+        if (oppLabel) oppLabel.innerHTML = `${escapeHtml(activeRound.teamB.name)} <span class="ml-1 text-[10px] bg-rose-200 text-rose-900 px-1.5 py-0.5 rounded font-bold">❌ -${reboundStatus.penalty} Penalty</span>`;
+      } else {
+        oppBox.className = 'border-2 border-amber-400 ring-4 ring-amber-300 rounded-2xl p-3 bg-amber-50/70 shadow-md transition-all';
+        homeBox.className = 'border-2 border-slate-200 rounded-2xl p-3 bg-slate-50/60 opacity-75 shadow-xs transition-all';
+        if (oppLabel) oppLabel.innerHTML = `${escapeHtml(activeRound.teamB.name)} <span class="ml-1 text-[10px] bg-amber-300 text-amber-950 px-2 py-0.5 rounded-full font-black animate-pulse">⚡ REBOUND TURN</span>`;
+        if (homeLabel) homeLabel.innerHTML = `${escapeHtml(activeRound.teamA.name)} <span class="ml-1 text-[10px] bg-rose-200 text-rose-900 px-1.5 py-0.5 rounded font-bold">❌ -${reboundStatus.penalty} Penalty</span>`;
+      }
+    }
+  } else {
+    // Normal non-rebound styling & selection
+    if (homeBox && oppBox) {
+      homeBox.className = 'border-2 border-brand-300 rounded-2xl p-3 bg-brand-50/50 shadow-xs transition-all';
+      oppBox.className = 'border-2 border-rose-300 rounded-2xl p-3 bg-rose-50/50 shadow-xs transition-all';
+      if (homeLabel) homeLabel.textContent = activeRound.teamA.name;
+      if (oppLabel) oppLabel.textContent = activeRound.teamB.name;
+    }
+
+    const currentList = state.scoreInput.team === 'teamA' ? studentsA : studentsB;
+    let isCurrentEligible = state.scoreInput.quizzer && 
+      currentList.some(s => s.toLowerCase() === state.scoreInput.quizzer.toLowerCase()) && 
+      isEligible(state.scoreInput.team, state.scoreInput.quizzer);
+
+    if (!isCurrentEligible) {
+      const firstA = studentsA.find(name => isEligible('teamA', name));
+      if (firstA) {
+        state.scoreInput.team = 'teamA';
+        state.scoreInput.quizzer = firstA;
+      } else {
+        const firstB = studentsB.find(name => isEligible('teamB', name));
+        if (firstB) {
+          state.scoreInput.team = 'teamB';
+          state.scoreInput.quizzer = firstB;
+        }
       }
     }
   }
@@ -1116,7 +1242,14 @@ function quickScoreFromTable(qNum, team, studentOrSeat, optName) {
     const quizzerQ = existingQs.find(q => (q.quizzer && quizzerName && q.quizzer.toLowerCase() === quizzerName.toLowerCase()));
     const targetQ = quizzerQ || (existingQs.length > 0 ? existingQs[existingQs.length - 1] : null);
 
-    if (targetQ) {
+    if (activeRound.reboundStatus?.isPending && activeRound.pendingQuestionNum === qNum) {
+      const rebCheck = document.getElementById('score-is-rebound');
+      if (rebCheck) rebCheck.checked = true;
+      state.scoreInput.isRebound = true;
+      selectPoints(activeRound.reboundStatus.pointValue || pts);
+      selectResult(true);
+      toggleInterruption(false);
+    } else if (targetQ) {
       selectResult(targetQ.isCorrect);
       toggleInterruption(!!targetQ.isInterruption);
       const rebCheck = document.getElementById('score-is-rebound');
@@ -1204,19 +1337,35 @@ function jumpToQuestion(qNum) {
   }
   const activeRound = state.tbqData?.activeRound;
   if (activeRound) {
-    const qObj = activeRound.questions.find(q => q.questionNum === qNum);
-    if (qObj) {
-      selectPoints(qObj.pointValue || 20);
-      selectResult(qObj.isCorrect);
-      toggleInterruption(!!qObj.isInterruption);
+    if (activeRound.reboundStatus?.isPending && activeRound.pendingQuestionNum === qNum) {
       const rebCheck = document.getElementById('score-is-rebound');
-      if (rebCheck) rebCheck.checked = !!qObj.isRebound;
-      if (qObj.team && qObj.quizzer) {
-        selectStudent(qObj.team, qObj.quizzer);
+      if (rebCheck) rebCheck.checked = true;
+      state.scoreInput.isRebound = true;
+      selectPoints(activeRound.reboundStatus.pointValue || 20);
+      selectResult(true);
+      toggleInterruption(false);
+      if (activeRound.reboundStatus.team) {
+        state.scoreInput.team = activeRound.reboundStatus.team;
       }
     } else {
-      const row = (activeRound.rows || []).find(r => r.questionNum === qNum);
-      if (row) selectPoints(row.pointValue || 20);
+      const qObj = activeRound.questions.find(q => q.questionNum === qNum);
+      if (qObj) {
+        selectPoints(qObj.pointValue || 20);
+        selectResult(qObj.isCorrect);
+        toggleInterruption(!!qObj.isInterruption);
+        const rebCheck = document.getElementById('score-is-rebound');
+        if (rebCheck) rebCheck.checked = !!qObj.isRebound;
+        if (qObj.team && qObj.quizzer) {
+          selectStudent(qObj.team, qObj.quizzer);
+        }
+      } else {
+        const row = (activeRound.rows || []).find(r => r.questionNum === qNum);
+        if (row) selectPoints(row.pointValue || 20);
+        selectResult(true);
+        toggleInterruption(false);
+        const rebCheck = document.getElementById('score-is-rebound');
+        if (rebCheck) rebCheck.checked = false;
+      }
     }
   }
   const badge = document.getElementById('active-question-badge');
@@ -1233,7 +1382,8 @@ function renderScoresheetMobileFeed(activeRound) {
   if (!container || !activeRound) return;
 
   const questionsList = Array.isArray(activeRound.questions) ? activeRound.questions : [];
-  const nextQ = questionsList.length + 1;
+  const currentQ = activeRound.pendingQuestionNum || (questionsList.length + 1);
+  const reboundStatus = activeRound.reboundStatus || { isPending: false };
   const studentsA = (activeRound.studentsA || activeRound.teamA?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
   const studentsB = (activeRound.studentsB || activeRound.teamB?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
 
@@ -1249,50 +1399,134 @@ function renderScoresheetMobileFeed(activeRound) {
     }
 
     const row = (activeRound.rows || []).find(r => r.questionNum === q) || { pointValue: (q <= 10 ? 10 : (q <= 17 ? 20 : 30)) };
-    const qObj = questionsList.find(item => item.questionNum === q);
-    const isCurrentNext = (q === nextQ);
+    const qAnswers = questionsList.filter(item => item.questionNum === q);
+    const isCurrentActive = (q === currentQ);
+    const isPendingReboundForThisQ = isCurrentActive && reboundStatus.isPending;
 
-    if (qObj) {
-      const isTeamA = qObj.team === 'teamA';
-      const teamName = isTeamA ? activeRound.teamA.name : activeRound.teamB.name;
-      const teamBadgeColor = isTeamA ? 'text-brand-900' : 'text-rose-900';
-      const isCorrect = qObj.isCorrect;
-      const pointsScored = isCorrect ? `+${qObj.pointValue}` : (qObj.isInterruption ? `-${Math.floor(qObj.pointValue / 2)}` : '0');
+    if (isPendingReboundForThisQ) {
+      // Question has an interrupted error, opposite team is up to rebound!
+      const targetTeam = reboundStatus.team;
+      const targetTeamName = targetTeam === 'teamA' ? activeRound.teamA.name : activeRound.teamB.name;
+      const targetStudents = targetTeam === 'teamA' ? studentsA : studentsB;
+      const origTeamName = reboundStatus.originalTeam === 'teamA' ? activeRound.teamA.name : activeRound.teamB.name;
+
+      const firstAns = qAnswers[0];
+      const firstAnsHtml = firstAns ? `
+        <div class="text-xs bg-white/80 rounded-lg p-2 border border-amber-200 flex items-center justify-between">
+          <div class="truncate">
+            <span class="font-bold text-slate-700">1st Attempt:</span>
+            <strong class="text-rose-900 ml-1 font-black">👤 ${escapeHtml(firstAns.quizzer)}</strong>
+            <span class="text-[10px] text-slate-500">(${escapeHtml(origTeamName)})</span>
+          </div>
+          <span class="font-mono-score font-black text-xs text-rose-800 bg-rose-100 px-2 py-0.5 rounded border border-rose-200">
+            ❌ -${reboundStatus.penalty} Err ⚡
+          </span>
+        </div>
+      ` : '';
+
+      const reboundChips = targetStudents.map(name => {
+        const isSelected = state.scoreInput.team === targetTeam && state.scoreInput.quizzer && state.scoreInput.quizzer.toLowerCase() === name.toLowerCase();
+        return `
+          <button type="button" onclick="quickScoreFromTable(${q}, '${targetTeam}', '${escapeHtml(name)}')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            isSelected 
+              ? 'bg-amber-500 text-slate-950 font-black shadow-xs ring-2 ring-amber-300' 
+              : 'bg-white text-slate-900 border border-amber-300 hover:bg-amber-100'
+          }">
+            👤 ${escapeHtml(name)}
+          </button>
+        `;
+      }).join('');
 
       html += `
-        <div class="p-3 rounded-xl border ${isTeamA ? 'border-brand-200 bg-brand-50/50' : 'border-rose-200 bg-rose-50/50'} shadow-xs flex flex-col gap-1.5 transition-all">
-          <div class="flex items-center justify-between">
+        <div class="p-3.5 rounded-xl border-2 border-amber-400 bg-amber-50/90 shadow-sm flex flex-col gap-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 font-black font-mono-score text-sm flex items-center justify-center flex-shrink-0 animate-pulse">
+                #${q}
+              </span>
+              <div>
+                <div class="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                  <span>⚡ Q#${q} Re-Read Rebound</span>
+                  <span class="font-mono-score bg-amber-200/90 px-1.5 py-0.2 rounded text-[10px]">${row.pointValue} PTS</span>
+                </div>
+                <span class="text-[10px] text-amber-900 font-semibold block">Opposite team can answer now:</span>
+              </div>
+            </div>
+
+            <button type="button" onclick="skipRebound(${q})" class="text-[11px] bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold px-2.5 py-1 rounded-lg shadow-2xs flex-shrink-0 cursor-pointer">
+              ⏭️ Skip Rebound
+            </button>
+          </div>
+
+          ${firstAnsHtml}
+
+          <div class="pt-1.5 border-t border-amber-200 space-y-1.5">
+            <div class="text-[11px] font-black uppercase tracking-wider text-amber-950 flex items-center justify-between">
+              <span>⭐ Buzz in for ${escapeHtml(targetTeamName)}:</span>
+              <button type="button" onclick="jumpToQuestion(${q})" class="text-[10px] font-bold text-brand-700 hover:underline">Open Scorer ➔</button>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              ${reboundChips || '<span class="text-xs text-slate-400">No students listed</span>'}
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (qAnswers.length > 0) {
+      // Question has completed 1 or 2 answers!
+      const answersHtml = qAnswers.map((ans, idx) => {
+        const isTeamA = ans.team === 'teamA';
+        const teamName = isTeamA ? activeRound.teamA.name : activeRound.teamB.name;
+        const teamBadgeColor = isTeamA ? 'text-brand-900' : 'text-rose-900';
+        const isCorrect = ans.isCorrect;
+        const pointsScored = isCorrect ? `+${ans.pointValue}` : (ans.isInterruption ? `-${Math.floor(ans.pointValue / 2)}` : '0');
+        const scoreClass = isCorrect ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-rose-100 text-rose-800 border-rose-300';
+
+        return `
+          <div class="flex items-center justify-between text-xs py-1 ${idx > 0 ? 'border-t border-slate-200/60' : ''}">
+            <div class="truncate flex items-center gap-1.5">
+              <span class="text-[10px] font-bold ${isTeamA ? 'bg-brand-100 text-brand-800' : 'bg-rose-100 text-rose-800'} px-1.5 py-0.2 rounded">
+                ${isTeamA ? 'Left' : 'Right'}
+              </span>
+              <span class="text-[11px] font-black ${teamBadgeColor}">👤 ${escapeHtml(ans.quizzer || 'Student')}</span>
+              ${ans.isInterruption ? '<span class="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-200 text-amber-900">⚡ Int</span>' : ''}
+              ${ans.isRebound ? '<span class="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-indigo-200 text-indigo-900">⭐ Reb</span>' : ''}
+            </div>
+
+            <span class="text-xs font-mono-score font-black px-2 py-0.5 rounded-lg border ${scoreClass} flex-shrink-0">
+              ${isCorrect ? `✅ ${pointsScored}` : `❌ ${pointsScored} Err`}
+            </span>
+          </div>
+        `;
+      }).join('');
+
+      html += `
+        <div class="p-3 rounded-xl border border-slate-300 bg-white shadow-xs flex flex-col gap-1.5 transition-all">
+          <div class="flex items-center justify-between pb-1 border-b border-slate-100">
             <div class="flex items-center gap-1.5">
               <span class="w-6 h-6 rounded-lg bg-slate-900 text-white font-black font-mono-score text-xs flex items-center justify-center flex-shrink-0">
                 #${q}
               </span>
               <span class="text-xs font-black text-slate-700 font-mono-score">${row.pointValue} PTS</span>
-              ${qObj.isInterruption ? '<span class="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-200 text-amber-900">⚡ Int</span>' : ''}
-              ${qObj.isRebound ? '<span class="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-indigo-200 text-indigo-900">⭐ Reb</span>' : ''}
+              ${qAnswers.length > 1 ? '<span class="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-200">2 Quizzers</span>' : ''}
             </div>
 
-            <div class="flex items-center gap-1.5">
-              <span class="text-xs font-mono-score font-black px-2 py-0.5 rounded-lg ${isCorrect ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'}">
-                ${isCorrect ? `✅ ${pointsScored}` : `❌ ${pointsScored} Err`}
-              </span>
+            <div class="flex items-center gap-2">
+              <div class="text-right flex-shrink-0 font-mono-score font-black text-xs text-slate-700">
+                <span class="text-brand-900">${row.homeRunning || 0}</span> - <span class="text-rose-900">${row.oppRunning || 0}</span>
+              </div>
               <button type="button" onclick="jumpToQuestion(${q})" title="Re-score or edit Question #${q}" class="text-[11px] bg-white border border-slate-300 text-slate-700 px-2 py-0.5 rounded-md font-bold hover:bg-slate-100 cursor-pointer">
                 ✏️ Edit
               </button>
             </div>
           </div>
 
-          <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60">
-            <div class="truncate">
-              <span class="text-[11px] font-black ${teamBadgeColor}">👤 ${escapeHtml(qObj.quizzer || 'Student')}</span>
-              <span class="text-[10px] text-slate-500 font-semibold truncate block">(${escapeHtml(teamName)})</span>
-            </div>
-            <div class="text-right flex-shrink-0 font-mono-score font-black text-xs text-slate-700">
-              <span class="text-brand-900">${row.homeRunning || 0}</span> - <span class="text-rose-900">${row.oppRunning || 0}</span>
-            </div>
+          <div class="space-y-0.5">
+            ${answersHtml}
           </div>
         </div>
       `;
-    } else if (isCurrentNext) {
+    } else if (isCurrentActive) {
+      // Standard upcoming question with quick student chips
       let quickChipsA = studentsA.map(name => {
         const isSelected = state.scoreInput.team === 'teamA' && state.scoreInput.quizzer && state.scoreInput.quizzer.toLowerCase() === name.toLowerCase();
         return `
@@ -1351,6 +1585,7 @@ function renderScoresheetMobileFeed(activeRound) {
         </div>
       `;
     } else {
+      // Future pending question
       html += `
         <div class="p-2.5 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between text-xs text-slate-400">
           <div class="flex items-center gap-2">
@@ -1410,14 +1645,18 @@ function renderScoresheetTableRows(activeRound) {
       }).join(' ');
     };
 
-    const isCurrentActiveQ = qNum === questionsList.length + 1;
+    const currentPendingQ = activeRound.pendingQuestionNum || (questionsList.length + 1);
+    const isCurrentActiveQ = qNum === currentPendingQ;
+    const isReboundPendingRow = isCurrentActiveQ && activeRound.reboundStatus?.isPending;
     const isEditingQ = qNum === activeQInputVal;
-    const rowBg = isCurrentActiveQ
-      ? 'bg-amber-50/70 border-l-4 border-amber-500'
-      : (isEditingQ ? 'bg-indigo-50/40 border-l-4 border-indigo-400' : (qNum % 2 === 0 ? 'bg-slate-50/60' : 'bg-white'));
+    const rowBg = isReboundPendingRow
+      ? 'bg-amber-100/90 border-l-4 border-amber-500 font-semibold'
+      : (isCurrentActiveQ
+        ? 'bg-amber-50/70 border-l-4 border-amber-500'
+        : (isEditingQ ? 'bg-indigo-50/40 border-l-4 border-indigo-400' : (qNum % 2 === 0 ? 'bg-slate-50/60' : 'bg-white')));
 
-    const qColBg = isCurrentActiveQ ? 'bg-amber-100' : (qNum % 2 === 0 ? 'bg-slate-100' : 'bg-white');
-    const ptsColBg = isCurrentActiveQ ? 'bg-amber-50' : (qNum % 2 === 0 ? 'bg-slate-50' : 'bg-white');
+    const qColBg = isReboundPendingRow ? 'bg-amber-200 font-black' : (isCurrentActiveQ ? 'bg-amber-100' : (qNum % 2 === 0 ? 'bg-slate-100' : 'bg-white'));
+    const ptsColBg = isReboundPendingRow ? 'bg-amber-100' : (isCurrentActiveQ ? 'bg-amber-50' : (qNum % 2 === 0 ? 'bg-slate-50' : 'bg-white'));
 
     const renderStudentCell = (teamKey, idx, studentName, cellVal) => {
       const isSelected = state.scoreInput.team === teamKey && 

@@ -82,6 +82,20 @@
                 "Eli",
                 "Timothy",
                 "Hannah"
+              ],
+              "home": [
+                "Sam",
+                "Mia",
+                "Ben",
+                "Jade",
+                "Noah"
+              ],
+              "opponent": [
+                "Leo",
+                "Ava",
+                "Eli",
+                "Timothy",
+                "Hannah"
               ]
             },
             "timeouts": {
@@ -128,7 +142,8 @@
               "Eli",
               "Timothy",
               "Hannah"
-            ]
+            ],
+            "skippedRebounds": []
           },
           "match-2": {
             "id": "match-2",
@@ -149,6 +164,20 @@
                 "Isabelle"
               ],
               "teamB": [
+                "Quizzer 1",
+                "Quizzer 2",
+                "Quizzer 3",
+                "Quizzer 4",
+                "Quizzer 5"
+              ],
+              "home": [
+                "Prakash",
+                "Deevena",
+                "Amiel",
+                "Hosanna",
+                "Isabelle"
+              ],
+              "opponent": [
                 "Quizzer 1",
                 "Quizzer 2",
                 "Quizzer 3",
@@ -186,7 +215,44 @@
               "teamA": [],
               "teamB": []
             },
-            "questions": [],
+            "questions": [
+              {
+                "id": "q-1791085256103-846",
+                "questionNum": 1,
+                "pointValue": 30,
+                "isInterruption": false,
+                "isRebound": false,
+                "team": "teamA",
+                "quizzer": "Amiel",
+                "isCorrect": true,
+                "scoredBy": "Head Coach",
+                "timestamp": "2026-10-04T03:40:56.104Z"
+              },
+              {
+                "id": "q-1791085258302-218",
+                "questionNum": 2,
+                "pointValue": 20,
+                "isInterruption": false,
+                "isRebound": false,
+                "team": "teamA",
+                "quizzer": "Amiel",
+                "isCorrect": true,
+                "scoredBy": "Head Coach",
+                "timestamp": "2026-10-04T03:40:58.302Z"
+              },
+              {
+                "id": "q-1791085261204-592",
+                "questionNum": 3,
+                "pointValue": 30,
+                "isInterruption": false,
+                "isRebound": false,
+                "team": "teamA",
+                "quizzer": "Amiel",
+                "isCorrect": true,
+                "scoredBy": "Head Coach",
+                "timestamp": "2026-10-04T03:41:01.204Z"
+              }
+            ],
             "studentsA": [
               "Prakash",
               "Deevena",
@@ -221,6 +287,20 @@
                 "Hannah"
               ],
               "teamB": [
+                "Quizzer 1",
+                "Quizzer 2",
+                "Quizzer 3",
+                "Quizzer 4",
+                "Quizzer 5"
+              ],
+              "home": [
+                "Leo",
+                "Ava",
+                "Eli",
+                "Timothy",
+                "Hannah"
+              ],
+              "opponent": [
                 "Quizzer 1",
                 "Quizzer 2",
                 "Quizzer 3",

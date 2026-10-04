@@ -1098,6 +1098,40 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
   if (finalScoreA > finalScoreB) winner = teamAObj.name;
   else if (finalScoreB > finalScoreA) winner = teamBObj.name;
 
+  // Compute active/pending question state and rebound status
+  let pendingQuestionNum = 1;
+  let isReboundPending = false;
+  let reboundTeam = null;
+  let reboundOriginalQuizzer = null;
+  let reboundOriginalTeam = null;
+  let reboundPenalty = 0;
+  let reboundPointValue = 20;
+
+  for (let q = 1; q <= 20; q++) {
+    const qList = (match.questions || []).filter(item => item.questionNum === q);
+    const isSkipped = (match.skippedRebounds || []).includes(q);
+
+    if (qList.length === 0) {
+      pendingQuestionNum = q;
+      break;
+    } else if (qList.length === 1 && !isSkipped) {
+      const firstAttempt = qList[0];
+      // If first attempt was interrupted AND missed, opposite team can answer!
+      if (!firstAttempt.isCorrect && firstAttempt.isInterruption) {
+        pendingQuestionNum = q;
+        isReboundPending = true;
+        reboundOriginalTeam = firstAttempt.team;
+        reboundOriginalQuizzer = firstAttempt.quizzer;
+        reboundTeam = firstAttempt.team === 'teamA' ? 'teamB' : 'teamA';
+        reboundPointValue = firstAttempt.pointValue || (q <= 10 ? 10 : (q <= 17 ? 20 : 30));
+        reboundPenalty = Math.round(reboundPointValue / 2);
+        break;
+      }
+    }
+    pendingQuestionNum = q + 1;
+  }
+  if (pendingQuestionNum > 20) pendingQuestionNum = 20;
+
   return {
     id: match.id,
     roundNum: match.roundNum || 1,
@@ -1106,6 +1140,16 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
     quizmaster: match.quizmaster || "Quizmaster",
     scorekeeper: match.scorekeeper || "Scorekeeper",
     totalQuestions: (match.questions || []).length,
+    pendingQuestionNum,
+    reboundStatus: {
+      isPending: isReboundPending,
+      team: reboundTeam,
+      originalTeam: reboundOriginalTeam,
+      originalQuizzer: reboundOriginalQuizzer,
+      penalty: reboundPenalty,
+      pointValue: reboundPointValue
+    },
+    skippedRebounds: match.skippedRebounds || [],
     questions: match.questions || [],
     studentsA,
     studentsB,
@@ -1929,6 +1973,9 @@ const handleUndoQuestion = (req, res) => {
 
   if (match && match.questions && match.questions.length > 0) {
     const removed = match.questions.pop();
+    if (removed && match.skippedRebounds) {
+      match.skippedRebounds = match.skippedRebounds.filter(q => q !== removed.questionNum);
+    }
     saveScoresData();
     return res.json({ success: true, removed, activeRound: calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ) });
   }
@@ -1937,6 +1984,25 @@ const handleUndoQuestion = (req, res) => {
 };
 app.post('/api/tbq/undo', authenticateCoach, handleUndoQuestion);
 app.post('/api/tbq/undo-question', authenticateCoach, handleUndoQuestion);
+
+// POST Skip Rebound for a Question
+app.post('/api/tbq/skip-rebound', authenticateCoach, (req, res) => {
+  const ctx = getPlatformContext(req);
+  const { matchId, questionNum } = req.body;
+  const mId = matchId || ctx.dataset.activeMatchId;
+  let match = ctx.dataset.matches[mId];
+  if (!match && ctx.dataset.activeMatchId) match = ctx.dataset.matches[ctx.dataset.activeMatchId];
+  if (!match) return res.status(404).json({ error: 'Match not found.' });
+
+  const q = parseInt(questionNum);
+  if (!match.skippedRebounds) match.skippedRebounds = [];
+  if (!match.skippedRebounds.includes(q)) {
+    match.skippedRebounds.push(q);
+  }
+  saveScoresData();
+  const activeRound = calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ);
+  res.json({ success: true, activeRound });
+});
 
 // POST Reset Match
 app.post('/api/tbq/reset-round', authenticateCoach, (req, res) => {
@@ -1951,6 +2017,7 @@ app.post('/api/tbq/reset-round', authenticateCoach, (req, res) => {
 
   if (match) {
     match.questions = [];
+    match.skippedRebounds = [];
     match.timeouts = {
       teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
       teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
