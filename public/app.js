@@ -40,8 +40,9 @@ const state = {
       page: 1,
       pageSize: 20
     },
+    hiddenIds: new Set(),
     revealedIds: new Set(),
-    revealAll: false,
+    revealAll: true,
     isRandomized: false,
     randomOrder: []
   }
@@ -781,28 +782,48 @@ function setPracticePageSize(size) {
   renderPracticeUI();
 }
 
-function toggleRevealAnswer(qId) {
-  if (state.practice.revealedIds.has(qId)) {
-    state.practice.revealedIds.delete(qId);
+function isPracticeQuestionRevealed(qId) {
+  if (state.practice.revealAll) {
+    return !state.practice.hiddenIds.has(qId);
   } else {
-    state.practice.revealedIds.add(qId);
+    return state.practice.revealedIds.has(qId);
   }
+}
+
+function toggleRevealAnswer(qId) {
+  let isRev = false;
+  if (state.practice.revealAll) {
+    if (state.practice.hiddenIds.has(qId)) {
+      state.practice.hiddenIds.delete(qId);
+      isRev = true;
+    } else {
+      state.practice.hiddenIds.add(qId);
+      isRev = false;
+    }
+  } else {
+    if (state.practice.revealedIds.has(qId)) {
+      state.practice.revealedIds.delete(qId);
+      isRev = false;
+    } else {
+      state.practice.revealedIds.add(qId);
+      isRev = true;
+    }
+  }
+
   const answerEl = document.getElementById(`practice-ans-${qId}`);
   const btnEl = document.getElementById(`practice-btn-reveal-${qId}`);
-  const isRev = state.practice.revealedIds.has(qId);
   if (answerEl) answerEl.classList.toggle('hidden', !isRev);
   if (btnEl) btnEl.innerHTML = isRev ? '<span>🙈 Hide Answer</span>' : '<span>👁️ Show Answer</span>';
 }
 
 function toggleRevealAllAnswers() {
   state.practice.revealAll = !state.practice.revealAll;
+  state.practice.hiddenIds.clear();
+  state.practice.revealedIds.clear();
+
   const btn = document.getElementById('btn-practice-reveal-all');
-  if (state.practice.revealAll) {
-    if (btn) btn.innerHTML = '<span>🙈 Hide All Answers</span>';
-    state.practice.questions.forEach(q => state.practice.revealedIds.add(q.id));
-  } else {
-    if (btn) btn.innerHTML = '<span>👁️ Reveal All Answers</span>';
-    state.practice.revealedIds.clear();
+  if (btn) {
+    btn.innerHTML = state.practice.revealAll ? '<span>🙈 Hide All Answers</span>' : '<span>👁️ Reveal All Answers</span>';
   }
   renderPracticeUI();
 }
@@ -836,7 +857,8 @@ function resetPracticeFilters() {
   state.practice.pagination.page = 1;
   state.practice.pagination.pageSize = 20;
   state.practice.isRandomized = false;
-  state.practice.revealAll = false;
+  state.practice.revealAll = true; // Answers revealed by default
+  state.practice.hiddenIds.clear();
   state.practice.revealedIds.clear();
   state.practice.randomOrder = [];
 
@@ -846,7 +868,7 @@ function resetPracticeFilters() {
   if (clearBtn) clearBtn.classList.add('hidden');
 
   const btnRevealAll = document.getElementById('btn-practice-reveal-all');
-  if (btnRevealAll) btnRevealAll.innerHTML = '<span>👁️ Reveal All Answers</span>';
+  if (btnRevealAll) btnRevealAll.innerHTML = '<span>🙈 Hide All Answers</span>';
 
   const btnRand = document.getElementById('btn-practice-randomize');
   if (btnRand) {
@@ -1126,7 +1148,7 @@ function renderPracticeUI() {
   // 6. Render Paginated Question Cards
   let html = '';
   pageQuestions.forEach((q, idx) => {
-    const isRevealed = state.practice.revealedIds.has(q.id);
+    const isRevealed = isPracticeQuestionRevealed(q.id);
 
     // Point badge styling
     let ptsBadgeClass = 'bg-slate-100 text-slate-800 border-slate-300';
