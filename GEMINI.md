@@ -48,6 +48,11 @@ This document contains binding architectural and functional rules for Google Ant
      - If the opposite team does not buzz in, provide an immediate `⏭️ Skip Rebound / Next Question` action.
      - Both quizzer scores, points, and errors are recorded for that question in the match log and scoresheet.
 
+7. **Verbatim Question & Answer Fidelity (Official PDF Exactness)**:
+   - All questions, introductory prompts, section titles, answers, and scripture references extracted from official competition PDFs must be preserved **VERBATIM** exactly as they appear in the source PDFs.
+   - Do NOT summarize, rephrase, rewrite, truncate, or alter the wording, spelling, or punctuation of questions or answers.
+   - The coach and quizzers rely on exact official wording for competition study and practice.
+
 ---
 
 ## Pre-Completion Verification

@@ -176,6 +176,10 @@
           <button onclick="switchTab('scoresheet')" id="tab-btn-scoresheet" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5">
             <span>📋 Scoresheet</span>
           </button>
+          <button onclick="switchTab('questions')" id="tab-btn-questions" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-amber-300 hover:text-white hover:bg-brand-800/60 flex items-center gap-1.5">
+            <span>📖 Nov 7 Practice</span>
+            <span class="bg-amber-400 text-brand-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">373</span>
+          </button>
           <button onclick="switchTab('teams')" id="tab-btn-teams" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white hover:bg-brand-800/60 flex items-center gap-1.5">
             <span>👥 Teams & Matches</span>
           </button>
@@ -223,10 +227,44 @@
   <!-- ========================================== -->
   <!-- 1. PUBLIC VIEW (WITHOUT LOGIN)             -->
   <!-- ========================================== -->
-  <main id="section-public" class="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex-grow w-full">
+  <main id="section-public" class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full">
 
-    <!-- HERO PUBLIC BANNER -->
-    <div class="bg-gradient-to-br from-brand-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-xl mb-8 relative overflow-hidden border border-brand-800">
+    <!-- HOME VIEW SUBTABS (Tournament Standings vs Nov 7 Meet Practice) -->
+    <div class="flex items-center justify-start gap-2 mb-6 border-b border-slate-200 pb-3 flex-wrap">
+      <button id="home-subtab-standings" onclick="switchHomeSubtab('standings')" class="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all bg-amber-400 text-brand-950 shadow-sm flex items-center gap-2">
+        <span>🏆 Tournament Standings</span>
+      </button>
+      <button id="home-subtab-practice" onclick="switchHomeSubtab('practice')" class="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-xs flex items-center gap-2">
+        <span>📖 Nov 7 Meet Practice</span>
+        <span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full">Mark 4 & 5 (373 Qs)</span>
+      </button>
+    </div>
+
+    <!-- SUBVIEW 1: TOURNAMENT STANDINGS (Current Home View) -->
+    <div id="home-view-standings">
+
+      <!-- QUICK MEET 2 CALLOUT BANNER -->
+      <div class="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-brand-50 to-indigo-50 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-400 text-brand-950 flex items-center justify-center text-xl font-black shrink-0">
+            📖
+          </div>
+          <div>
+            <div class="text-xs font-black uppercase text-amber-900 tracking-wider">Next Meet Practice Available</div>
+            <div class="text-sm font-bold text-slate-900">
+              Nov 7 Meet 2 • Gospel of Mark Chapters 4 & 5
+              <span class="text-xs text-slate-600 font-medium block sm:inline sm:ml-1">(373 Verbatim Official Questions)</span>
+            </div>
+          </div>
+        </div>
+        <button type="button" onclick="switchHomeSubtab('practice')" class="px-3.5 py-2 rounded-xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-brand-950 shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0 active:scale-98">
+          <span>Start Practice Drills</span>
+          <span>→</span>
+        </button>
+      </div>
+
+      <!-- HERO PUBLIC BANNER -->
+      <div class="bg-gradient-to-br from-brand-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-xl mb-8 relative overflow-hidden border border-brand-800">
       <div class="relative z-10">
         <div class="inline-flex items-center gap-2 bg-amber-400/20 text-amber-300 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full border border-amber-400/30 mb-3">
           <span>🏆 Live Tournament Standings</span>
@@ -314,6 +352,154 @@
           <span>⚡</span>
         </button>
       </form>
+    </div>
+
+    </div>
+    <!-- /#home-view-standings -->
+
+    <!-- ========================================== -->
+    <!-- SUBVIEW 2: NOV 7 MEET PRACTICE QUESTIONS   -->
+    <!-- ========================================== -->
+    <div id="home-view-practice" class="hidden space-y-6">
+
+      <!-- HERO PRACTICE BANNER -->
+      <div class="bg-gradient-to-br from-brand-950 via-slate-900 to-indigo-950 text-white rounded-3xl p-5 sm:p-8 shadow-xl border border-brand-800">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div>
+            <div class="inline-flex items-center gap-2 bg-amber-400/20 text-amber-300 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full border border-amber-400/30 mb-2.5">
+              <span>📖 Nov 7 Meet Practice Drill</span>
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Gospel of Mark — Chapters 4 & 5
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl leading-relaxed">
+              Official competition questions verbatim from Championship, Contender, and XP Progressive study sets. Select point values below to quiz quizzers during study sessions.
+            </p>
+          </div>
+
+          <!-- Question Stats Counters -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center shrink-0">
+            <div class="bg-white/10 border border-white/15 px-3 py-2 rounded-xl">
+              <div class="text-[10px] uppercase font-bold text-slate-300">Total Qs</div>
+              <div class="text-lg font-black text-white" id="stat-total-q">373</div>
+            </div>
+            <div class="bg-emerald-500/20 border border-emerald-400/30 px-3 py-2 rounded-xl">
+              <div class="text-[10px] uppercase font-bold text-emerald-300">10 Pts</div>
+              <div class="text-lg font-black text-emerald-400" id="stat-10pt-q">149</div>
+            </div>
+            <div class="bg-blue-500/20 border border-blue-400/30 px-3 py-2 rounded-xl">
+              <div class="text-[10px] uppercase font-bold text-blue-300">20 Pts</div>
+              <div class="text-lg font-black text-blue-400" id="stat-20pt-q">160</div>
+            </div>
+            <div class="bg-rose-500/20 border border-rose-400/30 px-3 py-2 rounded-xl">
+              <div class="text-[10px] uppercase font-bold text-rose-300">30 Pts</div>
+              <div class="text-lg font-black text-rose-400" id="stat-30pt-q">64</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROMINENT 10, 20, 30 POINT SELECTOR (Core User Requirement) -->
+        <div class="mt-6 pt-5 border-t border-white/15">
+          <div class="flex items-center justify-between mb-2.5">
+            <span class="text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+              <span>🎯</span> Select Question Point Value:
+            </span>
+            <span class="text-[11px] text-slate-400 hidden sm:inline">Tap to filter questions instantly</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3" id="practice-pts-selector">
+            <button type="button" onclick="setPracticePointsFilter('all')" id="btn-filter-pts-all" class="practice-pts-btn py-3 px-3 sm:px-4 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-between bg-amber-400 text-brand-950 shadow-md ring-2 ring-amber-300">
+              <span>⚡ All Points</span>
+              <span class="bg-brand-950/20 text-brand-950 text-xs px-2 py-0.5 rounded-full font-black">373</span>
+            </button>
+            <button type="button" onclick="setPracticePointsFilter(10)" id="btn-filter-pts-10" class="practice-pts-btn py-3 px-3 sm:px-4 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-between bg-slate-900/90 text-emerald-300 hover:bg-slate-800 border border-emerald-500/30">
+              <span>🟢 10 Pts</span>
+              <span class="bg-emerald-500/20 text-emerald-300 text-xs px-2 py-0.5 rounded-full font-black">149</span>
+            </button>
+            <button type="button" onclick="setPracticePointsFilter(20)" id="btn-filter-pts-20" class="practice-pts-btn py-3 px-3 sm:px-4 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-between bg-slate-900/90 text-blue-300 hover:bg-slate-800 border border-blue-500/30">
+              <span>🔵 20 Pts</span>
+              <span class="bg-blue-500/20 text-blue-300 text-xs px-2 py-0.5 rounded-full font-black">160</span>
+            </button>
+            <button type="button" onclick="setPracticePointsFilter(30)" id="btn-filter-pts-30" class="practice-pts-btn py-3 px-3 sm:px-4 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-between bg-slate-900/90 text-rose-300 hover:bg-slate-800 border border-rose-500/30">
+              <span>🔴 30 Pts</span>
+              <span class="bg-rose-500/20 text-rose-300 text-xs px-2 py-0.5 rounded-full font-black">64</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTER & TOOLBAR CARD -->
+      <div class="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200 space-y-4">
+        
+        <!-- Search Bar -->
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-sm">
+            🔍
+          </div>
+          <input type="text" id="practice-search-input" oninput="handlePracticeSearchInput(this.value)" placeholder="Search keywords (e.g. parable, storm, demons, Jairus, 4:35, farmer...)" class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 text-xs sm:text-sm font-medium">
+          <button type="button" id="practice-search-clear" onclick="clearPracticeSearch()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 font-bold text-xs">
+            ✕
+          </button>
+        </div>
+
+        <!-- Chapter & Division Filters -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1 border-t border-slate-100">
+          
+          <!-- Chapters -->
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[11px] font-black uppercase text-slate-400 mr-1">Chapter:</span>
+            <button type="button" onclick="setPracticeChapterFilter('all')" id="btn-chap-all" class="px-2.5 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950">
+              All (373)
+            </button>
+            <button type="button" onclick="setPracticeChapterFilter(4)" id="btn-chap-4" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-600 bg-slate-100 hover:bg-slate-200">
+              Mark 4 (163)
+            </button>
+            <button type="button" onclick="setPracticeChapterFilter(5)" id="btn-chap-5" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-600 bg-slate-100 hover:bg-slate-200">
+              Mark 5 (210)
+            </button>
+          </div>
+
+          <!-- Division Sets -->
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[11px] font-black uppercase text-slate-400 mr-1">Study Set:</span>
+            <button type="button" onclick="setPracticeDivisionFilter('all')" id="btn-div-all" class="px-2.5 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950">
+              All Sets
+            </button>
+            <button type="button" onclick="setPracticeDivisionFilter('Championship')" id="btn-div-champ" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-600 bg-slate-100 hover:bg-slate-200">
+              Championship (133)
+            </button>
+            <button type="button" onclick="setPracticeDivisionFilter('Contender')" id="btn-div-contender" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-600 bg-slate-100 hover:bg-slate-200">
+              Contender (197)
+            </button>
+            <button type="button" onclick="setPracticeDivisionFilter('XP Progressive')" id="btn-div-xp" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-600 bg-slate-100 hover:bg-slate-200">
+              XP (43)
+            </button>
+          </div>
+        </div>
+
+        <!-- Coach Action Utilities Toolbar -->
+        <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 flex-wrap">
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="toggleRevealAllAnswers()" id="btn-practice-reveal-all" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5">
+              <span>👁️ Reveal All Answers</span>
+            </button>
+            <button type="button" onclick="toggleRandomizeQuestions()" id="btn-practice-randomize" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5">
+              <span>🔀 Randomize Drill</span>
+            </button>
+            <button type="button" onclick="resetPracticeFilters()" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-500 hover:text-slate-800 hover:bg-slate-100">
+              🔄 Reset
+            </button>
+          </div>
+
+          <div class="text-xs font-bold text-slate-600" id="practice-questions-counter">
+            Showing 373 questions
+          </div>
+        </div>
+      </div>
+
+      <!-- QUESTIONS CARDS CONTAINER -->
+      <div id="practice-questions-list" class="space-y-4">
+        <!-- Rendered dynamically via JS -->
+      </div>
     </div>
 
   </main>
@@ -1163,6 +1349,10 @@
         <span class="text-base leading-none">📋</span>
         <span class="text-[10px] mt-0.5 font-extrabold">Scoresheet</span>
       </button>
+      <button onclick="switchTab('questions')" id="mob-tab-btn-questions" class="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all text-amber-300 hover:text-white">
+        <span class="text-base leading-none">📖</span>
+        <span class="text-[10px] mt-0.5 font-extrabold">Practice</span>
+      </button>
       <button onclick="switchTab('teams')" id="mob-tab-btn-teams" class="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all text-brand-300 hover:text-white">
         <span class="text-base leading-none">👥</span>
         <span class="text-[10px] mt-0.5 font-extrabold">Teams</span>
@@ -1178,6 +1368,6 @@
     </div>
   </nav>
 
-  <script src="/app.js?v=20261003_12"></script>
+  <script src="/app.js?v=20261004_1"></script>
 </body>
 </html>
