@@ -36,6 +36,10 @@ const state = {
       division: 'all', // 'all' | 'Championship' | 'Contender' | 'XP Progressive'
       search: ''
     },
+    pagination: {
+      page: 1,
+      pageSize: 20
+    },
     revealedIds: new Set(),
     revealAll: false,
     isRandomized: false,
@@ -728,24 +732,28 @@ function switchHomeSubtab(subtab) {
 
 function setPracticePointsFilter(pts) {
   state.practice.filter.pts = (pts === 'all') ? 'all' : Number(pts);
+  state.practice.pagination.page = 1;
   updatePracticeFilterButtonsUI();
   renderPracticeUI();
 }
 
 function setPracticeChapterFilter(ch) {
   state.practice.filter.chapter = (ch === 'all') ? 'all' : Number(ch);
+  state.practice.pagination.page = 1;
   updatePracticeFilterButtonsUI();
   renderPracticeUI();
 }
 
 function setPracticeDivisionFilter(div) {
   state.practice.filter.division = div;
+  state.practice.pagination.page = 1;
   updatePracticeFilterButtonsUI();
   renderPracticeUI();
 }
 
 function handlePracticeSearchInput(val) {
   state.practice.filter.search = (val || '').trim().toLowerCase();
+  state.practice.pagination.page = 1;
   const clearBtn = document.getElementById('practice-search-clear');
   if (clearBtn) clearBtn.classList.toggle('hidden', !state.practice.filter.search);
   renderPracticeUI();
@@ -754,7 +762,23 @@ function handlePracticeSearchInput(val) {
 function clearPracticeSearch() {
   const input = document.getElementById('practice-search-input');
   if (input) input.value = '';
+  state.practice.pagination.page = 1;
   handlePracticeSearchInput('');
+}
+
+function setPracticePage(pageNum) {
+  state.practice.pagination.page = pageNum;
+  renderPracticeUI();
+  const target = document.getElementById('practice-pagination-top') || document.getElementById('home-view-practice');
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function setPracticePageSize(size) {
+  state.practice.pagination.pageSize = (size === 'all') ? 99999 : Number(size);
+  state.practice.pagination.page = 1;
+  renderPracticeUI();
 }
 
 function toggleRevealAnswer(qId) {
@@ -785,6 +809,7 @@ function toggleRevealAllAnswers() {
 
 function toggleRandomizeQuestions() {
   state.practice.isRandomized = !state.practice.isRandomized;
+  state.practice.pagination.page = 1;
   const btn = document.getElementById('btn-practice-randomize');
   if (btn) {
     if (state.practice.isRandomized) {
@@ -808,6 +833,8 @@ function toggleRandomizeQuestions() {
 
 function resetPracticeFilters() {
   state.practice.filter = { pts: 'all', chapter: 'all', division: 'all', search: '' };
+  state.practice.pagination.page = 1;
+  state.practice.pagination.pageSize = 20;
   state.practice.isRandomized = false;
   state.practice.revealAll = false;
   state.practice.revealedIds.clear();
@@ -889,9 +916,117 @@ function updatePracticeFilterButtonsUI() {
   });
 }
 
+function buildPracticePaginationHtml(totalFiltered, currentPage, pageSize) {
+  if (totalFiltered <= 0) return '';
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startItem = (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(totalFiltered, currentPage * pageSize);
+
+  // Build page numbers array with ellipsis
+  let pages = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    let start = Math.max(2, currentPage - 1);
+    let end = Math.min(totalPages - 1, currentPage + 1);
+
+    if (currentPage <= 3) {
+      start = 2;
+      end = 4;
+    } else if (currentPage >= totalPages - 2) {
+      start = totalPages - 3;
+      end = totalPages - 1;
+    }
+
+    if (start > 2) pages.push('...');
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < totalPages - 1) pages.push('...');
+    pages.push(totalPages);
+  }
+
+  const pageButtonsHtml = pages.map(p => {
+    if (p === '...') {
+      return `<span class="px-2 py-1 text-slate-400 font-bold text-xs select-none">...</span>`;
+    }
+    const isActive = p === currentPage;
+    if (isActive) {
+      return `<button type="button" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-xs font-black bg-amber-400 text-brand-950 shadow-xs ring-2 ring-amber-300 transition-all flex items-center justify-center">${p}</button>`;
+    } else {
+      return `<button type="button" onclick="setPracticePage(${p})" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs transition-all flex items-center justify-center">${p}</button>`;
+    }
+  }).join('');
+
+  const prevDisabled = currentPage <= 1;
+  const nextDisabled = currentPage >= totalPages;
+
+  const btnPrevClass = prevDisabled
+    ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border border-slate-200'
+    : 'bg-white hover:bg-slate-100 text-slate-800 font-bold border border-slate-200 shadow-2xs active:scale-95 cursor-pointer';
+
+  const btnNextClass = nextDisabled
+    ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border border-slate-200'
+    : 'bg-white hover:bg-slate-100 text-slate-800 font-bold border border-slate-200 shadow-2xs active:scale-95 cursor-pointer';
+
+  return `
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 sm:p-4 bg-white rounded-3xl border border-slate-200 shadow-xs">
+      
+      <!-- Counter & Page Summary -->
+      <div class="text-xs font-bold text-slate-600 flex items-center gap-1.5 flex-wrap">
+        <span>Showing</span>
+        <span class="text-slate-900 font-black bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-200">${startItem}–${endItem}</span>
+        <span>of</span>
+        <span class="text-slate-900 font-black">${totalFiltered}</span>
+        <span class="text-slate-400">•</span>
+        <span class="text-brand-800 font-extrabold">Page ${currentPage} of ${totalPages}</span>
+      </div>
+
+      <!-- Pagination Navigation Buttons -->
+      <div class="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center">
+        <button type="button" onclick="setPracticePage(1)" ${prevDisabled ? 'disabled' : ''} title="First Page" class="px-2.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${btnPrevClass}">
+          <span>⏮</span>
+        </button>
+        <button type="button" onclick="setPracticePage(${currentPage - 1})" ${prevDisabled ? 'disabled' : ''} title="Previous Page" class="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${btnPrevClass}">
+          <span>◀</span>
+          <span class="hidden sm:inline">Prev</span>
+        </button>
+
+        ${pageButtonsHtml}
+
+        <button type="button" onclick="setPracticePage(${currentPage + 1})" ${nextDisabled ? 'disabled' : ''} title="Next Page" class="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${btnNextClass}">
+          <span class="hidden sm:inline">Next</span>
+          <span>▶</span>
+        </button>
+        <button type="button" onclick="setPracticePage(${totalPages})" ${nextDisabled ? 'disabled' : ''} title="Last Page" class="px-2.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${btnNextClass}">
+          <span>⏭</span>
+        </button>
+      </div>
+
+      <!-- Page Size Selector (10, 20 match round, 30, 50, all) -->
+      <div class="flex items-center gap-1.5 text-xs">
+        <span class="text-[11px] font-black uppercase text-slate-400 hidden lg:inline">Per page:</span>
+        <select onchange="setPracticePageSize(this.value)" class="bg-slate-50 hover:bg-slate-100 font-black text-slate-800 rounded-xl px-2.5 py-1.5 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer text-xs">
+          <option value="10" ${pageSize === 10 ? 'selected' : ''}>10 / page</option>
+          <option value="20" ${pageSize === 20 ? 'selected' : ''}>20 / page (Match)</option>
+          <option value="30" ${pageSize === 30 ? 'selected' : ''}>30 / page</option>
+          <option value="50" ${pageSize === 50 ? 'selected' : ''}>50 / page</option>
+          <option value="all" ${pageSize >= 9999 ? 'selected' : ''}>All (${totalFiltered})</option>
+        </select>
+      </div>
+
+    </div>
+  `;
+}
+
 function renderPracticeUI() {
   const listEl = document.getElementById('practice-questions-list');
   const counterEl = document.getElementById('practice-questions-counter');
+  const topPaginationEl = document.getElementById('practice-pagination-top');
+  const bottomPaginationEl = document.getElementById('practice-pagination-bottom');
   if (!listEl) return;
 
   if (!state.practice.questions || state.practice.questions.length === 0) {
@@ -921,7 +1056,6 @@ function renderPracticeUI() {
 
   // 2. Order questions (randomized vs standard sequential)
   if (state.practice.isRandomized && state.practice.randomOrder.length > 0) {
-    // Sort according to random index order
     const orderMap = new Map();
     state.practice.randomOrder.forEach((origIdx, orderIdx) => {
       const q = state.practice.questions[origIdx];
@@ -930,20 +1064,24 @@ function renderPracticeUI() {
     filtered.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
   }
 
-  // 3. Update counter text
-  if (counterEl) {
-    let filterDescription = [];
-    if (pts !== 'all') filterDescription.push(`${pts} Pts`);
-    if (chapter !== 'all') filterDescription.push(`Mark ${chapter}`);
-    if (division !== 'all') filterDescription.push(division);
-    if (search) filterDescription.push(`"${search}"`);
+  const totalFiltered = filtered.length;
+  let { page, pageSize } = state.practice.pagination;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
 
-    const descStr = filterDescription.length > 0 ? ` (${filterDescription.join(' • ')})` : '';
-    counterEl.textContent = `Showing ${filtered.length} of ${state.practice.questions.length} questions${descStr}`;
+  if (page > totalPages) {
+    page = totalPages;
+    state.practice.pagination.page = page;
+  }
+  if (page < 1) {
+    page = 1;
+    state.practice.pagination.page = 1;
   }
 
-  // 4. Render empty state or question cards
-  if (filtered.length === 0) {
+  // 3. Render empty state or slice paginated questions
+  if (totalFiltered === 0) {
+    if (topPaginationEl) topPaginationEl.classList.add('hidden');
+    if (bottomPaginationEl) bottomPaginationEl.classList.add('hidden');
+    if (counterEl) counterEl.textContent = 'Showing 0 questions';
     listEl.innerHTML = `
       <div class="text-center py-12 bg-white rounded-3xl border border-slate-200 shadow-xs p-6">
         <div class="text-3xl mb-2">🔍</div>
@@ -957,8 +1095,37 @@ function renderPracticeUI() {
     return;
   }
 
+  // Calculate slice range
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = Math.min(totalFiltered, startIndex + pageSize);
+  const pageQuestions = filtered.slice(startIndex, endIndex);
+
+  // 4. Update counter text
+  if (counterEl) {
+    let filterDescription = [];
+    if (pts !== 'all') filterDescription.push(`${pts} Pts`);
+    if (chapter !== 'all') filterDescription.push(`Mark ${chapter}`);
+    if (division !== 'all') filterDescription.push(division);
+    if (search) filterDescription.push(`"${search}"`);
+
+    const descStr = filterDescription.length > 0 ? ` (${filterDescription.join(' • ')})` : '';
+    counterEl.textContent = `Showing ${startIndex + 1}–${endIndex} of ${totalFiltered} questions${descStr}`;
+  }
+
+  // 5. Render Pagination Bars (Top & Bottom)
+  const paginationHtml = buildPracticePaginationHtml(totalFiltered, page, pageSize);
+  if (topPaginationEl) {
+    topPaginationEl.innerHTML = paginationHtml;
+    topPaginationEl.classList.remove('hidden');
+  }
+  if (bottomPaginationEl) {
+    bottomPaginationEl.innerHTML = paginationHtml;
+    bottomPaginationEl.classList.remove('hidden');
+  }
+
+  // 6. Render Paginated Question Cards
   let html = '';
-  filtered.forEach((q, idx) => {
+  pageQuestions.forEach((q, idx) => {
     const isRevealed = state.practice.revealedIds.has(q.id);
 
     // Point badge styling
@@ -986,7 +1153,7 @@ function renderPracticeUI() {
               ${escapeHtml(q.division)} • ${escapeHtml(q.set)}
             </span>
             <span class="text-[11px] font-mono font-bold text-slate-400">
-              #${idx + 1}
+              #${startIndex + idx + 1}
             </span>
           </div>
 
