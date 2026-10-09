@@ -623,6 +623,18 @@
                     "Luke",
                     "John",
                     "Paul"
+                  ],
+                  "home": [
+                    "Noah",
+                    "Ethan",
+                    "Chloe",
+                    "Sarah"
+                  ],
+                  "opponent": [
+                    "Mark",
+                    "Luke",
+                    "John",
+                    "Paul"
                   ]
                 },
                 "timeouts": {
@@ -655,7 +667,19 @@
                   "teamA": [],
                   "teamB": []
                 },
-                "questions": []
+                "questions": [],
+                "studentsA": [
+                  "Noah",
+                  "Ethan",
+                  "Chloe",
+                  "Sarah"
+                ],
+                "studentsB": [
+                  "Mark",
+                  "Luke",
+                  "John",
+                  "Paul"
+                ]
               }
             }
           },
@@ -718,6 +742,18 @@
                     "Hannah",
                     "Caleb",
                     "Ruth"
+                  ],
+                  "home": [
+                    "David",
+                    "Grace",
+                    "Lucas",
+                    "Maya"
+                  ],
+                  "opponent": [
+                    "Joshua",
+                    "Hannah",
+                    "Caleb",
+                    "Ruth"
                   ]
                 },
                 "timeouts": {
@@ -750,7 +786,19 @@
                   "teamA": [],
                   "teamB": []
                 },
-                "questions": []
+                "questions": [],
+                "studentsA": [
+                  "David",
+                  "Grace",
+                  "Lucas",
+                  "Maya"
+                ],
+                "studentsB": [
+                  "Joshua",
+                  "Hannah",
+                  "Caleb",
+                  "Ruth"
+                ]
               }
             }
           }

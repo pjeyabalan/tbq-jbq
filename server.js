@@ -775,15 +775,42 @@ function saveScoresData() {
 
 // Context Resolver: Resolves current league, meet, division, and active dataset
 function getPlatformContext(req) {
-  let league = (req.headers['x-quiz-league'] || req.query?.league || req.body?.league || platformData.activeLeague || 'tbq').toLowerCase();
-  if (league !== 'jbq') league = 'tbq';
+  const divParam = (req.headers['x-quiz-division'] || req.query?.division || req.body?.division || '').toString().toLowerCase();
+  const leagueParam = (req.headers['x-quiz-league'] || req.query?.league || req.body?.league || '').toString().toLowerCase();
+
+  let league = 'tbq';
+  let division = null;
+
+  if (divParam === 'tbq') {
+    league = 'tbq';
+    division = null;
+  } else if (divParam === 'b_level' || divParam === 'jbq_b' || divParam === 'jbq-b') {
+    league = 'jbq';
+    division = 'b_level';
+  } else if (divParam === 'c_level' || divParam === 'jbq_c' || divParam === 'jbq-c') {
+    league = 'jbq';
+    division = 'c_level';
+  } else if (leagueParam === 'jbq') {
+    league = 'jbq';
+    division = divParam === 'c_level' ? 'c_level' : 'b_level';
+  } else if (leagueParam === 'tbq') {
+    league = 'tbq';
+    division = null;
+  } else {
+    league = platformData.activeLeague || 'tbq';
+    if (league === 'jbq') {
+      division = platformData.jbq.activeDivision || 'b_level';
+    }
+  }
 
   // Role permissions check
   if (req.user) {
     if (req.user.role === 'jbq_coach') {
       league = 'jbq';
+      if (!division) division = 'b_level';
     } else if (req.user.role === 'tbq_coach' || req.user.role === 'coach') {
       league = 'tbq';
+      division = null;
     }
   }
 
@@ -794,10 +821,8 @@ function getPlatformContext(req) {
   }
   const meet = leagueData.meets[meetId];
 
-  let division = null;
   let dataset = null;
   if (league === 'jbq') {
-    division = req.headers['x-quiz-division'] || req.query?.division || req.body?.division || leagueData.activeDivision || 'b_level';
     if (!meet.divisions || !meet.divisions[division]) {
       division = Object.keys(meet.divisions || {})[0] || 'b_level';
     }
@@ -819,6 +844,43 @@ function getPlatformContext(req) {
     division,
     dataset,
     isJBQ: league === 'jbq'
+  };
+}
+
+function getDivisionsSummary() {
+  const tbqMeetId = platformData.tbq.activeMeetId || Object.keys(platformData.tbq.meets)[0];
+  const tbqMeet = platformData.tbq.meets[tbqMeetId] || { teams: [], matches: {} };
+
+  const jbqMeetId = platformData.jbq.activeMeetId || Object.keys(platformData.jbq.meets)[0];
+  const jbqMeet = platformData.jbq.meets[jbqMeetId] || { divisions: {} };
+  const bDiv = jbqMeet.divisions?.b_level || { teams: [], matches: {} };
+  const cDiv = jbqMeet.divisions?.c_level || { teams: [], matches: {} };
+
+  return {
+    tbq: {
+      key: 'tbq',
+      name: 'TBQ',
+      label: 'Teen Bible Quiz',
+      teamsCount: (tbqMeet.teams || []).length,
+      matchesCount: Object.keys(tbqMeet.matches || {}).length,
+      meetId: tbqMeetId
+    },
+    jbq_b: {
+      key: 'jbq_b',
+      name: 'JBQ B-Level',
+      label: 'Junior Bible Quiz (B)',
+      teamsCount: (bDiv.teams || []).length,
+      matchesCount: Object.keys(bDiv.matches || {}).length,
+      meetId: jbqMeetId
+    },
+    jbq_c: {
+      key: 'jbq_c',
+      name: 'JBQ C-Level',
+      label: 'Junior Bible Quiz (C)',
+      teamsCount: (cDiv.teams || []).length,
+      matchesCount: Object.keys(cDiv.matches || {}).length,
+      meetId: jbqMeetId
+    }
   };
 }
 
@@ -1316,7 +1378,8 @@ app.get('/api/platform/context', (req, res) => {
           matchesCount: Object.keys(m.divisions[dKey].matches || {}).length
         }))
       }))
-    }
+    },
+    divisionsSummary: getDivisionsSummary()
   });
 });
 
@@ -1547,7 +1610,8 @@ app.get('/api/tbq/public-summary', (req, res) => {
     date: ctx.meet.date,
     teams: standings,
     matches: matchesSummaries,
-    activeMatchId: ctx.dataset.activeMatchId
+    activeMatchId: ctx.dataset.activeMatchId,
+    divisionsSummary: getDivisionsSummary()
   });
 });
 
@@ -1555,6 +1619,24 @@ app.get('/api/tbq/public-summary', (req, res) => {
 // ==========================================
 // 6. COACH MATCH & SCORESHEET APIS
 // ==========================================
+
+// GET Teams segregated across all 3 divisions
+app.get('/api/teams/by-division', authenticateCoach, (req, res) => {
+  const tbqMeetId = platformData.tbq.activeMeetId || Object.keys(platformData.tbq.meets)[0];
+  const tbqMeet = platformData.tbq.meets[tbqMeetId] || { teams: [] };
+
+  const jbqMeetId = platformData.jbq.activeMeetId || Object.keys(platformData.jbq.meets)[0];
+  const jbqMeet = platformData.jbq.meets[jbqMeetId] || { divisions: {} };
+  const bDiv = jbqMeet.divisions?.b_level || { teams: [] };
+  const cDiv = jbqMeet.divisions?.c_level || { teams: [] };
+
+  res.json({
+    tbq: tbqMeet.teams || [],
+    jbq_b: bDiv.teams || [],
+    jbq_c: cDiv.teams || [],
+    divisionsSummary: getDivisionsSummary()
+  });
+});
 
 // GET Active Match & Full Scoresheet
 app.get('/api/tbq', authenticateCoach, (req, res) => {
@@ -1601,7 +1683,8 @@ app.get('/api/tbq', authenticateCoach, (req, res) => {
     activeMatchId: dataset.activeMatchId,
     matchesList,
     meetsList,
-    activeRound: activeMatch
+    activeRound: activeMatch,
+    divisionsSummary: getDivisionsSummary()
   });
 });
 
@@ -1625,6 +1708,27 @@ app.post('/api/teams/save', authenticateCoach, (req, res) => {
     return res.status(400).json({ error: 'Team name is required.' });
   }
 
+  // If editing an existing team, remove from other division datasets if moving divisions
+  if (teamId) {
+    for (const mId in platformData.tbq.meets) {
+      const m = platformData.tbq.meets[mId];
+      if (m.teams && m !== ctx.dataset) {
+        m.teams = m.teams.filter(t => t.id !== teamId);
+      }
+    }
+    for (const mId in platformData.jbq.meets) {
+      const m = platformData.jbq.meets[mId];
+      if (m.divisions) {
+        for (const dKey in m.divisions) {
+          const dObj = m.divisions[dKey];
+          if (dObj.teams && dObj !== ctx.dataset) {
+            dObj.teams = dObj.teams.filter(t => t.id !== teamId);
+          }
+        }
+      }
+    }
+  }
+
   let targetTeam = ctx.dataset.teams.find(t => t.id === teamId);
   if (!targetTeam) {
     targetTeam = {
@@ -1646,8 +1750,13 @@ app.post('/api/teams/save', authenticateCoach, (req, res) => {
   }
 
   saveScoresData();
-  console.log(`[TEAM] Coach ${req.user.name} saved team: ${targetTeam.name} (${targetTeam.quizzers.length} quizzers)`);
-  res.json({ success: true, team: targetTeam, teams: ctx.dataset.teams });
+  console.log(`[TEAM] Coach ${req.user.name} saved team: ${targetTeam.name} (${targetTeam.quizzers.length} quizzers) in ${ctx.league.toUpperCase()} ${ctx.division || ''}`);
+  res.json({
+    success: true,
+    team: targetTeam,
+    teams: ctx.dataset.teams,
+    divisionsSummary: getDivisionsSummary()
+  });
 });
 
 // POST Delete a Team
@@ -1656,7 +1765,7 @@ app.post('/api/teams/delete', authenticateCoach, (req, res) => {
   const { teamId } = req.body;
   ctx.dataset.teams = (ctx.dataset.teams || []).filter(t => t.id !== teamId);
   saveScoresData();
-  res.json({ success: true, teams: ctx.dataset.teams });
+  res.json({ success: true, teams: ctx.dataset.teams, divisionsSummary: getDivisionsSummary() });
 });
 
 // POST Clear All Teams
@@ -1664,8 +1773,8 @@ app.post('/api/teams/clear-all', authenticateCoach, (req, res) => {
   const ctx = getPlatformContext(req);
   ctx.dataset.teams = [];
   saveScoresData();
-  console.log(`[TEAM] Coach ${req.user.name} cleared all teams`);
-  res.json({ success: true, teams: [] });
+  console.log(`[TEAM] Coach ${req.user.name} cleared all teams in ${ctx.league.toUpperCase()} ${ctx.division || ''}`);
+  res.json({ success: true, teams: [], divisionsSummary: getDivisionsSummary() });
 });
 
 // POST Add a New Match
@@ -1702,8 +1811,13 @@ app.post('/api/matches/add', authenticateCoach, (req, res) => {
   ctx.dataset.activeMatchId = newId;
   saveScoresData();
 
-  console.log(`[MATCH] Coach ${req.user.name} created Match #${newMatch.matchNumber} (${ctx.league.toUpperCase()})`);
-  res.json({ success: true, match: newMatch, activeRound: calculateMatchStats(newId, ctx.dataset, ctx.isJBQ) });
+  console.log(`[MATCH] Coach ${req.user.name} created Match #${newMatch.matchNumber} (${ctx.league.toUpperCase()} ${ctx.division || ''})`);
+  res.json({
+    success: true,
+    match: newMatch,
+    activeRound: calculateMatchStats(newId, ctx.dataset, ctx.isJBQ),
+    divisionsSummary: getDivisionsSummary()
+  });
 });
 
 // POST Update an Existing Match
@@ -1737,7 +1851,12 @@ app.post('/api/matches/update', authenticateCoach, (req, res) => {
   }
 
   saveScoresData();
-  res.json({ success: true, match, activeRound: calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ) });
+  res.json({
+    success: true,
+    match,
+    activeRound: calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ),
+    divisionsSummary: getDivisionsSummary()
+  });
 });
 
 // POST Delete a Match
@@ -1759,7 +1878,11 @@ app.post('/api/matches/delete', authenticateCoach, (req, res) => {
   }
 
   saveScoresData();
-  res.json({ success: true, activeMatchId: ctx.dataset.activeMatchId });
+  res.json({
+    success: true,
+    activeMatchId: ctx.dataset.activeMatchId,
+    divisionsSummary: getDivisionsSummary()
+  });
 });
 
 // POST Update Match Details & Students

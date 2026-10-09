@@ -147,13 +147,16 @@
 
       <!-- LEAGUE & MEET SELECTOR TOOLBAR -->
       <div class="flex items-center gap-1.5 sm:gap-2">
-        <!-- LEAGUE TOGGLE (TBQ vs JBQ) -->
+        <!-- UNIFIED 3-DIVISION SWITCHER (TBQ vs JBQ B vs JBQ C) -->
         <div id="league-nav-pills" class="flex items-center bg-brand-950/90 p-0.5 sm:p-1 rounded-xl border border-brand-800/80 shadow-inner">
-          <button id="btn-league-tbq" onclick="handleSwitchLeague('tbq')" class="px-2.5 sm:px-3 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1">
+          <button id="btn-nav-tbq" onclick="setActiveDivisionKey('tbq')" class="px-2 sm:px-3 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1">
             <span>📖 TBQ</span>
           </button>
-          <button id="btn-league-jbq" onclick="handleSwitchLeague('jbq')" class="px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1">
-            <span>🎒 JBQ</span>
+          <button id="btn-nav-jbq-b" onclick="setActiveDivisionKey('jbq_b')" class="px-2 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1">
+            <span>⚡ JBQ B</span>
+          </button>
+          <button id="btn-nav-jbq-c" onclick="setActiveDivisionKey('jbq_c')" class="px-2 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1">
+            <span>🌟 JBQ C</span>
           </button>
         </div>
 
@@ -204,26 +207,6 @@
     </div>
   </header>
 
-  <!-- JBQ DIVISION SUB-BAR (Visible whenever JBQ is active) -->
-  <div id="jbq-division-bar" class="hidden bg-slate-900 border-b border-slate-800 text-white py-1.5 sm:py-2 px-3 sm:px-6 no-print sticky top-[52px] md:top-[60px] z-30 shadow-md">
-    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
-      <div class="flex items-center gap-2">
-        <span class="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider">JBQ Division:</span>
-        <button id="btn-div-b" onclick="handleDivisionSwitch('b_level')" class="px-2.5 sm:px-3.5 py-1 rounded-lg text-xs font-black transition-all bg-purple-600 text-white shadow-xs flex items-center gap-1">
-          <span>⚡ B-Level</span>
-          <span class="text-[9px] sm:text-[10px] bg-purple-800/90 px-1.5 py-0.2 rounded-full font-bold">1 Team</span>
-        </button>
-        <button id="btn-div-c" onclick="handleDivisionSwitch('c_level')" class="px-2.5 sm:px-3.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1">
-          <span>🌟 C-Level</span>
-          <span class="text-[9px] sm:text-[10px] bg-slate-800 px-1.5 py-0.2 rounded-full font-bold">2 Teams</span>
-        </button>
-      </div>
-      <div class="text-[11px] text-purple-300 font-medium hidden md:flex items-center gap-2">
-        <span id="jbq-division-desc">⚡ B-Level Division • Chicago Indian Church - B1</span>
-      </div>
-    </div>
-  </div>
-
   <!-- ========================================== -->
   <!-- 1. PUBLIC VIEW (WITHOUT LOGIN)             -->
   <!-- ========================================== -->
@@ -272,9 +255,22 @@
         <h2 id="public-meet-title" class="text-2xl sm:text-4xl font-black tracking-tight text-white mb-2">
           TBQ Tournament 2026
         </h2>
-        <p class="text-brand-200 text-xs sm:text-sm max-w-2xl leading-relaxed mb-6">
-          Real-time 4-team standings, round results, and church scores. Officials and coaches can sign in for live 20-question scoresheets and buzzer entry.
+        <p class="text-brand-200 text-xs sm:text-sm max-w-2xl leading-relaxed mb-4">
+          Real-time tournament standings, round results, and church scores. Officials and coaches can sign in for live scoresheets and buzzer entry.
         </p>
+
+        <!-- PUBLIC DIVISION SEGREGATION SWITCHER -->
+        <div class="flex items-center gap-1.5 sm:gap-2 mb-5 bg-white/10 p-1 rounded-2xl w-fit border border-white/15 overflow-x-auto">
+          <button id="pub-tab-tbq" onclick="setActiveDivisionKey('tbq')" class="px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1.5 whitespace-nowrap">
+            <span>📖 TBQ Standings</span>
+          </button>
+          <button id="pub-tab-jbq-b" onclick="setActiveDivisionKey('jbq_b')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all text-white/80 hover:text-white flex items-center gap-1.5 whitespace-nowrap">
+            <span>⚡ JBQ B Standings</span>
+          </button>
+          <button id="pub-tab-jbq-c" onclick="setActiveDivisionKey('jbq_c')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all text-white/80 hover:text-white flex items-center gap-1.5 whitespace-nowrap">
+            <span>🌟 JBQ C Standings</span>
+          </button>
+        </div>
 
         <!-- 4-TEAMS LEADERBOARD TABLE -->
         <div class="bg-white/10 rounded-2xl p-4 sm:p-5 border border-white/15 backdrop-blur-xs overflow-x-auto">
@@ -536,6 +532,10 @@
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-100">
         <!-- MATCH METADATA BAR -->
         <div class="flex items-center gap-2 sm:gap-4 text-xs font-bold text-slate-800">
+          <div class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200">
+            <span class="text-slate-500 text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold">DIVISION:</span>
+            <span id="scoresheet-meta-division" class="text-brand-900 font-black">📖 TBQ</span>
+          </div>
           <div class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200">
             <span class="text-slate-500 text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold">MATCH #:</span>
             <span id="meta-match-num" class="text-brand-700 font-black font-mono-score">01</span>
@@ -919,20 +919,60 @@
   <!-- ========================================== -->
   <main id="section-teams" class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full hidden no-print">
     
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h2 class="text-xl sm:text-2xl font-black text-slate-900">👥 4 Teams & Tournament Meets Schedule</h2>
-        <p class="text-slate-500 text-xs sm:text-sm">Configure church teams, enter quizzers' names tomorrow morning, and set up meet pairings.</p>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-black uppercase tracking-wider text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-md border border-brand-200">
+            Roster & Pairing Management
+          </span>
+        </div>
+        <h2 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">👥 Teams & Tournament Matches</h2>
+        <p class="text-slate-500 text-xs sm:text-sm">Manage church teams, enter quizzers' names, and pair round robin matches segregated by division.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
-        <button onclick="openEditTeamModal()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-bold px-3.5 py-2 rounded-xl shadow-sm">
-          ➕ Add Team
+        <button onclick="openEditTeamModal()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-black px-3.5 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1">
+          <span>➕ Add Team</span>
         </button>
-        <button onclick="clearAllTeams()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3.5 py-2 rounded-xl shadow-sm transition-colors">
-          🗑️ Clear All Teams
+        <button onclick="openAddMatchModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-black px-3.5 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1">
+          <span>➕ Add Match</span>
         </button>
-        <button onclick="openAddMatchModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-black px-3.5 py-2 rounded-xl shadow-sm">
-          ➕ Add Meet / Match
+        <button onclick="clearAllTeams()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2 rounded-xl shadow-xs transition-colors" title="Clear all teams in active division">
+          <span>🗑️ Clear Division Teams</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 3-WAY DIVISION SEGREGATION TABS -->
+    <div class="mb-5 bg-slate-100/90 p-1.5 rounded-2xl flex items-center gap-2 border border-slate-200 shadow-inner overflow-x-auto">
+      <button id="teams-tab-tbq" onclick="setActiveDivisionKey('tbq')" class="flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-xs whitespace-nowrap bg-amber-400 text-brand-950">
+        <span>📖 TBQ (Teen)</span>
+        <span id="teams-count-tbq" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-200 text-brand-950">...</span>
+      </button>
+      <button id="teams-tab-jbq-b" onclick="setActiveDivisionKey('jbq_b')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap text-slate-600 hover:text-slate-900">
+        <span>⚡ JBQ B-Level</span>
+        <span id="teams-count-jbq-b" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-200 text-slate-700">...</span>
+      </button>
+      <button id="teams-tab-jbq-c" onclick="setActiveDivisionKey('jbq_c')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap text-slate-600 hover:text-slate-900">
+        <span>🌟 JBQ C-Level</span>
+        <span id="teams-count-jbq-c" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-200 text-slate-700">...</span>
+      </button>
+    </div>
+
+    <!-- ACTIVE DIVISION BANNER -->
+    <div id="teams-division-info-banner" class="mb-6 p-4 rounded-2xl bg-white border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+      <div class="flex items-center gap-3">
+        <div id="teams-div-banner-icon" class="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl font-black shrink-0">
+          📖
+        </div>
+        <div>
+          <div class="text-[10px] font-black uppercase tracking-wider text-slate-400" id="teams-div-banner-sub">Active Division</div>
+          <h3 class="text-base font-black text-slate-900" id="teams-div-banner-title">Teen Bible Quiz (TBQ)</h3>
+          <p class="text-xs text-slate-500 mt-0.5" id="teams-div-banner-desc">Official TBQ Division • Mark 4 & 5 Practice and Competition</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <button onclick="openEditTeamModal()" class="text-xs bg-brand-50 hover:bg-brand-100 text-brand-900 border border-brand-200 font-bold px-3 py-1.5 rounded-xl transition-colors">
+          ➕ Add Team to this Division
         </button>
       </div>
     </div>
@@ -940,8 +980,8 @@
     <!-- 1. THE 4 TEAMS GRID -->
     <div class="mb-8">
       <h3 class="text-base font-black text-slate-900 mb-3 flex items-center justify-between">
-        <span>Participating Teams & Quizzers</span>
-        <span class="text-xs text-slate-400 font-normal">Tap "Edit" on any team tomorrow morning to enter announced names</span>
+        <span id="teams-grid-heading">Participating Teams & Quizzers</span>
+        <span class="text-xs text-slate-400 font-normal">Tap "Edit" on any team to enter announced names</span>
       </h3>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="teams-cards-grid">
         <!-- Rendered via JS -->
@@ -1065,6 +1105,19 @@
       <form onsubmit="handleSaveTeam(event)" class="space-y-3">
         <input type="hidden" id="edit-team-id" value="">
 
+        <!-- DIVISION SELECTOR -->
+        <div>
+          <label class="block text-xs font-black uppercase text-slate-700 mb-1">
+            Division <span class="text-amber-600">*</span>
+          </label>
+          <select id="edit-team-division" required class="w-full px-3 py-2 border rounded-xl text-sm font-black bg-white focus:ring-2 focus:ring-brand-500 border-slate-300">
+            <option value="tbq">📖 TBQ (Teen Bible Quiz)</option>
+            <option value="jbq_b">⚡ JBQ B-Level (Junior B - Intermediate)</option>
+            <option value="jbq_c">🌟 JBQ C-Level (Junior C - Beginner)</option>
+          </select>
+          <p class="text-[11px] text-slate-400 mt-1">Teams and matches are segregated strictly by division.</p>
+        </div>
+
         <div>
           <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Team Name</label>
           <input type="text" id="edit-team-name" required placeholder="e.g. Chicago Indian Church - Team 1 or Faith Chapel" class="w-full px-3 py-2 border rounded-xl text-sm font-bold">
@@ -1108,6 +1161,16 @@
       <form onsubmit="handleSaveMatch(event)" class="space-y-3">
         <input type="hidden" id="match-edit-id" value="">
 
+        <!-- DIVISION SELECTOR IN MATCH MODAL -->
+        <div>
+          <label class="block text-[11px] font-black uppercase text-slate-700 mb-1">Division</label>
+          <select id="match-division-select" onchange="handleMatchModalDivisionChange(this.value)" class="w-full px-3 py-2 border rounded-xl text-xs font-black bg-slate-50 border-slate-300">
+            <option value="tbq">📖 TBQ (Teen Bible Quiz)</option>
+            <option value="jbq_b">⚡ JBQ B-Level</option>
+            <option value="jbq_c">🌟 JBQ C-Level</option>
+          </select>
+        </div>
+
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Meet #</label>
@@ -1128,6 +1191,10 @@
             <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Right Table Team</label>
             <select id="match-team-b-select" class="w-full px-3 py-2 border rounded-xl text-xs font-bold bg-white"></select>
           </div>
+        </div>
+
+        <div id="match-teams-warning" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium">
+          ⚠️ At least 2 teams are needed in this division to schedule a match. Please add another team first.
         </div>
 
         <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
