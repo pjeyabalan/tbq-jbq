@@ -322,11 +322,7 @@ async function fetchTeamsByDivision() {
   }
 }
 
-function setActiveDivisionKey(divKey) {
-  const role = state.auth?.user?.role;
-  if (role === 'tbq_coach' && divKey !== 'tbq') return;
-  if (role === 'jbq_coach' && divKey === 'tbq') return;
-
+async function setActiveDivisionKey(divKey) {
   if (divKey === 'tbq') {
     state.currentLeague = 'tbq';
     state.currentDivision = null;
@@ -340,24 +336,34 @@ function setActiveDivisionKey(divKey) {
 
   if (state.platformContext && state.platformContext[state.currentLeague]) {
     const lData = state.platformContext[state.currentLeague];
-    state.currentMeetId = lData.activeMeetId || lData.meets[0]?.id || `${state.currentLeague}-meet-1`;
+    state.currentMeetId = lData.activeMeetId || (lData.meets && lData.meets[0]?.id) || `${state.currentLeague}-meet-1`;
+  } else {
+    state.currentMeetId = `${state.currentLeague}-meet-1`;
   }
 
   renderPlatformHeader();
 
+  // If on Teams tab, immediately update tabs styling and any cached data
+  if (state.currentTab === 'teams') {
+    renderTeamsManagerUI();
+  }
+
   if (state.auth) {
-    fetchTbqData();
     fetchTeamsByDivision();
+    await fetchTbqData();
+    if (state.currentTab === 'teams') {
+      renderTeamsManagerUI();
+    } else if (state.currentTab === 'scoresheet') {
+      renderOfficialScoresheet();
+    }
   } else {
-    fetchPublicSummary();
+    await fetchPublicSummary();
   }
 }
 
 function renderPlatformHeader() {
   const divKey = getActiveDivisionKey();
   const isJBQ = state.currentLeague === 'jbq';
-  const role = state.auth?.user?.role;
-  const isSuper = role === 'supercoach';
 
   // 1. Brand Logo & Title
   const logoIcon = document.getElementById('brand-logo-icon');
@@ -387,20 +393,10 @@ function renderPlatformHeader() {
   if (btnJbqB) btnJbqB.className = divKey === 'jbq_b' ? activeBtnClass : inactiveBtnClass;
   if (btnJbqC) btnJbqC.className = divKey === 'jbq_c' ? activeBtnClass : inactiveBtnClass;
 
-  // Role permissions:
-  if (role === 'tbq_coach') {
-    if (btnTbq) btnTbq.classList.remove('hidden');
-    if (btnJbqB) btnJbqB.classList.add('hidden');
-    if (btnJbqC) btnJbqC.classList.add('hidden');
-  } else if (role === 'jbq_coach') {
-    if (btnTbq) btnTbq.classList.add('hidden');
-    if (btnJbqB) btnJbqB.classList.remove('hidden');
-    if (btnJbqC) btnJbqC.classList.remove('hidden');
-  } else {
-    if (btnTbq) btnTbq.classList.remove('hidden');
-    if (btnJbqB) btnJbqB.classList.remove('hidden');
-    if (btnJbqC) btnJbqC.classList.remove('hidden');
-  }
+  // All 3 divisions are available for all coaches
+  if (btnTbq) btnTbq.classList.remove('hidden');
+  if (btnJbqB) btnJbqB.classList.remove('hidden');
+  if (btnJbqC) btnJbqC.classList.remove('hidden');
 
   // Also support legacy buttons if present in DOM
   const legBtnTbq = document.getElementById('btn-league-tbq');
@@ -550,7 +546,11 @@ function switchTab(tab) {
   if (mobCoaches) mobCoaches.className = `flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs transition-all ${tab === 'coaches' ? 'text-amber-400 font-black' : 'text-amber-200/70 font-bold'}`;
 
   if (tab === 'scoresheet') fetchTbqData(state.activeMatchId);
-  if (tab === 'teams') renderTeamsManagerUI();
+  if (tab === 'teams') {
+    renderTeamsManagerUI();
+    fetchTbqData();
+    fetchTeamsByDivision();
+  }
   if (tab === 'coaches') fetchCoachesList();
 }
 
@@ -685,6 +685,9 @@ async function fetchTbqData(matchId) {
     try {
       localStorage.setItem('tbq_backup_scores', JSON.stringify(data));
     } catch (e) {}
+    if (state.currentTab === 'teams') {
+      renderTeamsManagerUI();
+    }
     renderOfficialScoresheet();
   } catch (err) {
     console.error('Error fetching TBQ scoresheet:', err);
@@ -2570,9 +2573,6 @@ async function handleSaveFoul(event) {
 // ==========================================
 
 function renderTeamsManagerUI() {
-  if (!state.tbqData) return;
-  const { meet, matchesList, divisionsSummary } = state.tbqData;
-  const teams = meet.teams || [];
   const divKey = getActiveDivisionKey();
 
   // 1. Update 3-Way Division Segregation Tabs
@@ -2584,7 +2584,7 @@ function renderTeamsManagerUI() {
   const countJbqB = document.getElementById('teams-count-jbq-b');
   const countJbqC = document.getElementById('teams-count-jbq-c');
 
-  const divs = divisionsSummary || state.platformContext?.divisionsSummary || {};
+  const divs = state.tbqData?.divisionsSummary || state.allDivisionTeams?.divisionsSummary || state.platformContext?.divisionsSummary || {};
   if (countTbq) countTbq.textContent = `${divs.tbq?.teamsCount || 0} Teams • ${divs.tbq?.matchesCount || 0} M`;
   if (countJbqB) countJbqB.textContent = `${divs.jbq_b?.teamsCount || 0} Teams • ${divs.jbq_b?.matchesCount || 0} M`;
   if (countJbqC) countJbqC.textContent = `${divs.jbq_c?.teamsCount || 0} Teams • ${divs.jbq_c?.matchesCount || 0} M`;
@@ -2595,6 +2595,13 @@ function renderTeamsManagerUI() {
   if (tabTbq) tabTbq.className = divKey === 'tbq' ? activeTabClass : inactiveTabClass;
   if (tabJbqB) tabJbqB.className = divKey === 'jbq_b' ? activeTabClass : inactiveTabClass;
   if (tabJbqC) tabJbqC.className = divKey === 'jbq_c' ? activeTabClass : inactiveTabClass;
+
+  // Resolve teams & matches for the current division
+  const isMatchingTbqData = state.tbqData && state.tbqData.league === state.currentLeague && (state.currentLeague === 'tbq' || state.tbqData.division === state.currentDivision);
+  const teams = isMatchingTbqData 
+    ? (state.tbqData.meet?.teams || []) 
+    : ((state.allDivisionTeams && state.allDivisionTeams[divKey]) || (state.tbqData?.meet?.teams || []));
+  const matchesList = isMatchingTbqData ? (state.tbqData.matchesList || []) : [];
 
   // 2. Active Division Banner
   const bannerIcon = document.getElementById('teams-div-banner-icon');

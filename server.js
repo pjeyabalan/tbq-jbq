@@ -528,8 +528,8 @@ function getPlatformContext(req) {
     }
   }
 
-  // Role permissions check
-  if (req.user) {
+  // Default fallback ONLY when neither league nor division was specified in headers/query/body
+  if (!leagueParam && !divParam && req.user) {
     if (req.user.role === 'jbq_coach') {
       league = 'jbq';
       if (!division) division = 'b_level';
