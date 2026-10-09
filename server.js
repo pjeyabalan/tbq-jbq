@@ -397,323 +397,58 @@ app.post('/api/coaches/reset-passcode', authenticateCoach, requireSuperCoach, (r
 // 2. MULTI-MEET PLATFORM DATA MODEL & DEFAULTS
 // ==========================================
 
+const DATA_VERSION = 'v2_fresh_scratch';
+
 function getDefaultPlatformData() {
-  // TBQ Meet 1
   const defaultTbqMeet1 = {
     id: "tbq-meet-1",
     league: "tbq",
-    title: "TBQ Meet 1 (October 2026)",
-    date: "2026-10-03",
+    title: "TBQ Tournament 2026",
+    date: new Date().toISOString().split('T')[0],
     status: "active",
-    teams: [
-      {
-        id: "team-cic-1",
-        name: "Chicago Indian Church - Team 1",
-        church: "Chicago Indian Church",
-        quizzers: ["Sam", "Mia", "Ben", "Jade", "Noah"]
-      },
-      {
-        id: "team-cic-2",
-        name: "Chicago Indian Church - Team 2",
-        church: "Chicago Indian Church",
-        quizzers: ["Prakash", "Deevena", "Amiel", "Hosanna", "Isabelle"]
-      },
-      {
-        id: "team-3",
-        name: "Team 3 (TBD)",
-        church: "Opponent Church A",
-        quizzers: ["Leo", "Ava", "Eli", "Timothy", "Hannah"]
-      },
-      {
-        id: "team-4",
-        name: "Team 4 (TBD)",
-        church: "Opponent Church B",
-        quizzers: ["Quizzer 1", "Quizzer 2", "Quizzer 3", "Quizzer 4", "Quizzer 5"]
-      }
-    ],
-    activeMatchId: "match-1",
-    matches: {
-      "match-1": {
-        id: "match-1",
-        roundNum: 1,
-        matchNumber: "01",
-        room: "",
-        quizmaster: "Pastor John",
-        scorekeeper: "Sarah M.",
-        teamAId: "team-cic-1",
-        teamBId: "team-3",
-        seats: {
-          teamA: ["Sam", "Mia", "Ben", "Jade", "Noah"],
-          teamB: ["Leo", "Ava", "Eli", "Timothy", "Hannah"]
-        },
-        timeouts: {
-          teamA: [ { id: 1, used: true, questionNum: "Q8" }, { id: 2, used: false, questionNum: "" } ],
-          teamB: [ { id: 1, used: true, questionNum: "Q4" }, { id: 2, used: true, questionNum: "Q18" } ]
-        },
-        fouls: {
-          teamA: [],
-          teamB: [ { id: "foul-1", reason: "Bench talking (-5)", penalty: 5, timestamp: "2026-10-02T18:00:00.000Z" } ]
-        },
-        questions: [
-          { id: "q-1", questionNum: 1, pointValue: 10, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-2", questionNum: 2, pointValue: 20, team: "teamA", quizzer: "Mia", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-3", questionNum: 3, pointValue: 10, team: "teamB", quizzer: "Leo", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-4a", questionNum: 4, pointValue: 30, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: false, isInterruption: true, isRebound: false },
-          { id: "q-4b", questionNum: 4, pointValue: 30, team: "teamB", quizzer: "Ava", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: true },
-          { id: "q-5", questionNum: 5, pointValue: 20, team: "teamA", quizzer: "Ben", seatNum: 3, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-6", questionNum: 6, pointValue: 20, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-7", questionNum: 7, pointValue: 10, team: "teamB", quizzer: "Leo", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-8", questionNum: 8, pointValue: 20, team: "teamA", quizzer: "Mia", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-9", questionNum: 9, pointValue: 20, team: "teamB", quizzer: "Ava", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-10", questionNum: 10, pointValue: 20, team: "teamA", quizzer: "Jade", seatNum: 4, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-11", questionNum: 11, pointValue: 20, team: "teamB", quizzer: "Eli", seatNum: 3, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-12", questionNum: 12, pointValue: 20, team: "teamA", quizzer: "Mia", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-13", questionNum: 13, pointValue: 20, team: "teamB", quizzer: "Timothy", seatNum: 4, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-14", questionNum: 14, pointValue: 20, team: "teamA", quizzer: "Ben", seatNum: 3, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-15", questionNum: 15, pointValue: 20, team: "teamB", quizzer: "Hannah", seatNum: 5, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-16", questionNum: 16, pointValue: 20, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-17", questionNum: 17, pointValue: 20, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-18", questionNum: 18, pointValue: 30, team: "teamA", quizzer: "Mia", seatNum: 2, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-19", questionNum: 19, pointValue: 20, team: "teamB", quizzer: "Eli", seatNum: 3, isCorrect: true, isInterruption: false, isRebound: false },
-          { id: "q-20", questionNum: 20, pointValue: 10, team: "teamA", quizzer: "Sam", seatNum: 1, isCorrect: true, isInterruption: false, isRebound: false }
-        ]
-      },
-      "match-2": {
-        id: "match-2",
-        roundNum: 1,
-        matchNumber: "02",
-        room: "",
-        teamAId: "team-cic-2",
-        teamBId: "team-4",
-        seats: {
-          teamA: ["Prakash", "Deevena", "Amiel", "Hosanna", "Isabelle"],
-          teamB: ["Quizzer 1", "Quizzer 2", "Quizzer 3", "Quizzer 4", "Quizzer 5"]
-        },
-        timeouts: {
-          teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
-          teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
-        },
-        fouls: { teamA: [], teamB: [] },
-        questions: []
-      }
-    }
+    teams: [],
+    activeMatchId: null,
+    matches: {}
   };
 
-  // TBQ Meet 2 (Nov/Dec 2026)
-  const defaultTbqMeet2 = {
-    id: "tbq-meet-2",
-    league: "tbq",
-    title: "TBQ Meet 2 (Nov / Dec 2026)",
-    date: "2026-11-21",
-    status: "upcoming",
-    teams: JSON.parse(JSON.stringify(defaultTbqMeet1.teams)),
-    activeMatchId: "match-tbq-2-1",
-    matches: {
-      "match-tbq-2-1": {
-        id: "match-tbq-2-1",
-        roundNum: 1,
-        matchNumber: "01",
-        room: "",
-        teamAId: "team-cic-1",
-        teamBId: "team-3",
-        seats: {
-          teamA: ["Sam", "Mia", "Ben", "Jade", "Noah"],
-          teamB: ["Leo", "Ava", "Eli", "Timothy", "Hannah"]
-        },
-        timeouts: { teamA: [{ id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" }], teamB: [{ id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" }] },
-        fouls: { teamA: [], teamB: [] },
-        questions: []
-      }
-    }
-  };
-
-  // JBQ Meet 1 (October 16, 2026)
   const defaultJbqMeet1 = {
     id: "jbq-meet-1",
     league: "jbq",
-    title: "JBQ Meet 1 (October 16, 2026)",
-    date: "2026-10-16",
+    title: "JBQ Tournament 2026",
+    date: new Date().toISOString().split('T')[0],
     status: "active",
     divisions: {
       "b_level": {
         name: "B-Level",
-        description: "Intermediate Division (1 CIC Team)",
-        teams: [
-          {
-            id: "jbq-team-cic-b1",
-            name: "Chicago Indian Church - B1",
-            church: "Chicago Indian Church",
-            quizzers: ["Noah", "Ethan", "Chloe", "Sarah"]
-          },
-          {
-            id: "jbq-team-opp-b1",
-            name: "Calvary Church - B1",
-            church: "Calvary Church",
-            quizzers: ["Mark", "Luke", "John", "Paul"]
-          }
-        ],
-        activeMatchId: "jbq-b-match-1",
-        matches: {
-          "jbq-b-match-1": {
-            id: "jbq-b-match-1",
-            roundNum: 1,
-            matchNumber: "B-01",
-            room: "",
-            teamAId: "jbq-team-cic-b1",
-            teamBId: "jbq-team-opp-b1",
-            seats: {
-              teamA: ["Noah", "Ethan", "Chloe", "Sarah"],
-              teamB: ["Mark", "Luke", "John", "Paul"]
-            },
-            timeouts: {
-              teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
-              teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
-            },
-            fouls: { teamA: [], teamB: [] },
-            questions: []
-          }
-        }
+        description: "Intermediate Division",
+        teams: [],
+        activeMatchId: null,
+        matches: {}
       },
       "c_level": {
         name: "C-Level",
-        description: "Beginner Division (2 CIC Teams)",
-        teams: [
-          {
-            id: "jbq-team-cic-c1",
-            name: "Chicago Indian Church - C1",
-            church: "Chicago Indian Church",
-            quizzers: ["David", "Grace", "Lucas", "Maya"]
-          },
-          {
-            id: "jbq-team-cic-c2",
-            name: "Chicago Indian Church - C2",
-            church: "Chicago Indian Church",
-            quizzers: ["Joshua", "Hannah", "Caleb", "Ruth"]
-          },
-          {
-            id: "jbq-team-opp-c1",
-            name: "First Assembly - C1",
-            church: "First Assembly",
-            quizzers: ["Tim", "Anna", "Rachel", "Samuel"]
-          }
-        ],
-        activeMatchId: "jbq-c-match-1",
-        matches: {
-          "jbq-c-match-1": {
-            id: "jbq-c-match-1",
-            roundNum: 1,
-            matchNumber: "C-01",
-            room: "",
-            teamAId: "jbq-team-cic-c1",
-            teamBId: "jbq-team-cic-c2",
-            seats: {
-              teamA: ["David", "Grace", "Lucas", "Maya"],
-              teamB: ["Joshua", "Hannah", "Caleb", "Ruth"]
-            },
-            timeouts: {
-              teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
-              teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
-            },
-            fouls: { teamA: [], teamB: [] },
-            questions: []
-          }
-        }
-      }
-    }
-  };
-
-  // JBQ Meet 2 (Nov/Dec 2026)
-  const defaultJbqMeet2 = {
-    id: "jbq-meet-2",
-    league: "jbq",
-    title: "JBQ Meet 2 (Nov / Dec 2026)",
-    date: "2026-11-20",
-    status: "upcoming",
-    divisions: {
-      "b_level": {
-        name: "B-Level",
-        description: "Intermediate Division (1 CIC Team)",
-        teams: [
-          {
-            id: "jbq-team-cic-b1",
-            name: "Chicago Indian Church - B1",
-            church: "Chicago Indian Church",
-            quizzers: ["Noah", "Ethan", "Chloe", "Sarah"]
-          }
-        ],
-        activeMatchId: "jbq-b2-match-1",
-        matches: {
-          "jbq-b2-match-1": {
-            id: "jbq-b2-match-1",
-            roundNum: 1,
-            matchNumber: "B-01",
-            room: "",
-            teamAId: "jbq-team-cic-b1",
-            teamBId: "jbq-team-cic-b1",
-            seats: {
-              teamA: ["Noah", "Ethan", "Chloe", "Sarah"],
-              teamB: ["Seat 1", "Seat 2", "Seat 3", "Seat 4"]
-            },
-            timeouts: { teamA: [{ id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" }], teamB: [{ id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" }] },
-            fouls: { teamA: [], teamB: [] },
-            questions: []
-          }
-        }
-      },
-      "c_level": {
-        name: "C-Level",
-        description: "Beginner Division (2 CIC Teams)",
-        teams: [
-          {
-            id: "jbq-team-cic-c1",
-            name: "Chicago Indian Church - C1",
-            church: "Chicago Indian Church",
-            quizzers: ["David", "Grace", "Lucas", "Maya"]
-          },
-          {
-            id: "jbq-team-cic-c2",
-            name: "Chicago Indian Church - C2",
-            church: "Chicago Indian Church",
-            quizzers: ["Joshua", "Hannah", "Caleb", "Ruth"]
-          }
-        ],
-        activeMatchId: "jbq-c2-match-1",
-        matches: {
-          "jbq-c2-match-1": {
-            id: "jbq-c2-match-1",
-            roundNum: 1,
-            matchNumber: "C-01",
-            room: "",
-            teamAId: "jbq-team-cic-c1",
-            teamBId: "jbq-team-cic-c2",
-            seats: {
-              teamA: ["David", "Grace", "Lucas", "Maya"],
-              teamB: ["Joshua", "Hannah", "Caleb", "Ruth"]
-            },
-            timeouts: { teamA: [{ id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" }], teamB: [{ id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" }] },
-            fouls: { teamA: [], teamB: [] },
-            questions: []
-          }
-        }
+        description: "Beginner Division",
+        teams: [],
+        activeMatchId: null,
+        matches: {}
       }
     }
   };
 
   return {
+    _version: DATA_VERSION,
     activeLeague: "tbq",
     tbq: {
       activeMeetId: "tbq-meet-1",
       meets: {
-        "tbq-meet-1": defaultTbqMeet1,
-        "tbq-meet-2": defaultTbqMeet2
+        "tbq-meet-1": defaultTbqMeet1
       }
     },
     jbq: {
       activeMeetId: "jbq-meet-1",
       activeDivision: "b_level",
       meets: {
-        "jbq-meet-1": defaultJbqMeet1,
-        "jbq-meet-2": defaultJbqMeet2
+        "jbq-meet-1": defaultJbqMeet1
       }
     }
   };
@@ -727,21 +462,11 @@ function loadScoresDataLocal() {
   if (fs.existsSync(SCORES_FILE)) {
     try {
       const loaded = JSON.parse(fs.readFileSync(SCORES_FILE, 'utf8'));
-      if (loaded.tbq && loaded.jbq) {
+      if (loaded._version === DATA_VERSION && loaded.tbq && loaded.jbq) {
         platformData = loaded;
         return;
       }
-      
-      // Backward compatibility: Migrate legacy single-meet structure into TBQ Meet 1
-      if (loaded.meet && loaded.matches) {
-        console.log('[MIGRATION] Migrating legacy single-meet scores to Multi-Meet platform structure');
-        platformData.tbq.meets['tbq-meet-1'].title = loaded.meet.title || "TBQ Meet 1 (October 2026)";
-        platformData.tbq.meets['tbq-meet-1'].teams = loaded.meet.teams || [];
-        platformData.tbq.meets['tbq-meet-1'].matches = loaded.matches || {};
-        platformData.tbq.meets['tbq-meet-1'].activeMatchId = loaded.activeMatchId || Object.keys(loaded.matches)[0] || "match-1";
-        saveScoresDataLocal();
-        return;
-      }
+      console.log(`[STORAGE] Old scores data detected. Resetting to clean scratch state (version ${DATA_VERSION}).`);
     } catch (err) {
       console.error('Failed to load scores file, resetting to default platform data:', err);
     }
@@ -816,10 +541,41 @@ function getPlatformContext(req) {
 
   const leagueData = platformData[league];
   let meetId = req.headers['x-quiz-meet'] || req.query?.meetId || req.body?.meetId || leagueData.activeMeetId;
-  if (!leagueData.meets[meetId]) {
+  if (!meetId || !leagueData.meets[meetId]) {
     meetId = leagueData.activeMeetId || Object.keys(leagueData.meets)[0];
   }
-  const meet = leagueData.meets[meetId];
+  let meet = leagueData.meets[meetId];
+
+  // Defensive fallback if no meet exists yet in this league
+  if (!meet) {
+    if (league === 'jbq') {
+      meet = {
+        id: 'jbq-meet-1',
+        league: 'jbq',
+        title: 'JBQ Tournament 2026',
+        date: new Date().toISOString().split('T')[0],
+        status: 'active',
+        divisions: {
+          b_level: { name: 'B-Level', teams: [], matches: {}, activeMatchId: null },
+          c_level: { name: 'C-Level', teams: [], matches: {}, activeMatchId: null }
+        }
+      };
+    } else {
+      meet = {
+        id: 'tbq-meet-1',
+        league: 'tbq',
+        title: 'TBQ Tournament 2026',
+        date: new Date().toISOString().split('T')[0],
+        status: 'active',
+        teams: [],
+        matches: {},
+        activeMatchId: null
+      };
+    }
+    leagueData.meets[meet.id] = meet;
+    leagueData.activeMeetId = meet.id;
+    meetId = meet.id;
+  }
 
   let dataset = null;
   if (league === 'jbq') {
@@ -904,33 +660,15 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
   }
 
   let mId = matchId || dataset.activeMatchId;
-  let match = dataset.matches[mId];
+  let match = dataset.matches ? dataset.matches[mId] : null;
 
   if (!match) {
-    const firstKey = Object.keys(dataset.matches)[0];
+    const firstKey = Object.keys(dataset.matches || {})[0];
     if (firstKey) {
       match = dataset.matches[firstKey];
       mId = firstKey;
     } else {
-      match = {
-        id: "match-1",
-        roundNum: 1,
-        matchNumber: "01",
-        room: "",
-        teamAId: dataset.teams[0]?.id || "team-1",
-        teamBId: dataset.teams[1]?.id || "team-2",
-        seats: {
-          teamA: (dataset.teams[0]?.quizzers || []).slice(0, isJBQ ? 4 : 5),
-          teamB: (dataset.teams[1]?.quizzers || []).slice(0, isJBQ ? 4 : 5)
-        },
-        timeouts: {
-          teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
-          teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
-        },
-        fouls: { teamA: [], teamB: [] },
-        questions: []
-      };
-      dataset.matches["match-1"] = match;
+      return null;
     }
   }
 
@@ -1299,7 +1037,7 @@ function calculateTournamentStandings(datasetParam, isJBQParam) {
   const allMatchKeys = Object.keys(dataset.matches || {});
   allMatchKeys.forEach(mKey => {
     const stats = calculateMatchStats(mKey, dataset, isJBQ);
-    if (stats.totalQuestions > 0) {
+    if (stats && stats.totalQuestions > 0) {
       const tA = standingsMap[stats.teamA.id];
       const tB = standingsMap[stats.teamB.id];
 
@@ -1416,7 +1154,8 @@ app.post('/api/platform/switch', (req, res) => {
 });
 
 // Super Coach: Create a new Meet (e.g. Meet 2 in Nov/Dec)
-app.post('/api/meets/create', authenticateCoach, requireSuperCoach, (req, res) => {
+// Create a new Meet (Any authenticated coach)
+app.post('/api/meets/create', authenticateCoach, (req, res) => {
   const { league, title, date, copyRosterFromMeetId } = req.body;
   const l = (league || 'tbq').toLowerCase() === 'jbq' ? 'jbq' : 'tbq';
 
@@ -1430,13 +1169,6 @@ app.post('/api/meets/create', authenticateCoach, requireSuperCoach, (req, res) =
     let teams = [];
     if (copyRosterFromMeetId && platformData.tbq.meets[copyRosterFromMeetId]) {
       teams = JSON.parse(JSON.stringify(platformData.tbq.meets[copyRosterFromMeetId].teams || []));
-    } else {
-      teams = [
-        { id: `team-cic-1`, name: "Chicago Indian Church - Team 1", church: "Chicago Indian Church", quizzers: ["Sam", "Mia", "Ben", "Jade", "Noah"] },
-        { id: `team-cic-2`, name: "Chicago Indian Church - Team 2", church: "Chicago Indian Church", quizzers: ["Prakash", "Deevena", "Amiel", "Hosanna", "Isabelle"] },
-        { id: `team-3`, name: "Team 3 (TBD)", church: "Opponent Church A", quizzers: ["Leo", "Ava", "Eli", "Timothy", "Hannah"] },
-        { id: `team-4`, name: "Team 4 (TBD)", church: "Opponent Church B", quizzers: ["Quizzer 1", "Quizzer 2", "Quizzer 3", "Quizzer 4", "Quizzer 5"] }
-      ];
     }
 
     const newMeet = {
@@ -1444,26 +1176,10 @@ app.post('/api/meets/create', authenticateCoach, requireSuperCoach, (req, res) =
       league: 'tbq',
       title: title.trim(),
       date: date || new Date().toISOString().split('T')[0],
-      status: 'upcoming',
+      status: 'active',
       teams,
-      activeMatchId: 'match-1',
-      matches: {
-        'match-1': {
-          id: 'match-1',
-          roundNum: 1,
-          matchNumber: '01',
-          room: '',
-          teamAId: teams[0]?.id || 'team-1',
-          teamBId: teams[1]?.id || 'team-2',
-          seats: {
-            teamA: (teams[0]?.quizzers || []).slice(0, 5),
-            teamB: (teams[1]?.quizzers || []).slice(0, 5)
-          },
-          timeouts: { teamA: [{ id: 1, used: false, questionNum: '' }, { id: 2, used: false, questionNum: '' }], teamB: [{ id: 1, used: false, questionNum: '' }, { id: 2, used: false, questionNum: '' }] },
-          fouls: { teamA: [], teamB: [] },
-          questions: []
-        }
-      }
+      activeMatchId: null,
+      matches: {}
     };
     platformData.tbq.meets[meetId] = newMeet;
     platformData.tbq.activeMeetId = meetId;
@@ -1475,16 +1191,6 @@ app.post('/api/meets/create', authenticateCoach, requireSuperCoach, (req, res) =
       const src = platformData.jbq.meets[copyRosterFromMeetId];
       bTeams = JSON.parse(JSON.stringify(src.divisions?.b_level?.teams || []));
       cTeams = JSON.parse(JSON.stringify(src.divisions?.c_level?.teams || []));
-    } else {
-      bTeams = [
-        { id: 'jbq-team-cic-b1', name: 'Chicago Indian Church - B1', church: 'Chicago Indian Church', quizzers: ['Noah', 'Ethan', 'Chloe', 'Sarah'] },
-        { id: 'jbq-team-opp-b1', name: 'Opponent Church - B1', church: 'Opponent Church', quizzers: ['Opponent 1', 'Opponent 2', 'Opponent 3', 'Opponent 4'] }
-      ];
-      cTeams = [
-        { id: 'jbq-team-cic-c1', name: 'Chicago Indian Church - C1', church: 'Chicago Indian Church', quizzers: ['David', 'Grace', 'Lucas', 'Maya'] },
-        { id: 'jbq-team-cic-c2', name: 'Chicago Indian Church - C2', church: 'Chicago Indian Church', quizzers: ['Joshua', 'Hannah', 'Caleb', 'Ruth'] },
-        { id: 'jbq-team-opp-c1', name: 'Opponent Church - C1', church: 'Opponent Church', quizzers: ['Junior A', 'Junior B', 'Junior C', 'Junior D'] }
-      ];
     }
 
     const newMeet = {
@@ -1492,51 +1198,19 @@ app.post('/api/meets/create', authenticateCoach, requireSuperCoach, (req, res) =
       league: 'jbq',
       title: title.trim(),
       date: date || new Date().toISOString().split('T')[0],
-      status: 'upcoming',
+      status: 'active',
       divisions: {
         b_level: {
           name: 'B-Level',
           teams: bTeams,
-          activeMatchId: 'jbq-b-match-1',
-          matches: {
-            'jbq-b-match-1': {
-              id: 'jbq-b-match-1',
-              roundNum: 1,
-              matchNumber: 'B-01',
-              room: '',
-              teamAId: bTeams[0]?.id || 'b1',
-              teamBId: bTeams[1]?.id || 'b2',
-              seats: {
-                teamA: (bTeams[0]?.quizzers || []).slice(0, 4),
-                teamB: (bTeams[1]?.quizzers || []).slice(0, 4)
-              },
-              timeouts: { teamA: [{ id: 1, used: false, questionNum: '' }, { id: 2, used: false, questionNum: '' }], teamB: [{ id: 1, used: false, questionNum: '' }, { id: 2, used: false, questionNum: '' }] },
-              fouls: { teamA: [], teamB: [] },
-              questions: []
-            }
-          }
+          activeMatchId: null,
+          matches: {}
         },
         c_level: {
           name: 'C-Level',
           teams: cTeams,
-          activeMatchId: 'jbq-c-match-1',
-          matches: {
-            'jbq-c-match-1': {
-              id: 'jbq-c-match-1',
-              roundNum: 1,
-              matchNumber: 'C-01',
-              room: '',
-              teamAId: cTeams[0]?.id || 'c1',
-              teamBId: cTeams[1]?.id || 'c2',
-              seats: {
-                teamA: (cTeams[0]?.quizzers || []).slice(0, 4),
-                teamB: (cTeams[1]?.quizzers || []).slice(0, 4)
-              },
-              timeouts: { teamA: [{ id: 1, used: false, questionNum: '' }, { id: 2, used: false, questionNum: '' }], teamB: [{ id: 1, used: false, questionNum: '' }, { id: 2, used: false, questionNum: '' }] },
-              fouls: { teamA: [], teamB: [] },
-              questions: []
-            }
-          }
+          activeMatchId: null,
+          matches: {}
         }
       }
     };
@@ -1545,31 +1219,35 @@ app.post('/api/meets/create', authenticateCoach, requireSuperCoach, (req, res) =
   }
 
   saveScoresData();
-  console.log(`[MEET] Super Coach created new Meet: ${title} (${l.toUpperCase()})`);
-  res.json({ success: true, meetId, league: l });
+  console.log(`[MEET] Coach ${req.user.name} created meet: "${title}" (${l.toUpperCase()})`);
+  res.json({ success: true, meetId, league: l, divisionsSummary: getDivisionsSummary() });
 });
 
-// Super Coach: Delete a Meet
-app.post('/api/meets/delete', authenticateCoach, requireSuperCoach, (req, res) => {
+// Delete a Meet
+app.post('/api/meets/delete', authenticateCoach, (req, res) => {
   const { league, meetId } = req.body;
   const l = (league || 'tbq').toLowerCase() === 'jbq' ? 'jbq' : 'tbq';
 
   const meets = platformData[l].meets;
-  if (Object.keys(meets).length <= 1) {
-    return res.status(400).json({ error: 'Cannot delete the only remaining meet in this league.' });
-  }
-
   if (!meets[meetId]) {
     return res.status(404).json({ error: 'Meet not found.' });
   }
 
   delete meets[meetId];
   if (platformData[l].activeMeetId === meetId) {
-    platformData[l].activeMeetId = Object.keys(meets)[0];
+    platformData[l].activeMeetId = Object.keys(meets)[0] || null;
   }
 
   saveScoresData();
-  res.json({ success: true, activeMeetId: platformData[l].activeMeetId });
+  res.json({ success: true, activeMeetId: platformData[l].activeMeetId, divisionsSummary: getDivisionsSummary() });
+});
+
+// Reset Platform to Scratch (All meets, teams, matches, scores)
+app.post('/api/platform/reset-all', authenticateCoach, (req, res) => {
+  platformData = getDefaultPlatformData();
+  saveScoresData();
+  console.log(`[RESET] Coach ${req.user.name} reset platform to clean scratch state.`);
+  res.json({ success: true, message: 'All meets, teams, matches, and scores reset to clean scratch state.', divisionsSummary: getDivisionsSummary() });
 });
 
 
@@ -2260,16 +1938,13 @@ async function initStorage() {
     const scoresRes = await dbPool.query(`SELECT value FROM tbq_store WHERE key = 'scores'`);
     if (scoresRes.rows.length > 0 && scoresRes.rows[0].value) {
       const loaded = scoresRes.rows[0].value;
-      if (loaded.tbq && loaded.jbq) {
+      if (loaded._version === DATA_VERSION && loaded.tbq && loaded.jbq) {
         platformData = loaded;
-        console.log(`[PG] Restored multi-meet platform data from database.`);
+        console.log(`[PG] Restored clean scratch platform data from database.`);
         saveScoresDataLocal();
-      } else if (loaded.meet && loaded.matches) {
-        console.log(`[PG] Migrating existing database scores into Multi-Meet platform structure.`);
-        platformData.tbq.meets['tbq-meet-1'].title = loaded.meet.title || "TBQ Meet 1 (October 2026)";
-        platformData.tbq.meets['tbq-meet-1'].teams = loaded.meet.teams || [];
-        platformData.tbq.meets['tbq-meet-1'].matches = loaded.matches || {};
-        platformData.tbq.meets['tbq-meet-1'].activeMatchId = loaded.activeMatchId || 'match-1';
+      } else {
+        console.log(`[PG] Detected legacy/old persisted scores. Resetting to clean scratch state (version ${DATA_VERSION}).`);
+        platformData = getDefaultPlatformData();
         saveScoresData();
       }
     } else {
@@ -2278,7 +1953,7 @@ async function initStorage() {
          ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
         [platformData]
       );
-      console.log(`[PG] Seeded multi-meet platform data into database.`);
+      console.log(`[PG] Seeded clean scratch platform data into database.`);
     }
 
     console.log('[PG] Database sync complete. All TBQ & JBQ data permanently persisted to PostgreSQL!');

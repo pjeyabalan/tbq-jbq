@@ -23,28 +23,6 @@ const state = {
     seatNum: 1,
     quizzer: '',
     isCorrect: true
-  },
-  homeSubtab: 'standings', // 'standings' | 'practice'
-  practice: {
-    loaded: false,
-    loading: false,
-    questions: [],
-    metadata: null,
-    filter: {
-      pts: 'all', // 'all' | 10 | 20 | 30
-      chapter: 'all', // 'all' | 4 | 5
-      division: 'all', // 'all' | 'Championship' | 'Contender' | 'XP Progressive'
-      search: ''
-    },
-    pagination: {
-      page: 1,
-      pageSize: 20
-    },
-    hiddenIds: new Set(),
-    revealedIds: new Set(),
-    revealAll: true,
-    isRandomized: false,
-    randomOrder: []
   }
 };
 
@@ -159,13 +137,8 @@ function setLoggedInCoach(token, user) {
   }
 
   renderPlatformHeader();
-  const urlParams = new URLSearchParams(window.location.search);
-  if (window.location.hash === '#practice' || urlParams.get('tab') === 'practice' || urlParams.get('tab') === 'questions') {
-    switchTab('questions');
-  } else {
-    document.getElementById('section-public').classList.add('hidden');
-    switchTab('scoresheet');
-  }
+  document.getElementById('section-public').classList.add('hidden');
+  switchTab('scoresheet');
   fetchTbqData();
 }
 
@@ -441,7 +414,7 @@ function renderPlatformHeader() {
   const meetSelect = document.getElementById('global-meet-select');
   if (meetSelect && state.platformContext) {
     const lData = state.platformContext[state.currentLeague];
-    if (lData && Array.isArray(lData.meets)) {
+    if (lData && Array.isArray(lData.meets) && lData.meets.length > 0) {
       meetSelect.innerHTML = lData.meets.map(m => `
         <option value="${m.id}" ${m.id === state.currentMeetId ? 'selected' : ''}>
           ${escapeHtml(m.title)}
@@ -452,13 +425,16 @@ function renderPlatformHeader() {
       if (meetSubtitle && activeMeetObj) {
         meetSubtitle.textContent = activeMeetObj.title;
       }
+    } else {
+      meetSelect.innerHTML = '<option value="">(No meets created)</option>';
+      if (meetSubtitle) meetSubtitle.textContent = 'No active meet';
     }
   }
 
-  // 4. "+ Meet" button (Super Coach only)
+  // 4. "+ Meet" button (Visible to all logged-in coaches)
   const createMeetBtn = document.getElementById('btn-create-meet-nav');
   if (createMeetBtn) {
-    if (isSuper) {
+    if (state.auth) {
       createMeetBtn.classList.remove('hidden');
     } else {
       createMeetBtn.classList.add('hidden');
@@ -556,16 +532,13 @@ function switchTab(tab) {
   const tabScoresheet = document.getElementById('tab-btn-scoresheet');
   const tabTeams = document.getElementById('tab-btn-teams');
   const tabCoaches = document.getElementById('tab-btn-coaches');
-  const tabQuestions = document.getElementById('tab-btn-questions');
 
   if (tabScoresheet) tabScoresheet.className = `px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'scoresheet' ? activeClass : inactiveClass}`;
   if (tabTeams) tabTeams.className = `px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'teams' ? activeClass : inactiveClass}`;
   if (tabCoaches) tabCoaches.className = `px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'coaches' ? 'bg-amber-500 text-brand-950 shadow-sm' : 'text-amber-300 hover:text-amber-100 hover:bg-brand-800/60'}`;
-  if (tabQuestions) tabQuestions.className = `px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'questions' ? 'bg-amber-400 text-brand-950 shadow-sm' : 'text-amber-300 hover:text-white hover:bg-brand-800/60'}`;
 
   // Sync mobile bottom navigation
   const mobScoresheet = document.getElementById('mob-tab-btn-scoresheet');
-  const mobQuestions = document.getElementById('mob-tab-btn-questions');
   const mobTeams = document.getElementById('mob-tab-btn-teams');
   const mobCoaches = document.getElementById('mob-tab-btn-coaches');
 
@@ -573,15 +546,10 @@ function switchTab(tab) {
   const mobInactive = 'text-brand-300 font-bold hover:text-white';
 
   if (mobScoresheet) mobScoresheet.className = `flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs transition-all ${tab === 'scoresheet' ? mobActive : mobInactive}`;
-  if (mobQuestions) mobQuestions.className = `flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs transition-all ${tab === 'questions' ? mobActive : mobInactive}`;
   if (mobTeams) mobTeams.className = `flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs transition-all ${tab === 'teams' ? mobActive : mobInactive}`;
   if (mobCoaches) mobCoaches.className = `flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs transition-all ${tab === 'coaches' ? 'text-amber-400 font-black' : 'text-amber-200/70 font-bold'}`;
 
   if (tab === 'scoresheet') fetchTbqData(state.activeMatchId);
-  if (tab === 'questions') {
-    switchHomeSubtab('practice');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
   if (tab === 'teams') renderTeamsManagerUI();
   if (tab === 'coaches') fetchCoachesList();
 }
@@ -702,584 +670,7 @@ function renderPublicSummaryUI() {
   matchesListEl.innerHTML = matchesHtml || '<div class="text-slate-400 text-center py-4">No matches scheduled yet.</div>';
 }
 
-// ==========================================
-// 2B. NOV 7 MEET PRACTICE QUESTIONS (MARK 4 & 5)
-// ==========================================
 
-async function fetchPracticeQuestions() {
-  if (state.practice.loaded || state.practice.loading) return;
-  state.practice.loading = true;
-
-  const listEl = document.getElementById('practice-questions-list');
-  if (listEl && (!state.practice.questions || state.practice.questions.length === 0)) {
-    listEl.innerHTML = `
-      <div class="text-center py-12 bg-white rounded-3xl border border-slate-200 shadow-xs">
-        <div class="inline-block animate-spin text-3xl mb-3">⏳</div>
-        <div class="text-base font-extrabold text-slate-800">Loading Mark Chapters 4 & 5 Practice Questions...</div>
-        <div class="text-xs text-slate-500 mt-1">373 official competition questions verbatim from study sets</div>
-      </div>
-    `;
-  }
-
-  try {
-    const res = await fetch('/data/practice_questions_mark_4_5.json');
-    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to load practice questions`);
-    const data = await res.json();
-
-    state.practice.questions = data.questions || [];
-    state.practice.metadata = {
-      meetTitle: data.meetTitle,
-      meetDate: data.meetDate,
-      totalCount: data.totalCount,
-      counts: data.counts
-    };
-    state.practice.loaded = true;
-    state.practice.loading = false;
-
-    // Update stats counters in banner
-    const statTotal = document.getElementById('stat-total-q');
-    const stat10 = document.getElementById('stat-10pt-q');
-    const stat20 = document.getElementById('stat-20pt-q');
-    const stat30 = document.getElementById('stat-30pt-q');
-
-    if (statTotal && data.counts) statTotal.textContent = data.totalCount || 373;
-    if (stat10 && data.counts) stat10.textContent = data.counts.pts10 || 149;
-    if (stat20 && data.counts) stat20.textContent = data.counts.pts20 || 160;
-    if (stat30 && data.counts) stat30.textContent = data.counts.pts30 || 64;
-
-    updatePracticeFilterButtonsUI();
-    renderPracticeUI();
-  } catch (err) {
-    console.error('Error loading practice questions:', err);
-    state.practice.loading = false;
-    if (listEl) {
-      listEl.innerHTML = `
-        <div class="text-center py-8 bg-rose-50 rounded-2xl border border-rose-200 text-rose-800 p-6">
-          <p class="font-extrabold text-sm">Failed to load practice questions.</p>
-          <p class="text-xs mt-1 text-rose-600">${escapeHtml(err.message)}</p>
-          <button onclick="state.practice.loaded=false;fetchPracticeQuestions()" class="mt-3 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs">Retry Loading</button>
-        </div>
-      `;
-    }
-  }
-}
-
-function switchHomeSubtab(subtab) {
-  state.homeSubtab = subtab;
-
-  const standingsView = document.getElementById('home-view-standings');
-  const practiceView = document.getElementById('home-view-practice');
-  const btnStandings = document.getElementById('home-subtab-standings');
-  const btnPractice = document.getElementById('home-subtab-practice');
-
-  const activeSubtabClass = 'px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all bg-amber-400 text-brand-950 shadow-sm flex items-center gap-2';
-  const inactiveSubtabClass = 'px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-xs flex items-center gap-2';
-
-  if (subtab === 'standings') {
-    if (standingsView) standingsView.classList.remove('hidden');
-    if (practiceView) practiceView.classList.add('hidden');
-    if (btnStandings) btnStandings.className = activeSubtabClass;
-    if (btnPractice) btnPractice.className = inactiveSubtabClass;
-  } else {
-    if (standingsView) standingsView.classList.add('hidden');
-    if (practiceView) practiceView.classList.remove('hidden');
-    if (btnStandings) btnStandings.className = inactiveSubtabClass;
-    if (btnPractice) btnPractice.className = activeSubtabClass;
-
-    if (!state.practice.loaded) {
-      fetchPracticeQuestions();
-    } else {
-      renderPracticeUI();
-    }
-  }
-}
-
-function setPracticePointsFilter(pts) {
-  state.practice.filter.pts = (pts === 'all') ? 'all' : Number(pts);
-  state.practice.pagination.page = 1;
-  updatePracticeFilterButtonsUI();
-  renderPracticeUI();
-}
-
-function setPracticeChapterFilter(ch) {
-  state.practice.filter.chapter = (ch === 'all') ? 'all' : Number(ch);
-  state.practice.pagination.page = 1;
-  updatePracticeFilterButtonsUI();
-  renderPracticeUI();
-}
-
-function setPracticeDivisionFilter(div) {
-  state.practice.filter.division = div;
-  state.practice.pagination.page = 1;
-  updatePracticeFilterButtonsUI();
-  renderPracticeUI();
-}
-
-function handlePracticeSearchInput(val) {
-  state.practice.filter.search = (val || '').trim().toLowerCase();
-  state.practice.pagination.page = 1;
-  const clearBtn = document.getElementById('practice-search-clear');
-  if (clearBtn) clearBtn.classList.toggle('hidden', !state.practice.filter.search);
-  renderPracticeUI();
-}
-
-function clearPracticeSearch() {
-  const input = document.getElementById('practice-search-input');
-  if (input) input.value = '';
-  state.practice.pagination.page = 1;
-  handlePracticeSearchInput('');
-}
-
-function setPracticePage(pageNum) {
-  state.practice.pagination.page = pageNum;
-  renderPracticeUI();
-  const target = document.getElementById('practice-pagination-top') || document.getElementById('home-view-practice');
-  if (target) {
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-}
-
-function setPracticePageSize(size) {
-  state.practice.pagination.pageSize = (size === 'all') ? 99999 : Number(size);
-  state.practice.pagination.page = 1;
-  renderPracticeUI();
-}
-
-function isPracticeQuestionRevealed(qId) {
-  if (state.practice.revealAll) {
-    return !state.practice.hiddenIds.has(qId);
-  } else {
-    return state.practice.revealedIds.has(qId);
-  }
-}
-
-function toggleRevealAnswer(qId) {
-  let isRev = false;
-  if (state.practice.revealAll) {
-    if (state.practice.hiddenIds.has(qId)) {
-      state.practice.hiddenIds.delete(qId);
-      isRev = true;
-    } else {
-      state.practice.hiddenIds.add(qId);
-      isRev = false;
-    }
-  } else {
-    if (state.practice.revealedIds.has(qId)) {
-      state.practice.revealedIds.delete(qId);
-      isRev = false;
-    } else {
-      state.practice.revealedIds.add(qId);
-      isRev = true;
-    }
-  }
-
-  const answerEl = document.getElementById(`practice-ans-${qId}`);
-  const btnEl = document.getElementById(`practice-btn-reveal-${qId}`);
-  if (answerEl) answerEl.classList.toggle('hidden', !isRev);
-  if (btnEl) btnEl.innerHTML = isRev ? '<span>🙈 Hide Answer</span>' : '<span>👁️ Show Answer</span>';
-}
-
-function toggleRevealAllAnswers() {
-  state.practice.revealAll = !state.practice.revealAll;
-  state.practice.hiddenIds.clear();
-  state.practice.revealedIds.clear();
-
-  const btn = document.getElementById('btn-practice-reveal-all');
-  if (btn) {
-    btn.innerHTML = state.practice.revealAll ? '<span>🙈 Hide All Answers</span>' : '<span>👁️ Reveal All Answers</span>';
-  }
-  renderPracticeUI();
-}
-
-function toggleRandomizeQuestions() {
-  state.practice.isRandomized = !state.practice.isRandomized;
-  state.practice.pagination.page = 1;
-  const btn = document.getElementById('btn-practice-randomize');
-  if (btn) {
-    if (state.practice.isRandomized) {
-      btn.className = 'px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-400 text-brand-950 flex items-center gap-1.5 shadow-xs';
-      btn.innerHTML = '<span>🔀 Shuffled Order (Active)</span>';
-      // Generate randomized order indices
-      const indices = state.practice.questions.map((_, i) => i);
-      for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[j]] = [indices[j], indices[i]];
-      }
-      state.practice.randomOrder = indices;
-    } else {
-      btn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5';
-      btn.innerHTML = '<span>🔀 Randomize Drill</span>';
-      state.practice.randomOrder = [];
-    }
-  }
-  renderPracticeUI();
-}
-
-function resetPracticeFilters() {
-  state.practice.filter = { pts: 'all', chapter: 'all', division: 'all', search: '' };
-  state.practice.pagination.page = 1;
-  state.practice.pagination.pageSize = 20;
-  state.practice.isRandomized = false;
-  state.practice.revealAll = true; // Answers revealed by default
-  state.practice.hiddenIds.clear();
-  state.practice.revealedIds.clear();
-  state.practice.randomOrder = [];
-
-  const searchInput = document.getElementById('practice-search-input');
-  if (searchInput) searchInput.value = '';
-  const clearBtn = document.getElementById('practice-search-clear');
-  if (clearBtn) clearBtn.classList.add('hidden');
-
-  const btnRevealAll = document.getElementById('btn-practice-reveal-all');
-  if (btnRevealAll) btnRevealAll.innerHTML = '<span>🙈 Hide All Answers</span>';
-
-  const btnRand = document.getElementById('btn-practice-randomize');
-  if (btnRand) {
-    btnRand.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center gap-1.5';
-    btnRand.innerHTML = '<span>🔀 Randomize Drill</span>';
-  }
-
-  updatePracticeFilterButtonsUI();
-  renderPracticeUI();
-}
-
-function copyPracticeQuestion(qId) {
-  const q = state.practice.questions.find(x => x.id === qId);
-  if (!q) return;
-  const citation = q.citation || (q.chapter ? `Mark ${q.verse}` : '');
-  const textToCopy = `[${q.pointValue} Pts • ${citation}]\nQ: ${q.question}\nA: ${q.answer}`;
-  navigator.clipboard.writeText(textToCopy).then(() => {
-    showMatchToast(`Copied question to clipboard!`, 'info');
-  }).catch(() => {
-    alert('Copied:\n' + textToCopy);
-  });
-}
-
-function updatePracticeFilterButtonsUI() {
-  const { pts, chapter, division } = state.practice.filter;
-
-  // 1. Point selector buttons
-  const ptsButtons = [
-    { id: 'btn-filter-pts-all', val: 'all', activeClass: 'bg-amber-400 text-brand-950 ring-2 ring-amber-300 shadow-md', inactiveClass: 'bg-slate-900/90 text-slate-300 hover:bg-slate-800 border border-slate-700' },
-    { id: 'btn-filter-pts-10', val: 10, activeClass: 'bg-emerald-500 text-white ring-2 ring-emerald-300 shadow-md', inactiveClass: 'bg-slate-900/90 text-emerald-300 hover:bg-slate-800 border border-emerald-500/30' },
-    { id: 'btn-filter-pts-20', val: 20, activeClass: 'bg-blue-600 text-white ring-2 ring-blue-300 shadow-md', inactiveClass: 'bg-slate-900/90 text-blue-300 hover:bg-slate-800 border border-blue-500/30' },
-    { id: 'btn-filter-pts-30', val: 30, activeClass: 'bg-rose-600 text-white ring-2 ring-rose-300 shadow-md', inactiveClass: 'bg-slate-900/90 text-rose-300 hover:bg-slate-800 border border-rose-500/30' }
-  ];
-
-  ptsButtons.forEach(btn => {
-    const el = document.getElementById(btn.id);
-    if (!el) return;
-    const isActive = pts === btn.val;
-    el.className = `practice-pts-btn py-3 px-3 sm:px-4 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-between ${isActive ? btn.activeClass : btn.inactiveClass}`;
-  });
-
-  // 2. Chapter pills
-  const chapButtons = [
-    { id: 'btn-chap-all', val: 'all' },
-    { id: 'btn-chap-4', val: 4 },
-    { id: 'btn-chap-5', val: 5 }
-  ];
-  chapButtons.forEach(btn => {
-    const el = document.getElementById(btn.id);
-    if (!el) return;
-    const isActive = chapter === btn.val;
-    el.className = `px-2.5 py-1 rounded-lg text-xs transition-all ${isActive ? 'font-black bg-amber-400 text-brand-950 shadow-xs' : 'font-bold text-slate-600 bg-slate-100 hover:bg-slate-200'}`;
-  });
-
-  // 3. Division pills
-  const divButtons = [
-    { id: 'btn-div-all', val: 'all' },
-    { id: 'btn-div-champ', val: 'Championship' },
-    { id: 'btn-div-contender', val: 'Contender' },
-    { id: 'btn-div-xp', val: 'XP Progressive' }
-  ];
-  divButtons.forEach(btn => {
-    const el = document.getElementById(btn.id);
-    if (!el) return;
-    const isActive = division === btn.val;
-    el.className = `px-2.5 py-1 rounded-lg text-xs transition-all ${isActive ? 'font-black bg-amber-400 text-brand-950 shadow-xs' : 'font-bold text-slate-600 bg-slate-100 hover:bg-slate-200'}`;
-  });
-}
-
-function buildPracticePaginationHtml(totalFiltered, currentPage, pageSize) {
-  if (totalFiltered <= 0) return '';
-  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
-
-  if (currentPage > totalPages) currentPage = totalPages;
-  if (currentPage < 1) currentPage = 1;
-
-  const startItem = (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(totalFiltered, currentPage * pageSize);
-
-  // Build page numbers array with ellipsis
-  let pages = [];
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
-  } else {
-    pages.push(1);
-    let start = Math.max(2, currentPage - 1);
-    let end = Math.min(totalPages - 1, currentPage + 1);
-
-    if (currentPage <= 3) {
-      start = 2;
-      end = 4;
-    } else if (currentPage >= totalPages - 2) {
-      start = totalPages - 3;
-      end = totalPages - 1;
-    }
-
-    if (start > 2) pages.push('...');
-    for (let i = start; i <= end; i++) pages.push(i);
-    if (end < totalPages - 1) pages.push('...');
-    pages.push(totalPages);
-  }
-
-  const pageButtonsHtml = pages.map(p => {
-    if (p === '...') {
-      return `<span class="px-2 py-1 text-slate-400 font-bold text-xs select-none">...</span>`;
-    }
-    const isActive = p === currentPage;
-    if (isActive) {
-      return `<button type="button" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-xs font-black bg-amber-400 text-brand-950 shadow-xs ring-2 ring-amber-300 transition-all flex items-center justify-center">${p}</button>`;
-    } else {
-      return `<button type="button" onclick="setPracticePage(${p})" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs transition-all flex items-center justify-center">${p}</button>`;
-    }
-  }).join('');
-
-  const prevDisabled = currentPage <= 1;
-  const nextDisabled = currentPage >= totalPages;
-
-  const btnPrevClass = prevDisabled
-    ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border border-slate-200'
-    : 'bg-white hover:bg-slate-100 text-slate-800 font-bold border border-slate-200 shadow-2xs active:scale-95 cursor-pointer';
-
-  const btnNextClass = nextDisabled
-    ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400 border border-slate-200'
-    : 'bg-white hover:bg-slate-100 text-slate-800 font-bold border border-slate-200 shadow-2xs active:scale-95 cursor-pointer';
-
-  return `
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 sm:p-4 bg-white rounded-3xl border border-slate-200 shadow-xs">
-      
-      <!-- Counter & Page Summary -->
-      <div class="text-xs font-bold text-slate-600 flex items-center gap-1.5 flex-wrap">
-        <span>Showing</span>
-        <span class="text-slate-900 font-black bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-200">${startItem}–${endItem}</span>
-        <span>of</span>
-        <span class="text-slate-900 font-black">${totalFiltered}</span>
-        <span class="text-slate-400">•</span>
-        <span class="text-brand-800 font-extrabold">Page ${currentPage} of ${totalPages}</span>
-      </div>
-
-      <!-- Pagination Navigation Buttons -->
-      <div class="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center">
-        <button type="button" onclick="setPracticePage(1)" ${prevDisabled ? 'disabled' : ''} title="First Page" class="px-2.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${btnPrevClass}">
-          <span>⏮</span>
-        </button>
-        <button type="button" onclick="setPracticePage(${currentPage - 1})" ${prevDisabled ? 'disabled' : ''} title="Previous Page" class="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${btnPrevClass}">
-          <span>◀</span>
-          <span class="hidden sm:inline">Prev</span>
-        </button>
-
-        ${pageButtonsHtml}
-
-        <button type="button" onclick="setPracticePage(${currentPage + 1})" ${nextDisabled ? 'disabled' : ''} title="Next Page" class="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${btnNextClass}">
-          <span class="hidden sm:inline">Next</span>
-          <span>▶</span>
-        </button>
-        <button type="button" onclick="setPracticePage(${totalPages})" ${nextDisabled ? 'disabled' : ''} title="Last Page" class="px-2.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${btnNextClass}">
-          <span>⏭</span>
-        </button>
-      </div>
-
-      <!-- Page Size Selector (10, 20 match round, 30, 50, all) -->
-      <div class="flex items-center gap-1.5 text-xs">
-        <span class="text-[11px] font-black uppercase text-slate-400 hidden lg:inline">Per page:</span>
-        <select onchange="setPracticePageSize(this.value)" class="bg-slate-50 hover:bg-slate-100 font-black text-slate-800 rounded-xl px-2.5 py-1.5 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer text-xs">
-          <option value="10" ${pageSize === 10 ? 'selected' : ''}>10 / page</option>
-          <option value="20" ${pageSize === 20 ? 'selected' : ''}>20 / page (Match)</option>
-          <option value="30" ${pageSize === 30 ? 'selected' : ''}>30 / page</option>
-          <option value="50" ${pageSize === 50 ? 'selected' : ''}>50 / page</option>
-          <option value="all" ${pageSize >= 9999 ? 'selected' : ''}>All (${totalFiltered})</option>
-        </select>
-      </div>
-
-    </div>
-  `;
-}
-
-function renderPracticeUI() {
-  const listEl = document.getElementById('practice-questions-list');
-  const counterEl = document.getElementById('practice-questions-counter');
-  const topPaginationEl = document.getElementById('practice-pagination-top');
-  const bottomPaginationEl = document.getElementById('practice-pagination-bottom');
-  if (!listEl) return;
-
-  if (!state.practice.questions || state.practice.questions.length === 0) {
-    if (!state.practice.loading) fetchPracticeQuestions();
-    return;
-  }
-
-  const { pts, chapter, division, search } = state.practice.filter;
-
-  // 1. Filter questions
-  let filtered = state.practice.questions.filter(q => {
-    if (pts !== 'all' && q.pointValue !== pts) return false;
-    if (chapter !== 'all' && q.chapter !== chapter) return false;
-    if (division !== 'all' && q.division !== division) return false;
-    if (search) {
-      const qText = (q.question || '').toLowerCase();
-      const aText = (q.answer || '').toLowerCase();
-      const cit = (q.citation || '').toLowerCase();
-      const verse = (q.verse || '').toLowerCase();
-      const set = (q.set || '').toLowerCase();
-      if (!qText.includes(search) && !aText.includes(search) && !cit.includes(search) && !verse.includes(search) && !set.includes(search)) {
-        return false;
-      }
-    }
-    return true;
-  });
-
-  // 2. Order questions (randomized vs standard sequential)
-  if (state.practice.isRandomized && state.practice.randomOrder.length > 0) {
-    const orderMap = new Map();
-    state.practice.randomOrder.forEach((origIdx, orderIdx) => {
-      const q = state.practice.questions[origIdx];
-      if (q) orderMap.set(q.id, orderIdx);
-    });
-    filtered.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
-  }
-
-  const totalFiltered = filtered.length;
-  let { page, pageSize } = state.practice.pagination;
-  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
-
-  if (page > totalPages) {
-    page = totalPages;
-    state.practice.pagination.page = page;
-  }
-  if (page < 1) {
-    page = 1;
-    state.practice.pagination.page = 1;
-  }
-
-  // 3. Render empty state or slice paginated questions
-  if (totalFiltered === 0) {
-    if (topPaginationEl) topPaginationEl.classList.add('hidden');
-    if (bottomPaginationEl) bottomPaginationEl.classList.add('hidden');
-    if (counterEl) counterEl.textContent = 'Showing 0 questions';
-    listEl.innerHTML = `
-      <div class="text-center py-12 bg-white rounded-3xl border border-slate-200 shadow-xs p-6">
-        <div class="text-3xl mb-2">🔍</div>
-        <h4 class="text-base font-extrabold text-slate-800">No questions match your current filters</h4>
-        <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Try clearing search terms or switching point values to see more questions.</p>
-        <button onclick="resetPracticeFilters()" class="mt-4 px-4 py-2 bg-amber-400 hover:bg-amber-300 text-brand-950 font-black rounded-xl text-xs shadow-xs transition-all">
-          🔄 Reset All Filters
-        </button>
-      </div>
-    `;
-    return;
-  }
-
-  // Calculate slice range
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = Math.min(totalFiltered, startIndex + pageSize);
-  const pageQuestions = filtered.slice(startIndex, endIndex);
-
-  // 4. Update counter text
-  if (counterEl) {
-    let filterDescription = [];
-    if (pts !== 'all') filterDescription.push(`${pts} Pts`);
-    if (chapter !== 'all') filterDescription.push(`Mark ${chapter}`);
-    if (division !== 'all') filterDescription.push(division);
-    if (search) filterDescription.push(`"${search}"`);
-
-    const descStr = filterDescription.length > 0 ? ` (${filterDescription.join(' • ')})` : '';
-    counterEl.textContent = `Showing ${startIndex + 1}–${endIndex} of ${totalFiltered} questions${descStr}`;
-  }
-
-  // 5. Render Pagination Bars (Top & Bottom)
-  const paginationHtml = buildPracticePaginationHtml(totalFiltered, page, pageSize);
-  if (topPaginationEl) {
-    topPaginationEl.innerHTML = paginationHtml;
-    topPaginationEl.classList.remove('hidden');
-  }
-  if (bottomPaginationEl) {
-    bottomPaginationEl.innerHTML = paginationHtml;
-    bottomPaginationEl.classList.remove('hidden');
-  }
-
-  // 6. Render Paginated Question Cards
-  let html = '';
-  pageQuestions.forEach((q, idx) => {
-    const isRevealed = isPracticeQuestionRevealed(q.id);
-
-    // Point badge styling
-    let ptsBadgeClass = 'bg-slate-100 text-slate-800 border-slate-300';
-    if (q.pointValue === 10) ptsBadgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
-    else if (q.pointValue === 20) ptsBadgeClass = 'bg-blue-100 text-blue-900 border-blue-300';
-    else if (q.pointValue === 30) ptsBadgeClass = 'bg-rose-100 text-rose-900 border-rose-300';
-
-    // Verse citation
-    const scriptureBadge = q.verse ? `Mark ${q.verse}` : (q.citation || `Chapter ${q.chapter}`);
-
-    html += `
-      <div class="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-3" id="practice-card-${escapeHtml(q.id)}">
-        
-        <!-- CARD HEADER -->
-        <div class="flex items-center justify-between gap-2 flex-wrap">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="px-3 py-1 rounded-xl text-xs font-black border ${ptsBadgeClass}">
-              ${q.pointValue} Pts
-            </span>
-            <span class="px-2.5 py-1 rounded-xl text-xs font-black bg-amber-50 text-amber-950 border border-amber-200/80">
-              📖 ${escapeHtml(scriptureBadge)}
-            </span>
-            <span class="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">
-              ${escapeHtml(q.division)} • ${escapeHtml(q.set)}
-            </span>
-            <span class="text-[11px] font-mono font-bold text-slate-400">
-              #${startIndex + idx + 1}
-            </span>
-          </div>
-
-          <!-- Utility buttons -->
-          <div class="flex items-center gap-1.5">
-            <button type="button" onclick="copyPracticeQuestion('${escapeHtml(q.id)}')" title="Copy question and answer" class="text-xs text-slate-500 hover:text-slate-800 font-bold px-2.5 py-1 rounded-lg hover:bg-slate-100 transition-colors flex items-center gap-1">
-              <span>📋</span>
-              <span class="hidden sm:inline">Copy</span>
-            </button>
-            <button type="button" id="practice-btn-reveal-${escapeHtml(q.id)}" onclick="toggleRevealAnswer('${escapeHtml(q.id)}')" class="text-xs font-bold text-brand-800 hover:text-brand-950 bg-brand-50 hover:bg-brand-100 px-3 py-1 rounded-xl border border-brand-200 transition-colors flex items-center gap-1">
-              ${isRevealed ? '<span>🙈 Hide Answer</span>' : '<span>👁️ Show Answer</span>'}
-            </button>
-          </div>
-        </div>
-
-        <!-- QUESTION TEXT (VERBATIM FROM OFFICIAL PDF) -->
-        <div class="pt-1">
-          <p class="text-base sm:text-lg font-bold text-slate-900 leading-snug tracking-tight">
-            ${escapeHtml(q.question)}
-          </p>
-        </div>
-
-        <!-- ANSWER SECTION (VERBATIM FROM OFFICIAL PDF) -->
-        <div id="practice-ans-${escapeHtml(q.id)}" class="${isRevealed ? '' : 'hidden'} bg-amber-50/70 border border-amber-200/90 rounded-2xl p-4 sm:p-5 transition-all space-y-1.5">
-          <div class="flex items-center justify-between text-[11px] font-black uppercase text-amber-900 tracking-wider">
-            <span class="flex items-center gap-1">
-              <span>✅</span> Official Answer (Verbatim)
-            </span>
-            <span class="font-mono text-amber-800">${escapeHtml(q.citation || ('Mark ' + q.verse))}</span>
-          </div>
-          <p class="text-sm sm:text-base font-extrabold text-slate-900 leading-relaxed">
-            ${escapeHtml(q.answer)}
-          </p>
-        </div>
-
-      </div>
-    `;
-  });
-
-  listEl.innerHTML = html;
-}
 
 async function fetchTbqData(matchId) {
   if (!state.auth) return;
@@ -1362,7 +753,65 @@ function renderReboundBanner(activeRound, currentQ, reboundStatus) {
 }
 
 function renderOfficialScoresheet() {
-  if (!state.tbqData || !state.tbqData.activeRound) return;
+  const container = document.getElementById('section-scoresheet');
+  if (!container) return;
+
+  if (!state.tbqData || !state.tbqData.activeRound) {
+    const pillsBar = document.getElementById('match-selector-pills');
+    if (pillsBar) pillsBar.innerHTML = '<span class="text-xs text-slate-400 py-1">No matches scheduled in this division</span>';
+
+    let emptyEl = document.getElementById('scoresheet-empty-state');
+    if (!emptyEl) {
+      emptyEl = document.createElement('div');
+      emptyEl.id = 'scoresheet-empty-state';
+      emptyEl.className = 'bg-white rounded-3xl p-8 sm:p-12 text-center border border-slate-200 shadow-sm max-w-xl mx-auto my-8 space-y-4';
+      emptyEl.innerHTML = `
+        <div class="text-4xl mb-2">📋</div>
+        <h3 class="text-lg font-black text-slate-800">No Matches in this Division Yet</h3>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto">Create teams in the Teams & Matches screen first, then add Match #1 to start live scoring.</p>
+        <div class="flex items-center justify-center gap-3 pt-2">
+          <button type="button" onclick="switchTab('teams')" class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-xs transition-all">
+            👥 Configure Teams
+          </button>
+          <button type="button" onclick="openAddMatchModal()" class="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-brand-950 font-black text-xs shadow-xs transition-all">
+            ➕ Add First Match
+          </button>
+        </div>
+      `;
+      container.appendChild(emptyEl);
+    }
+    emptyEl.classList.remove('hidden');
+
+    const headerCard = document.getElementById('official-match-header-card');
+    if (headerCard) headerCard.classList.add('hidden');
+    const studentTiles = document.getElementById('live-student-tiles-container');
+    if (studentTiles) studentTiles.classList.add('hidden');
+    const quickForm = document.getElementById('quick-scorer-form');
+    if (quickForm) quickForm.classList.add('hidden');
+    const tableWrap = document.getElementById('scoresheet-table-wrapper');
+    if (tableWrap) tableWrap.classList.add('hidden');
+    const mobileFeed = document.getElementById('scoresheet-feed-wrapper');
+    if (mobileFeed) mobileFeed.classList.add('hidden');
+    const indStats = document.getElementById('individual-quizzers-section');
+    if (indStats) indStats.classList.add('hidden');
+    return;
+  }
+
+  const emptyEl = document.getElementById('scoresheet-empty-state');
+  if (emptyEl) emptyEl.classList.add('hidden');
+  const headerCard = document.getElementById('official-match-header-card');
+  if (headerCard) headerCard.classList.remove('hidden');
+  const studentTiles = document.getElementById('live-student-tiles-container');
+  if (studentTiles) studentTiles.classList.remove('hidden');
+  const quickForm = document.getElementById('quick-scorer-form');
+  if (quickForm) quickForm.classList.remove('hidden');
+  const tableWrap = document.getElementById('scoresheet-table-wrapper');
+  if (tableWrap) tableWrap.classList.remove('hidden');
+  const mobileFeed = document.getElementById('scoresheet-feed-wrapper');
+  if (mobileFeed) mobileFeed.classList.remove('hidden');
+  const indStats = document.getElementById('individual-quizzers-section');
+  if (indStats) indStats.classList.remove('hidden');
+
   const { matchesList, activeRound } = state.tbqData;
 
   // Defensive fallback data structures
