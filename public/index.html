@@ -395,12 +395,15 @@
         </div>
       </div>
 
-      <!-- CONTROLS: UNDO & RESET -->
+      <!-- CONTROLS: UNDO & RESET & FINISH -->
       <div class="flex items-center justify-between sm:justify-end gap-2 mt-3 pt-2.5 border-t border-slate-100">
-        <button onclick="undoLastQuestion()" class="flex-1 sm:flex-none text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg font-bold border border-slate-700 transition-colors flex items-center justify-center gap-1">
+        <button id="btn-header-finish-match" onclick="finishCurrentMatch()" class="flex-1 sm:flex-none text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold border border-emerald-500 transition-colors flex items-center justify-center gap-1 cursor-pointer">
+          <span>🏁 Finish Match</span>
+        </button>
+        <button onclick="undoLastQuestion()" class="flex-1 sm:flex-none text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg font-bold border border-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer">
           <span>↩️ Undo Last</span>
         </button>
-        <button onclick="coachResetRound()" class="flex-1 sm:flex-none text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg font-bold border border-rose-200 transition-colors flex items-center justify-center gap-1">
+        <button onclick="coachResetRound()" class="flex-1 sm:flex-none text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg font-bold border border-rose-200 transition-colors flex items-center justify-center gap-1 cursor-pointer">
           <span>🔄 Reset Match</span>
         </button>
       </div>
@@ -413,7 +416,7 @@
     <div class="bg-white rounded-2xl p-3.5 sm:p-5 shadow-sm border border-slate-200 mb-6 no-print">
       <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-300">
+          <span class="text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-300" id="active-question-badge-category">
             ⚡ Scorer
           </span>
           <h3 class="text-sm sm:text-base font-black text-slate-900" id="active-question-badge">
@@ -424,6 +427,44 @@
           <span class="hidden sm:inline">5 Correct = <strong class="text-emerald-600 font-bold">Quiz Out (+20)</strong></span>
           <button type="button" onclick="toggleQuickScorer()" id="quick-scorer-toggle-btn" class="text-brand-600 font-bold hover:underline text-xs">
             Hide Box ▴
+          </button>
+        </div>
+      </div>
+
+      <!-- MATCH COMPLETED CELEBRATION & ACTIONS PANEL -->
+      <div id="match-completed-panel" class="hidden bg-gradient-to-br from-amber-50/90 via-orange-50/70 to-emerald-50/60 border-2 border-amber-300 rounded-2xl p-5 sm:p-7 text-center space-y-4 shadow-sm my-2">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-400 text-slate-950 text-3xl shadow-md">
+          🏆
+        </div>
+        <div>
+          <span class="inline-block px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 mb-1.5">
+            Official Final • 20 Questions Scored
+          </span>
+          <h2 id="match-completed-winner-text" class="text-xl sm:text-2xl font-black text-slate-900">
+            Match Completed!
+          </h2>
+          <p id="match-completed-score-summary" class="text-xs sm:text-sm font-bold text-slate-600 mt-1">
+            Regulation questions concluded.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto pt-1 text-left text-xs bg-white/90 p-3.5 rounded-xl border border-amber-200 shadow-xs">
+          <div id="match-completed-team-a-recap"></div>
+          <div id="match-completed-team-b-recap"></div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+          <button type="button" id="btn-next-match" class="hidden px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-brand-950 font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer">
+            ⏭️ Next Match
+          </button>
+          <button type="button" onclick="switchTab('standings')" class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer">
+            📊 View Leaderboard
+          </button>
+          <button type="button" onclick="undoLastQuestion()" class="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer">
+            ↩️ Undo Q#20
+          </button>
+          <button type="button" onclick="window.print()" class="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer">
+            🖨️ Print Scoresheet
           </button>
         </div>
       </div>

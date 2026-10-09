@@ -688,6 +688,21 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
   if (studentsB.length === 0) studentsB = filterRealStudents(teamBObj.quizzers);
   if (studentsB.length === 0) studentsB = ["Student 1"];
 
+  // Defensively sanitize match.questions:
+  // 1. Only questions 1 to 20
+  // 2. At most 2 attempts per questionNum (1st attempt + rebound)
+  const sanitizedQuestions = [];
+  const attemptCountsByQ = {};
+  (match.questions || []).forEach(q => {
+    const qNum = parseInt(q.questionNum);
+    if (isNaN(qNum) || qNum < 1 || qNum > 20) return;
+    attemptCountsByQ[qNum] = (attemptCountsByQ[qNum] || 0) + 1;
+    if (attemptCountsByQ[qNum] <= 2) {
+      sanitizedQuestions.push(q);
+    }
+  });
+  match.questions = sanitizedQuestions;
+
   // Ensure any student who answered in this match is in the list
   (match.questions || []).forEach(q => {
     if (q.quizzer && typeof q.quizzer === 'string') {
@@ -895,8 +910,14 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
   const finalScoreB = teamBRunning + teamBBonusPts - teamBFoulPts;
 
   let winner = "Tie";
-  if (finalScoreA > finalScoreB) winner = teamAObj.name;
-  else if (finalScoreB > finalScoreA) winner = teamBObj.name;
+  let winnerTeam = "tie";
+  if (finalScoreA > finalScoreB) {
+    winner = teamAObj.name;
+    winnerTeam = "teamA";
+  } else if (finalScoreB > finalScoreA) {
+    winner = teamBObj.name;
+    winnerTeam = "teamB";
+  }
 
   // Compute active/pending question state and rebound status
   let pendingQuestionNum = 1;
@@ -906,6 +927,7 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
   let reboundOriginalTeam = null;
   let reboundPenalty = 0;
   let reboundPointValue = 20;
+  let completedQuestionsCount = 0;
 
   for (let q = 1; q <= 20; q++) {
     const qList = (match.questions || []).filter(item => item.questionNum === q);
@@ -926,23 +948,48 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
         reboundPointValue = firstAttempt.pointValue || (q <= 10 ? 10 : (q <= 17 ? 20 : 30));
         reboundPenalty = Math.round(reboundPointValue / 2);
         break;
+      } else {
+        completedQuestionsCount++;
+        pendingQuestionNum = q + 1;
       }
+    } else {
+      // 2 attempts recorded or 1 attempt with skipped rebound
+      completedQuestionsCount++;
+      pendingQuestionNum = q + 1;
     }
-    pendingQuestionNum = q + 1;
   }
-  if (pendingQuestionNum > 20) pendingQuestionNum = 20;
+
+  // Match is completed if all 20 questions are resolved without pending rebound, or explicitly marked
+  const all20Finished = completedQuestionsCount >= 20 && !isReboundPending;
+  const isCompleted = match.status === 'Completed' || !!match.isCompleted || all20Finished;
+
+  let matchStatus = 'Scheduled';
+  if (isCompleted) {
+    matchStatus = 'Completed';
+    match.status = 'Completed';
+    match.isCompleted = true;
+  } else if ((match.questions || []).length > 0) {
+    matchStatus = 'In Progress';
+    match.status = 'In Progress';
+  } else {
+    match.status = 'Scheduled';
+    match.status = 'Scheduled';
+  }
 
   return {
     id: match.id,
     roundNum: match.roundNum || 1,
     matchNumber: match.matchNumber || "01",
+    status: matchStatus,
+    isCompleted,
+    completedQuestionsCount,
     room: "",
     quizmaster: match.quizmaster || "Quizmaster",
     scorekeeper: match.scorekeeper || "Scorekeeper",
     totalQuestions: (match.questions || []).length,
-    pendingQuestionNum,
+    pendingQuestionNum: isCompleted ? 20 : Math.min(20, pendingQuestionNum),
     reboundStatus: {
-      isPending: isReboundPending,
+      isPending: isCompleted ? false : isReboundPending,
       team: reboundTeam,
       originalTeam: reboundOriginalTeam,
       originalQuizzer: reboundOriginalQuizzer,
@@ -1002,6 +1049,7 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
       quizzers: Object.values(teamBStats)
     },
     winner,
+    winnerTeam,
     rows
   };
 }
@@ -1273,9 +1321,12 @@ app.get('/api/tbq/public-summary', (req, res) => {
       teamBName: stats.teamB.name,
       teamAScore: stats.teamA.finalScore,
       teamBScore: stats.teamB.finalScore,
-      winner: hasQuestions ? stats.winner : 'upcoming',
-      status: hasQuestions ? (stats.totalQuestions >= 20 ? 'Completed' : 'In Progress') : 'Scheduled',
-      totalQuestions: stats.totalQuestions
+      winner: stats.isCompleted ? stats.winner : (hasQuestions ? 'in_progress' : 'upcoming'),
+      winnerTeam: stats.winnerTeam,
+      isCompleted: stats.isCompleted,
+      status: stats.status,
+      totalQuestions: stats.totalQuestions,
+      completedQuestionsCount: stats.completedQuestionsCount
     });
   });
 
@@ -1329,6 +1380,7 @@ app.get('/api/tbq', authenticateCoach, (req, res) => {
 
   const matchesList = Object.keys(dataset.matches).map(k => {
     const m = dataset.matches[k];
+    const stats = calculateMatchStats(k, dataset, ctx.isJBQ);
     const tA = getTeamById(m.teamAId, dataset);
     const tB = getTeamById(m.teamBId, dataset);
     return {
@@ -1339,7 +1391,10 @@ app.get('/api/tbq', authenticateCoach, (req, res) => {
       teamAId: m.teamAId,
       teamBId: m.teamBId,
       teamAName: tA ? tA.name : "Team 1",
-      teamBName: tB ? tB.name : "Team 2"
+      teamBName: tB ? tB.name : "Team 2",
+      status: stats ? stats.status : (m.status || "Scheduled"),
+      isCompleted: stats ? stats.isCompleted : !!m.isCompleted,
+      winner: stats ? stats.winner : null
     };
   });
 
@@ -1648,12 +1703,35 @@ app.post('/api/tbq/score', authenticateCoach, (req, res) => {
 
   if (!match) return res.status(404).json({ error: 'Match not found.' });
 
-  let qNum = parseInt(questionNum);
-  if (isNaN(qNum) || qNum < 1) {
-    qNum = match.questions.length + 1;
+  const currentStats = calculateMatchStats(mId, ctx.dataset, ctx.isJBQ);
+  if (currentStats.isCompleted) {
+    return res.status(400).json({
+      error: `Match #${match.matchNumber} is already completed (all 20 questions scored). Tap "Undo Last" if you need to adjust Question #20.`
+    });
   }
 
-  const currentStats = calculateMatchStats(mId, ctx.dataset, ctx.isJBQ);
+  let qNum = parseInt(questionNum);
+  if (isNaN(qNum) || qNum < 1) {
+    qNum = currentStats.pendingQuestionNum || 1;
+  }
+
+  if (qNum > 20) {
+    return res.status(400).json({
+      error: 'A match only has 20 questions. All 20 questions have already been scored.'
+    });
+  }
+
+  // Prevent multiple answers for already resolved questions
+  const existingAttempts = (match.questions || []).filter(item => item.questionNum === qNum);
+  const isSkipped = (match.skippedRebounds || []).includes(qNum);
+  const isReboundOpportunity = currentStats.reboundStatus?.isPending && currentStats.pendingQuestionNum === qNum;
+
+  if (existingAttempts.length >= 2 || (existingAttempts.length === 1 && !isReboundOpportunity && !isSkipped && (existingAttempts[0].isCorrect || !existingAttempts[0].isInterruption))) {
+    return res.status(400).json({
+      error: `Question #${qNum} is already resolved. Cannot record further answers for Question #${qNum}.`
+    });
+  }
+
   const isTeamA = team === 'teamA' || team === 'home';
   const teamStats = isTeamA ? currentStats.teamA : currentStats.teamB;
   const quizzerClean = String(quizzer || '').trim().toLowerCase();
@@ -1702,10 +1780,15 @@ app.post('/api/tbq/score', authenticateCoach, (req, res) => {
   };
 
   match.questions.push(newQuestion);
+  const updatedStats = calculateMatchStats(mId, ctx.dataset, ctx.isJBQ);
+  if (updatedStats.isCompleted) {
+    match.status = 'Completed';
+    match.isCompleted = true;
+  }
   saveScoresData();
 
-  console.log(`[SCORE] Match #${match.matchNumber} Q#${newQuestion.questionNum}: ${newQuestion.quizzer} (${newQuestion.team}) [${newQuestion.isCorrect ? 'CORRECT' : 'INCORRECT'}] ${newQuestion.pointValue}pts`);
-  res.json({ success: true, activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ) });
+  console.log(`[SCORE] Match #${match.matchNumber} Q#${newQuestion.questionNum}: ${newQuestion.quizzer} (${newQuestion.team}) [${newQuestion.isCorrect ? 'CORRECT' : 'INCORRECT'}] ${newQuestion.pointValue}pts${updatedStats.isCompleted ? ' [MATCH COMPLETED]' : ''}`);
+  res.json({ success: true, activeRound: updatedStats });
 });
 
 // POST Toggle / Update Timeout
@@ -1777,6 +1860,11 @@ const handleUndoQuestion = (req, res) => {
     if (removed && match.skippedRebounds) {
       match.skippedRebounds = match.skippedRebounds.filter(q => q !== removed.questionNum);
     }
+    // Reopen match if it was completed
+    delete match.isCompleted;
+    if (match.status === 'Completed') {
+      match.status = 'In Progress';
+    }
     saveScoresData();
     return res.json({ success: true, removed, activeRound: calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ) });
   }
@@ -1785,6 +1873,34 @@ const handleUndoQuestion = (req, res) => {
 };
 app.post('/api/tbq/undo', authenticateCoach, handleUndoQuestion);
 app.post('/api/tbq/undo-question', authenticateCoach, handleUndoQuestion);
+
+// POST Explicitly Finish Match
+app.post('/api/tbq/finish-match', authenticateCoach, (req, res) => {
+  const ctx = getPlatformContext(req);
+  const { matchId } = req.body;
+  const mId = matchId || ctx.dataset.activeMatchId;
+  const match = ctx.dataset.matches[mId];
+  if (!match) return res.status(404).json({ error: 'Match not found.' });
+
+  match.status = 'Completed';
+  match.isCompleted = true;
+  saveScoresData();
+  res.json({ success: true, activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ) });
+});
+
+// POST Reopen a Completed Match
+app.post('/api/tbq/reopen-match', authenticateCoach, (req, res) => {
+  const ctx = getPlatformContext(req);
+  const { matchId } = req.body;
+  const mId = matchId || ctx.dataset.activeMatchId;
+  const match = ctx.dataset.matches[mId];
+  if (!match) return res.status(404).json({ error: 'Match not found.' });
+
+  delete match.isCompleted;
+  match.status = (match.questions || []).length > 0 ? 'In Progress' : 'Scheduled';
+  saveScoresData();
+  res.json({ success: true, activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ) });
+});
 
 // POST Skip Rebound for a Question
 app.post('/api/tbq/skip-rebound', authenticateCoach, (req, res) => {

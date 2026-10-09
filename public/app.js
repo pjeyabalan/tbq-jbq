@@ -840,13 +840,15 @@ function renderOfficialScoresheet() {
   let pillsHtml = '';
   (matchesList || []).forEach(m => {
     const isActive = m.id === state.activeMatchId;
+    const isDone = m.isCompleted || m.status === 'Completed';
+    const statusIcon = isDone ? '🏁' : '⚡';
     pillsHtml += `
       <button onclick="fetchTbqData('${m.id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
         isActive 
           ? 'bg-amber-400 text-slate-950 font-black shadow-md ring-2 ring-amber-300' 
-          : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
+          : (isDone ? 'bg-emerald-950/70 text-emerald-300 hover:text-white hover:bg-emerald-900 border border-emerald-500/30' : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700')
       }">
-        <span>M#${m.matchNumber} (Meet ${m.meetNum || m.roundNum})</span>
+        <span>${statusIcon} M#${m.matchNumber} (Meet ${m.meetNum || m.roundNum})${isDone ? ' [Final]' : ''}</span>
       </button>
     `;
   });
@@ -877,17 +879,53 @@ function renderOfficialScoresheet() {
   document.getElementById('home-bonus-badge').textContent = `Regulation: ${regA} | Bonus: +${activeRound.teamA.bonusPoints || 0} | Fouls: -${foulA}`;
   document.getElementById('opp-bonus-badge').textContent = `Regulation: ${regB} | Bonus: +${activeRound.teamB.bonusPoints || 0} | Fouls: -${foulB}`;
 
-  // 4. Quick Buzzer Box UI
+  // 4. Quick Buzzer Box UI / Match Completion
+  const isMatchDone = !!activeRound.isCompleted;
   const reboundStatus = activeRound.reboundStatus || { isPending: false };
   const currentQ = activeRound.pendingQuestionNum || (activeRound.questions ? activeRound.questions.length + 1 : 1);
   const qNumInput = document.getElementById('score-question-num');
   if (qNumInput) qNumInput.value = currentQ;
+
   const activeQBadge = document.getElementById('active-question-badge');
-  if (activeQBadge) {
-    activeQBadge.textContent = reboundStatus.isPending 
-      ? `Question #${currentQ} (Rebound Opportunity)` 
-      : `Question #${currentQ}`;
+  const activeQCat = document.getElementById('active-question-badge-category');
+  const compPanel = document.getElementById('match-completed-panel');
+  const finishBtn = document.getElementById('btn-header-finish-match');
+
+  if (isMatchDone) {
+    if (compPanel) compPanel.classList.remove('hidden');
+    if (quickForm) quickForm.classList.add('hidden');
+    if (activeQCat) {
+      activeQCat.className = 'text-xs font-black uppercase tracking-wider bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-md border border-emerald-300';
+      activeQCat.textContent = '🏁 Final';
+    }
+    if (activeQBadge) {
+      activeQBadge.textContent = 'Match Completed (20 Questions)';
+    }
+    if (finishBtn) {
+      finishBtn.className = 'flex-1 sm:flex-none text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg font-bold border border-slate-600 transition-colors flex items-center justify-center gap-1 cursor-pointer';
+      finishBtn.innerHTML = '<span>↩️ Reopen Match</span>';
+      finishBtn.onclick = reopenCurrentMatch;
+    }
+    renderMatchCompletedPanel(activeRound);
+  } else {
+    if (compPanel) compPanel.classList.add('hidden');
+    if (quickForm) quickForm.classList.remove('hidden');
+    if (activeQCat) {
+      activeQCat.className = 'text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-300';
+      activeQCat.textContent = '⚡ Scorer';
+    }
+    if (activeQBadge) {
+      activeQBadge.textContent = reboundStatus.isPending 
+        ? `Question #${currentQ} (Rebound Opportunity)` 
+        : `Question #${currentQ} (of 20)`;
+    }
+    if (finishBtn) {
+      finishBtn.className = 'flex-1 sm:flex-none text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold border border-emerald-500 transition-colors flex items-center justify-center gap-1 cursor-pointer';
+      finishBtn.innerHTML = '<span>🏁 Finish Match</span>';
+      finishBtn.onclick = finishCurrentMatch;
+    }
   }
+
   document.getElementById('scorer-home-label').textContent = activeRound.teamA.name;
   document.getElementById('scorer-opp-label').textContent = activeRound.teamB.name;
 
@@ -1104,10 +1142,117 @@ function toggleInterruption(forceVal) {
 }
 
 async function recordAnswer(isCorrect) {
+  if (state.tbqData?.activeRound?.isCompleted) {
+    showMatchToast('🏁 This match is already completed (all 20 questions scored).', 'warning');
+    return;
+  }
   selectResult(isCorrect);
   const form = document.getElementById('quick-scorer-form');
   if (form) {
     await submitQuestionScore(new Event('submit'));
+  }
+}
+
+function renderMatchCompletedPanel(activeRound) {
+  const winnerTitleEl = document.getElementById('match-completed-winner-text');
+  const scoreSummaryEl = document.getElementById('match-completed-score-summary');
+  const recapAEl = document.getElementById('match-completed-team-a-recap');
+  const recapBEl = document.getElementById('match-completed-team-b-recap');
+  const nextMatchBtn = document.getElementById('btn-next-match');
+
+  const nameA = activeRound.teamA?.name || 'Left Table';
+  const nameB = activeRound.teamB?.name || 'Right Table';
+  const scoreA = activeRound.teamA?.finalScore || 0;
+  const scoreB = activeRound.teamB?.finalScore || 0;
+
+  if (winnerTitleEl) {
+    if (scoreA > scoreB) {
+      winnerTitleEl.innerHTML = `🏆 <span class="text-brand-900">${escapeHtml(nameA)}</span> Wins!`;
+    } else if (scoreB > scoreA) {
+      winnerTitleEl.innerHTML = `🏆 <span class="text-rose-900">${escapeHtml(nameB)}</span> Wins!`;
+    } else {
+      winnerTitleEl.innerHTML = `🤝 Match Ended in a Tie!`;
+    }
+  }
+
+  if (scoreSummaryEl) {
+    scoreSummaryEl.textContent = `Final Score: ${nameA} ${scoreA} — ${scoreB} ${nameB}`;
+  }
+
+  const regA = activeRound.teamA?.regulationScore !== undefined ? activeRound.teamA?.regulationScore : (activeRound.teamA?.runningScore || 0);
+  const bonusA = activeRound.teamA?.bonusPoints || 0;
+  const foulA = activeRound.teamA?.foulPenalty !== undefined ? activeRound.teamA?.foulPenalty : (activeRound.teamA?.foulPenaltyPoints || 0);
+
+  const regB = activeRound.teamB?.regulationScore !== undefined ? activeRound.teamB?.regulationScore : (activeRound.teamB?.runningScore || 0);
+  const bonusB = activeRound.teamB?.bonusPoints || 0;
+  const foulB = activeRound.teamB?.foulPenalty !== undefined ? activeRound.teamB?.foulPenalty : (activeRound.teamB?.foulPenaltyPoints || 0);
+
+  if (recapAEl) {
+    recapAEl.innerHTML = `
+      <div class="font-black text-brand-900 text-xs truncate">🔵 ${escapeHtml(nameA)}: <strong class="text-sm font-mono-score">${scoreA} pts</strong></div>
+      <div class="text-[10px] text-slate-500 mt-0.5">Reg: ${regA} | Bonus: +${bonusA} | Fouls: -${foulA}</div>
+    `;
+  }
+
+  if (recapBEl) {
+    recapBEl.innerHTML = `
+      <div class="font-black text-rose-900 text-xs truncate">🔴 ${escapeHtml(nameB)}: <strong class="text-sm font-mono-score">${scoreB} pts</strong></div>
+      <div class="text-[10px] text-slate-500 mt-0.5">Reg: ${regB} | Bonus: +${bonusB} | Fouls: -${foulB}</div>
+    `;
+  }
+
+  // Next match button
+  if (nextMatchBtn) {
+    const matchesList = state.tbqData?.matchesList || [];
+    const currentIndex = matchesList.findIndex(m => m.id === (activeRound.id || state.activeMatchId));
+    if (currentIndex !== -1 && currentIndex + 1 < matchesList.length) {
+      const nextM = matchesList[currentIndex + 1];
+      nextMatchBtn.classList.remove('hidden');
+      nextMatchBtn.innerHTML = `<span>⏭️ Next Match (M#${nextM.matchNumber})</span>`;
+      nextMatchBtn.onclick = () => fetchTbqData(nextM.id);
+    } else {
+      nextMatchBtn.classList.add('hidden');
+    }
+  }
+}
+
+async function finishCurrentMatch() {
+  if (!confirm('Mark this match as Completed? Final score and winner will be finalized.')) return;
+  try {
+    const res = await authFetch('/api/tbq/finish-match', {
+      method: 'POST',
+      body: JSON.stringify({ matchId: state.activeMatchId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to finish match.');
+      return;
+    }
+    state.tbqData.activeRound = data.activeRound;
+    renderOfficialScoresheet();
+    showMatchToast('🏁 Match marked as Completed (Official Final)!', 'success');
+  } catch (err) {
+    alert('Error finishing match: ' + err.message);
+  }
+}
+
+async function reopenCurrentMatch() {
+  if (!confirm('Reopen this match for further scoring or edits?')) return;
+  try {
+    const res = await authFetch('/api/tbq/reopen-match', {
+      method: 'POST',
+      body: JSON.stringify({ matchId: state.activeMatchId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to reopen match.');
+      return;
+    }
+    state.tbqData.activeRound = data.activeRound;
+    renderOfficialScoresheet();
+    showMatchToast('Match reopened for scoring.', 'info');
+  } catch (err) {
+    alert('Error reopening match: ' + err.message);
   }
 }
 
@@ -1352,6 +1497,10 @@ function selectResult(isCorrect) {
 
 // Quick score directly from Scoresheet Table or Mobile Card
 function quickScoreFromTable(qNum, team, studentOrSeat, optName) {
+  if (state.tbqData?.activeRound?.isCompleted) {
+    showMatchToast('🏁 This match is already completed (all 20 questions scored).', 'warning');
+    return;
+  }
   const quizzerName = optName || (typeof studentOrSeat === 'string' ? studentOrSeat : '');
   const input = document.getElementById('score-question-num');
   if (input) input.value = qNum;
@@ -1459,6 +1608,10 @@ function setScoresheetViewMode(mode) {
 
 // Jump to Question from mobile feed
 function jumpToQuestion(qNum) {
+  if (state.tbqData?.activeRound?.isCompleted) {
+    showMatchToast('🏁 This match is already completed (all 20 questions scored).', 'warning');
+    return;
+  }
   const input = document.getElementById('score-question-num');
   if (input) {
     input.value = qNum;
@@ -1528,7 +1681,7 @@ function renderScoresheetMobileFeed(activeRound) {
 
     const row = (activeRound.rows || []).find(r => r.questionNum === q) || { pointValue: (q <= 10 ? 10 : (q <= 17 ? 20 : 30)) };
     const qAnswers = questionsList.filter(item => item.questionNum === q);
-    const isCurrentActive = (q === currentQ);
+    const isCurrentActive = (q === currentQ && !activeRound.isCompleted);
     const isPendingReboundForThisQ = isCurrentActive && reboundStatus.isPending;
 
     if (isPendingReboundForThisQ) {
@@ -2091,6 +2244,10 @@ async function submitQuestionScore(event) {
 
   const activeRound = state.tbqData?.activeRound;
   if (!activeRound) return;
+  if (activeRound.isCompleted) {
+    showMatchToast('🏁 This match is already completed (all 20 questions scored).', 'warning');
+    return;
+  }
 
   const studentsA = (activeRound.studentsA || activeRound.teamA?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
   const studentsB = (activeRound.studentsB || activeRound.teamB?.students || []).filter(s => s && !s.toLowerCase().startsWith('seat #'));
@@ -2141,6 +2298,10 @@ async function submitQuestionScore(event) {
     selectResult(true);
 
     state.tbqData.activeRound = result.activeRound;
+
+    if (result.activeRound?.isCompleted) {
+      showMatchToast(`🏁 Match #${result.activeRound.matchNumber} Completed! Winner: ${result.activeRound.winner}`, 'success');
+    }
 
     // Check if quizzer reached Quiz Out or Error Out milestone on this answer
     const newList = isTeamA ? (result.activeRound.teamA.quizzers || []) : (result.activeRound.teamB.quizzers || []);

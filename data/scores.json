@@ -11,7 +11,7 @@
         "date": "2026-10-09",
         "status": "active",
         "teams": [],
-        "activeMatchId": null,
+        "activeMatchId": "",
         "matches": {}
       }
     }
@@ -30,15 +30,351 @@
           "b_level": {
             "name": "B-Level",
             "description": "Intermediate Division",
-            "teams": [],
-            "activeMatchId": null,
-            "matches": {}
+            "teams": [
+              {
+                "id": "team-1791570081376",
+                "name": "test1",
+                "church": "tst",
+                "quizzers": [
+                  "a",
+                  "b",
+                  "c"
+                ]
+              },
+              {
+                "id": "team-1791570094449",
+                "name": "test2",
+                "church": "tset2",
+                "quizzers": [
+                  "e",
+                  "f",
+                  "g"
+                ]
+              }
+            ],
+            "activeMatchId": "match-1791570117012",
+            "matches": {
+              "match-1791570117012": {
+                "id": "match-1791570117012",
+                "roundNum": 1,
+                "matchNumber": "01",
+                "room": "",
+                "teamAId": "team-1791570081376",
+                "teamBId": "team-1791570094449",
+                "seats": {
+                  "teamA": [
+                    "a",
+                    "b",
+                    "c"
+                  ],
+                  "teamB": [
+                    "e",
+                    "f",
+                    "g"
+                  ],
+                  "home": [
+                    "a",
+                    "b",
+                    "c"
+                  ],
+                  "opponent": [
+                    "e",
+                    "f",
+                    "g"
+                  ]
+                },
+                "timeouts": {
+                  "teamA": [
+                    {
+                      "id": 1,
+                      "used": false,
+                      "questionNum": ""
+                    },
+                    {
+                      "id": 2,
+                      "used": false,
+                      "questionNum": ""
+                    }
+                  ],
+                  "teamB": [
+                    {
+                      "id": 1,
+                      "used": false,
+                      "questionNum": ""
+                    },
+                    {
+                      "id": 2,
+                      "used": false,
+                      "questionNum": ""
+                    }
+                  ]
+                },
+                "fouls": {
+                  "teamA": [],
+                  "teamB": []
+                },
+                "questions": [
+                  {
+                    "id": "q-1791570139214-642",
+                    "questionNum": 1,
+                    "pointValue": 30,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "a",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:22:19.214Z"
+                  },
+                  {
+                    "id": "q-1791570143467-186",
+                    "questionNum": 2,
+                    "pointValue": 30,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "c",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:22:23.467Z"
+                  },
+                  {
+                    "id": "q-1791570147364-945",
+                    "questionNum": 3,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "c",
+                    "isCorrect": false,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:22:27.364Z"
+                  },
+                  {
+                    "id": "q-1791570149423-14",
+                    "questionNum": 4,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "c",
+                    "isCorrect": false,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:22:29.423Z"
+                  },
+                  {
+                    "id": "q-1791570152644-506",
+                    "questionNum": 5,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "c",
+                    "isCorrect": false,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:22:32.644Z"
+                  },
+                  {
+                    "id": "q-1791570175493-714",
+                    "questionNum": 6,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamB",
+                    "quizzer": "e",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:22:55.493Z"
+                  },
+                  {
+                    "id": "q-1791570176071-190",
+                    "questionNum": 7,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamB",
+                    "quizzer": "e",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:22:56.071Z"
+                  },
+                  {
+                    "id": "q-1791570176593-775",
+                    "questionNum": 8,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamB",
+                    "quizzer": "e",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:22:56.593Z"
+                  },
+                  {
+                    "id": "q-1791570176974-388",
+                    "questionNum": 9,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamB",
+                    "quizzer": "e",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:22:56.974Z"
+                  },
+                  {
+                    "id": "q-1791570177354-755",
+                    "questionNum": 10,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamB",
+                    "quizzer": "e",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:22:57.354Z"
+                  },
+                  {
+                    "id": "q-1791570180189-467",
+                    "questionNum": 11,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamB",
+                    "quizzer": "e",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:23:00.189Z"
+                  },
+                  {
+                    "id": "q-1791570181320-323",
+                    "questionNum": 12,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "a",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:23:01.320Z"
+                  },
+                  {
+                    "id": "q-1791570181871-882",
+                    "questionNum": 13,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "a",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:23:01.871Z"
+                  },
+                  {
+                    "id": "q-1791570182052-89",
+                    "questionNum": 14,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "a",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:23:02.052Z"
+                  },
+                  {
+                    "id": "q-1791570182266-109",
+                    "questionNum": 15,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "a",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:23:02.266Z"
+                  },
+                  {
+                    "id": "q-1791570188120-225",
+                    "questionNum": 16,
+                    "pointValue": 30,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "b",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:23:08.120Z"
+                  },
+                  {
+                    "id": "q-1791570188278-317",
+                    "questionNum": 17,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "b",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:23:08.278Z"
+                  },
+                  {
+                    "id": "q-1791570188462-395",
+                    "questionNum": 18,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "b",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:23:08.462Z"
+                  },
+                  {
+                    "id": "q-1791570188682-933",
+                    "questionNum": 19,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "b",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:23:08.682Z"
+                  },
+                  {
+                    "id": "q-1791571096584-424",
+                    "questionNum": 20,
+                    "pointValue": 20,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "b",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-09T18:38:16.585Z"
+                  }
+                ],
+                "status": "Completed",
+                "studentsA": [
+                  "a",
+                  "b",
+                  "c"
+                ],
+                "studentsB": [
+                  "e",
+                  "f",
+                  "g"
+                ],
+                "isCompleted": true
+              }
+            }
           },
           "c_level": {
             "name": "C-Level",
             "description": "Beginner Division",
             "teams": [],
-            "activeMatchId": null,
+            "activeMatchId": "",
             "matches": {}
           }
         }
