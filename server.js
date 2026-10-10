@@ -83,26 +83,26 @@ function getDefaultCoaches() {
   return [
     {
       id: "coach-super",
-      name: "Super Coach (Admin)",
+      name: "Head Coach (Admin)",
       username: "supercoach",
       passcode: "super2026",
-      role: "supercoach", // Full admin for TBQ and JBQ
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: "coach-tbq",
-      name: "TBQ Coach",
-      username: "coach",
-      passcode: "coach2026",
-      role: "tbq_coach", // Dedicated TBQ Coach
+      role: "supercoach", // Full admin for JBQ
       createdAt: new Date().toISOString()
     },
     {
       id: "coach-jbq",
       name: "JBQ Coach",
+      username: "coach",
+      passcode: "coach2026",
+      role: "jbq_coach", // Dedicated JBQ Coach
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: "coach-jbq-2",
+      name: "JBQ Coach",
       username: "jbqcoach",
       passcode: "jbq2026",
-      role: "jbq_coach", // Dedicated JBQ Coach (B & C Levels)
+      role: "jbq_coach",
       createdAt: new Date().toISOString()
     }
   ];
@@ -112,7 +112,7 @@ function loadCoachesLocal() {
   if (fs.existsSync(COACHES_FILE)) {
     try {
       coaches = JSON.parse(fs.readFileSync(COACHES_FILE, 'utf8'));
-      // Ensure coaches have updated roles and jbqcoach exists
+      // Ensure coaches have updated roles
       ensureStandardCoaches();
       return;
     } catch (err) {
@@ -128,10 +128,11 @@ function loadCoachesLocal() {
 function ensureStandardCoaches() {
   let changed = false;
 
-  // Map any legacy 'coach' role to 'tbq_coach'
+  // Map any legacy coach roles to 'jbq_coach'
   coaches.forEach(c => {
-    if (c.role === 'coach' || !c.role) {
-      c.role = 'tbq_coach';
+    if (c.role === 'coach' || c.role === 'tbq_coach' || !c.role) {
+      c.role = 'jbq_coach';
+      if (c.name.includes('TBQ')) c.name = c.name.replace('TBQ', 'JBQ');
       changed = true;
     }
   });
@@ -144,14 +145,14 @@ function ensureStandardCoaches() {
   }
 
   // Ensure default coach account exists
-  const tbqUser = coaches.find(c => c.username === 'coach');
-  if (!tbqUser) {
+  const defaultCoach = coaches.find(c => c.username === 'coach');
+  if (!defaultCoach) {
     coaches.push({
-      id: "coach-tbq",
-      name: "TBQ Coach",
+      id: "coach-default",
+      name: "JBQ Coach",
       username: "coach",
       passcode: "coach2026",
-      role: "tbq_coach",
+      role: "jbq_coach",
       createdAt: new Date().toISOString()
     });
     changed = true;
@@ -267,7 +268,7 @@ app.post('/api/auth/login', (req, res) => {
     id: matched.id,
     name: matched.name,
     username: matched.username,
-    role: matched.role || (matched.username === 'supercoach' ? 'supercoach' : matched.username === 'jbqcoach' ? 'jbq_coach' : 'tbq_coach')
+    role: matched.role || (matched.username === 'supercoach' ? 'supercoach' : 'jbq_coach')
   };
   activeSessions.set(token, userSafe);
   saveSessionsLocal();
@@ -303,7 +304,7 @@ app.get('/api/coaches', authenticateCoach, requireSuperCoach, (req, res) => {
     id: c.id,
     name: c.name,
     username: c.username,
-    role: c.role || 'tbq_coach',
+    role: c.role || 'jbq_coach',
     createdAt: c.createdAt
   }));
   res.json({ coaches: safeList });
@@ -322,8 +323,8 @@ app.post('/api/coaches/add', authenticateCoach, requireSuperCoach, (req, res) =>
     return res.status(400).json({ error: 'Username already taken.' });
   }
 
-  const validRoles = ['supercoach', 'tbq_coach', 'jbq_coach'];
-  const assignedRole = validRoles.includes(role) ? role : 'tbq_coach';
+  const validRoles = ['supercoach', 'jbq_coach'];
+  const assignedRole = validRoles.includes(role) ? role : 'jbq_coach';
 
   const newCoach = {
     id: `coach-${Date.now()}`,
@@ -400,17 +401,6 @@ app.post('/api/coaches/reset-passcode', authenticateCoach, requireSuperCoach, (r
 const DATA_VERSION = 'v2_fresh_scratch';
 
 function getDefaultPlatformData() {
-  const defaultTbqMeet1 = {
-    id: "tbq-meet-1",
-    league: "tbq",
-    title: "TBQ Tournament 2026",
-    date: new Date().toISOString().split('T')[0],
-    status: "active",
-    teams: [],
-    activeMatchId: null,
-    matches: {}
-  };
-
   const defaultJbqMeet1 = {
     id: "jbq-meet-1",
     league: "jbq",
@@ -437,13 +427,7 @@ function getDefaultPlatformData() {
 
   return {
     _version: DATA_VERSION,
-    activeLeague: "tbq",
-    tbq: {
-      activeMeetId: "tbq-meet-1",
-      meets: {
-        "tbq-meet-1": defaultTbqMeet1
-      }
-    },
+    activeLeague: "jbq",
     jbq: {
       activeMeetId: "jbq-meet-1",
       activeDivision: "b_level",
@@ -462,8 +446,9 @@ function loadScoresDataLocal() {
   if (fs.existsSync(SCORES_FILE)) {
     try {
       const loaded = JSON.parse(fs.readFileSync(SCORES_FILE, 'utf8'));
-      if (loaded._version === DATA_VERSION && loaded.tbq && loaded.jbq) {
+      if (loaded._version === DATA_VERSION && loaded.jbq) {
         platformData = loaded;
+        platformData.activeLeague = "jbq";
         return;
       }
       console.log(`[STORAGE] Old scores data detected. Resetting to clean scratch state (version ${DATA_VERSION}).`);
@@ -503,89 +488,43 @@ function getPlatformContext(req) {
   const divParam = (req.headers['x-quiz-division'] || req.query?.division || req.body?.division || '').toString().toLowerCase();
   const leagueParam = (req.headers['x-quiz-league'] || req.query?.league || req.body?.league || '').toString().toLowerCase();
 
-  let league = 'tbq';
-  let division = null;
+  const league = 'jbq';
+  const division = (divParam === 'c_level' || divParam === 'jbq_c' || divParam === 'jbq-c') ? 'c_level' : 'b_level';
 
-  if (divParam === 'tbq') {
-    league = 'tbq';
-    division = null;
-  } else if (divParam === 'b_level' || divParam === 'jbq_b' || divParam === 'jbq-b') {
-    league = 'jbq';
-    division = 'b_level';
-  } else if (divParam === 'c_level' || divParam === 'jbq_c' || divParam === 'jbq-c') {
-    league = 'jbq';
-    division = 'c_level';
-  } else if (leagueParam === 'jbq') {
-    league = 'jbq';
-    division = divParam === 'c_level' ? 'c_level' : 'b_level';
-  } else if (leagueParam === 'tbq') {
-    league = 'tbq';
-    division = null;
-  } else {
-    league = platformData.activeLeague || 'tbq';
-    if (league === 'jbq') {
-      division = platformData.jbq.activeDivision || 'b_level';
-    }
-  }
-
-  // Default fallback ONLY when neither league nor division was specified in headers/query/body
-  if (!leagueParam && !divParam && req.user) {
-    if (req.user.role === 'jbq_coach') {
-      league = 'jbq';
-      if (!division) division = 'b_level';
-    } else if (req.user.role === 'tbq_coach' || req.user.role === 'coach') {
-      league = 'tbq';
-      division = null;
-    }
-  }
-
-  const leagueData = platformData[league];
+  const leagueData = platformData.jbq;
   let meetId = req.headers['x-quiz-meet'] || req.query?.meetId || req.body?.meetId || leagueData.activeMeetId;
   if (!meetId || !leagueData.meets[meetId]) {
     meetId = leagueData.activeMeetId || Object.keys(leagueData.meets)[0];
   }
   let meet = leagueData.meets[meetId];
 
-  // Defensive fallback if no meet exists yet in this league
+  // Defensive fallback if no meet exists yet in JBQ
   if (!meet) {
-    if (league === 'jbq') {
-      meet = {
-        id: 'jbq-meet-1',
-        league: 'jbq',
-        title: 'JBQ Tournament 2026',
-        date: new Date().toISOString().split('T')[0],
-        status: 'active',
-        divisions: {
-          b_level: { name: 'B-Level', teams: [], matches: {}, activeMatchId: null },
-          c_level: { name: 'C-Level', teams: [], matches: {}, activeMatchId: null }
-        }
-      };
-    } else {
-      meet = {
-        id: 'tbq-meet-1',
-        league: 'tbq',
-        title: 'TBQ Tournament 2026',
-        date: new Date().toISOString().split('T')[0],
-        status: 'active',
-        teams: [],
-        matches: {},
-        activeMatchId: null
-      };
-    }
+    meet = {
+      id: 'jbq-meet-1',
+      league: 'jbq',
+      title: 'JBQ Tournament 2026',
+      date: new Date().toISOString().split('T')[0],
+      status: 'active',
+      divisions: {
+        b_level: { name: 'B-Level', description: 'Intermediate Division', teams: [], matches: {}, activeMatchId: null },
+        c_level: { name: 'C-Level', description: 'Beginner Division', teams: [], matches: {}, activeMatchId: null }
+      }
+    };
     leagueData.meets[meet.id] = meet;
     leagueData.activeMeetId = meet.id;
     meetId = meet.id;
   }
 
-  let dataset = null;
-  if (league === 'jbq') {
-    if (!meet.divisions || !meet.divisions[division]) {
-      division = Object.keys(meet.divisions || {})[0] || 'b_level';
-    }
-    dataset = meet.divisions[division];
-  } else {
-    dataset = meet;
+  if (!meet.divisions) {
+    meet.divisions = {
+      b_level: { name: 'B-Level', description: 'Intermediate Division', teams: [], matches: {}, activeMatchId: null },
+      c_level: { name: 'C-Level', description: 'Beginner Division', teams: [], matches: {}, activeMatchId: null }
+    };
   }
+
+  const resolvedDiv = meet.divisions[division] ? division : (Object.keys(meet.divisions)[0] || 'b_level');
+  const dataset = meet.divisions[resolvedDiv];
 
   if (!dataset.teams) dataset.teams = [];
   if (!dataset.matches) dataset.matches = {};
@@ -594,33 +533,22 @@ function getPlatformContext(req) {
   }
 
   return {
-    league,
+    league: 'jbq',
     meetId,
     meet,
-    division,
+    division: resolvedDiv,
     dataset,
-    isJBQ: league === 'jbq'
+    isJBQ: true
   };
 }
 
 function getDivisionsSummary() {
-  const tbqMeetId = platformData.tbq.activeMeetId || Object.keys(platformData.tbq.meets)[0];
-  const tbqMeet = platformData.tbq.meets[tbqMeetId] || { teams: [], matches: {} };
-
   const jbqMeetId = platformData.jbq.activeMeetId || Object.keys(platformData.jbq.meets)[0];
   const jbqMeet = platformData.jbq.meets[jbqMeetId] || { divisions: {} };
   const bDiv = jbqMeet.divisions?.b_level || { teams: [], matches: {} };
   const cDiv = jbqMeet.divisions?.c_level || { teams: [], matches: {} };
 
   return {
-    tbq: {
-      key: 'tbq',
-      name: 'TBQ',
-      label: 'Teen Bible Quiz',
-      teamsCount: (tbqMeet.teams || []).length,
-      matchesCount: Object.keys(tbqMeet.matches || {}).length,
-      meetId: tbqMeetId
-    },
     jbq_b: {
       key: 'jbq_b',
       name: 'JBQ B-Level',
@@ -1129,28 +1057,16 @@ app.get('/api/platform/context', (req, res) => {
   const user = token && activeSessions.has(token) ? activeSessions.get(token) : null;
 
   res.json({
-    activeLeague: platformData.activeLeague,
+    activeLeague: 'jbq',
     userRole: user ? user.role : 'public',
     user: user ? { name: user.name, username: user.username, role: user.role } : null,
-    tbq: {
-      title: "Teen Bible Quiz",
-      activeMeetId: platformData.tbq.activeMeetId,
-      meets: Object.values(platformData.tbq.meets).map(m => ({
-        id: m.id,
-        title: m.title,
-        date: m.date,
-        status: m.status,
-        matchesCount: Object.keys(m.matches || {}).length,
-        teamsCount: (m.teams || []).length
-      }))
-    },
     jbq: {
       title: "Junior Bible Quiz",
       activeMeetId: platformData.jbq.activeMeetId,
       activeDivision: platformData.jbq.activeDivision,
       divisions: [
-        { id: "b_level", name: "B-Level (1 CIC Team)", description: "Intermediate Division" },
-        { id: "c_level", name: "C-Level (2 CIC Teams)", description: "Beginner Division" }
+        { id: "b_level", name: "B-Level", description: "Intermediate Division" },
+        { id: "c_level", name: "C-Level", description: "Beginner Division" }
       ],
       meets: Object.values(platformData.jbq.meets).map(m => ({
         id: m.id,
@@ -1169,23 +1085,16 @@ app.get('/api/platform/context', (req, res) => {
   });
 });
 
-// POST Switch Platform Active League / Meet / Division
+// POST Switch Platform Active Meet / Division
 app.post('/api/platform/switch', (req, res) => {
-  const { league, meetId, division } = req.body;
+  const { meetId, division } = req.body;
 
-  if (league) {
-    const l = league.toLowerCase();
-    if (l === 'tbq' || l === 'jbq') {
-      platformData.activeLeague = l;
-    }
+  platformData.activeLeague = 'jbq';
+  if (meetId && platformData.jbq.meets[meetId]) {
+    platformData.jbq.activeMeetId = meetId;
   }
 
-  const curLeague = platformData.activeLeague;
-  if (meetId && platformData[curLeague].meets[meetId]) {
-    platformData[curLeague].activeMeetId = meetId;
-  }
-
-  if (curLeague === 'jbq' && division) {
+  if (division) {
     const curMeet = platformData.jbq.meets[platformData.jbq.activeMeetId];
     if (curMeet && curMeet.divisions[division]) {
       platformData.jbq.activeDivision = division;
@@ -1195,99 +1104,78 @@ app.post('/api/platform/switch', (req, res) => {
   saveScoresData();
   res.json({
     success: true,
-    activeLeague: platformData.activeLeague,
-    activeMeetId: platformData[platformData.activeLeague].activeMeetId,
+    activeLeague: 'jbq',
+    activeMeetId: platformData.jbq.activeMeetId,
     activeDivision: platformData.jbq.activeDivision
   });
 });
 
-// Super Coach: Create a new Meet (e.g. Meet 2 in Nov/Dec)
 // Create a new Meet (Any authenticated coach)
 app.post('/api/meets/create', authenticateCoach, (req, res) => {
-  const { league, title, date, copyRosterFromMeetId } = req.body;
-  const l = (league || 'tbq').toLowerCase() === 'jbq' ? 'jbq' : 'tbq';
+  const { title, date, copyRosterFromMeetId } = req.body;
 
   if (!title || !title.trim()) {
     return res.status(400).json({ error: 'Meet title is required.' });
   }
 
-  const meetId = `${l}-meet-${Date.now()}`;
-
-  if (l === 'tbq') {
-    let teams = [];
-    if (copyRosterFromMeetId && platformData.tbq.meets[copyRosterFromMeetId]) {
-      teams = JSON.parse(JSON.stringify(platformData.tbq.meets[copyRosterFromMeetId].teams || []));
-    }
-
-    const newMeet = {
-      id: meetId,
-      league: 'tbq',
-      title: title.trim(),
-      date: date || new Date().toISOString().split('T')[0],
-      status: 'active',
-      teams,
-      activeMatchId: null,
-      matches: {}
-    };
-    platformData.tbq.meets[meetId] = newMeet;
-    platformData.tbq.activeMeetId = meetId;
-  } else {
-    // JBQ
-    let bTeams = [];
-    let cTeams = [];
-    if (copyRosterFromMeetId && platformData.jbq.meets[copyRosterFromMeetId]) {
-      const src = platformData.jbq.meets[copyRosterFromMeetId];
-      bTeams = JSON.parse(JSON.stringify(src.divisions?.b_level?.teams || []));
-      cTeams = JSON.parse(JSON.stringify(src.divisions?.c_level?.teams || []));
-    }
-
-    const newMeet = {
-      id: meetId,
-      league: 'jbq',
-      title: title.trim(),
-      date: date || new Date().toISOString().split('T')[0],
-      status: 'active',
-      divisions: {
-        b_level: {
-          name: 'B-Level',
-          teams: bTeams,
-          activeMatchId: null,
-          matches: {}
-        },
-        c_level: {
-          name: 'C-Level',
-          teams: cTeams,
-          activeMatchId: null,
-          matches: {}
-        }
-      }
-    };
-    platformData.jbq.meets[meetId] = newMeet;
-    platformData.jbq.activeMeetId = meetId;
+  const meetId = `jbq-meet-${Date.now()}`;
+  let bTeams = [];
+  let cTeams = [];
+  if (copyRosterFromMeetId && platformData.jbq.meets[copyRosterFromMeetId]) {
+    const src = platformData.jbq.meets[copyRosterFromMeetId];
+    bTeams = JSON.parse(JSON.stringify(src.divisions?.b_level?.teams || []));
+    cTeams = JSON.parse(JSON.stringify(src.divisions?.c_level?.teams || []));
   }
 
+  const newMeet = {
+    id: meetId,
+    league: 'jbq',
+    title: title.trim(),
+    date: date || new Date().toISOString().split('T')[0],
+    status: 'active',
+    divisions: {
+      b_level: {
+        name: 'B-Level',
+        teams: bTeams,
+        activeMatchId: null,
+        matches: {}
+      },
+      c_level: {
+        name: 'C-Level',
+        teams: cTeams,
+        activeMatchId: null,
+        matches: {}
+      }
+    }
+  };
+  platformData.jbq.meets[meetId] = newMeet;
+  platformData.jbq.activeMeetId = meetId;
   saveScoresData();
-  console.log(`[MEET] Coach ${req.user.name} created meet: "${title}" (${l.toUpperCase()})`);
-  res.json({ success: true, meetId, league: l, divisionsSummary: getDivisionsSummary() });
+
+  console.log(`[MEET] Coach ${req.user.name} created JBQ Meet: ${newMeet.title} (${meetId})`);
+  res.json({
+    success: true,
+    meet: newMeet,
+    league: 'jbq',
+    meetId: newMeet.id
+  });
 });
 
 // Delete a Meet
 app.post('/api/meets/delete', authenticateCoach, (req, res) => {
-  const { league, meetId } = req.body;
-  const l = (league || 'tbq').toLowerCase() === 'jbq' ? 'jbq' : 'tbq';
-
-  const meets = platformData[l].meets;
+  const { meetId } = req.body;
+  const meets = platformData.jbq.meets;
   if (!meets[meetId]) {
     return res.status(404).json({ error: 'Meet not found.' });
   }
 
   delete meets[meetId];
-  if (platformData[l].activeMeetId === meetId) {
-    platformData[l].activeMeetId = Object.keys(meets)[0] || null;
+  if (platformData.jbq.activeMeetId === meetId) {
+    platformData.jbq.activeMeetId = Object.keys(meets)[0] || null;
   }
 
   saveScoresData();
-  res.json({ success: true, activeMeetId: platformData[l].activeMeetId, divisionsSummary: getDivisionsSummary() });
+  res.json({ success: true, activeMeetId: platformData.jbq.activeMeetId, divisionsSummary: getDivisionsSummary() });
 });
 
 // Reset Platform to Scratch (All meets, teams, matches, scores)
@@ -1349,18 +1237,14 @@ app.get('/api/tbq/public-summary', (req, res) => {
 // 6. COACH MATCH & SCORESHEET APIS
 // ==========================================
 
-// GET Teams segregated across all 3 divisions
+// GET Teams segregated across JBQ divisions
 app.get('/api/teams/by-division', authenticateCoach, (req, res) => {
-  const tbqMeetId = platformData.tbq.activeMeetId || Object.keys(platformData.tbq.meets)[0];
-  const tbqMeet = platformData.tbq.meets[tbqMeetId] || { teams: [] };
-
   const jbqMeetId = platformData.jbq.activeMeetId || Object.keys(platformData.jbq.meets)[0];
   const jbqMeet = platformData.jbq.meets[jbqMeetId] || { divisions: {} };
   const bDiv = jbqMeet.divisions?.b_level || { teams: [] };
   const cDiv = jbqMeet.divisions?.c_level || { teams: [] };
 
   res.json({
-    tbq: tbqMeet.teams || [],
     jbq_b: bDiv.teams || [],
     jbq_c: cDiv.teams || [],
     divisionsSummary: getDivisionsSummary()
@@ -1443,19 +1327,15 @@ app.post('/api/teams/save', authenticateCoach, (req, res) => {
 
   // If editing an existing team, remove from other division datasets if moving divisions
   if (teamId) {
-    for (const mId in platformData.tbq.meets) {
-      const m = platformData.tbq.meets[mId];
-      if (m.teams && m !== ctx.dataset) {
-        m.teams = m.teams.filter(t => t.id !== teamId);
-      }
-    }
-    for (const mId in platformData.jbq.meets) {
-      const m = platformData.jbq.meets[mId];
-      if (m.divisions) {
-        for (const dKey in m.divisions) {
-          const dObj = m.divisions[dKey];
-          if (dObj.teams && dObj !== ctx.dataset) {
-            dObj.teams = dObj.teams.filter(t => t.id !== teamId);
+    if (platformData.jbq && platformData.jbq.meets) {
+      for (const mId in platformData.jbq.meets) {
+        const m = platformData.jbq.meets[mId];
+        if (m.divisions) {
+          for (const dKey in m.divisions) {
+            const dObj = m.divisions[dKey];
+            if (dObj.teams && dObj !== ctx.dataset) {
+              dObj.teams = dObj.teams.filter(t => t.id !== teamId);
+            }
           }
         }
       }
@@ -1979,7 +1859,7 @@ app.get('/api/system/status', (req, res) => {
 app.get('/api/tbq/backup', authenticateCoach, (req, res) => {
   const dateStr = new Date().toISOString().slice(0, 10);
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Content-Disposition', `attachment; filename="tbq-jbq-platform-backup-${dateStr}.json"`);
+  res.setHeader('Content-Disposition', `attachment; filename="jbq-platform-backup-${dateStr}.json"`);
   res.send(JSON.stringify(platformData, null, 2));
 });
 
@@ -1994,13 +1874,8 @@ app.post('/api/tbq/restore', authenticateCoach, (req, res) => {
     return res.status(400).json({ error: 'Invalid backup format.' });
   }
 
-  if (backupData.tbq && backupData.jbq) {
+  if (backupData.jbq) {
     platformData = backupData;
-  } else if (backupData.meet && backupData.matches) {
-    platformData.tbq.meets['tbq-meet-1'].meet = backupData.meet;
-    platformData.tbq.meets['tbq-meet-1'].teams = backupData.meet.teams || [];
-    platformData.tbq.meets['tbq-meet-1'].matches = backupData.matches || {};
-    platformData.tbq.meets['tbq-meet-1'].activeMatchId = backupData.activeMatchId || 'match-1';
   }
 
   saveScoresData();
@@ -2054,7 +1929,7 @@ async function initStorage() {
     const scoresRes = await dbPool.query(`SELECT value FROM tbq_store WHERE key = 'scores'`);
     if (scoresRes.rows.length > 0 && scoresRes.rows[0].value) {
       const loaded = scoresRes.rows[0].value;
-      if (loaded._version === DATA_VERSION && loaded.tbq && loaded.jbq) {
+      if (loaded._version === DATA_VERSION && loaded.jbq) {
         platformData = loaded;
         console.log(`[PG] Restored clean scratch platform data from database.`);
         saveScoresDataLocal();
@@ -2072,7 +1947,7 @@ async function initStorage() {
       console.log(`[PG] Seeded clean scratch platform data into database.`);
     }
 
-    console.log('[PG] Database sync complete. All TBQ & JBQ data permanently persisted to PostgreSQL!');
+    console.log('[PG] Database sync complete. All JBQ data permanently persisted to PostgreSQL!');
   } catch (err) {
     console.error('[PG] Database initialization error (fallback to local files active):', err.message);
   }
@@ -2082,10 +1957,9 @@ async function initStorage() {
 initStorage().then(() => {
   app.listen(PORT, () => {
     console.log(`=================================================`);
-    console.log(`TBQ & JBQ Multi-Meet Platform running on port ${PORT}`);
+    console.log(`Junior Bible Quiz (JBQ) Platform running on port ${PORT}`);
     console.log(`Storage engine: ${dbPool ? 'PostgreSQL (Persistent)' : 'Local JSON'}`);
     console.log(`Super Coach: supercoach / super2026`);
-    console.log(`TBQ Coach:   coach / coach2026`);
     console.log(`JBQ Coach:   jbqcoach / jbq2026`);
     console.log(`=================================================`);
   });

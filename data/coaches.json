@@ -12,7 +12,7 @@
     "name": "Dev",
     "username": "dev",
     "passcode": "dev",
-    "role": "tbq_coach",
+    "role": "jbq_coach",
     "createdAt": "2026-10-02T19:06:55.318Z"
   },
   {
@@ -20,7 +20,7 @@
     "name": "Hanna",
     "username": "hanna",
     "passcode": "hanna",
-    "role": "tbq_coach",
+    "role": "jbq_coach",
     "createdAt": "2026-10-02T19:07:30.827Z"
   },
   {
@@ -32,11 +32,11 @@
     "createdAt": "2026-10-02T23:20:21.195Z"
   },
   {
-    "id": "coach-tbq",
-    "name": "TBQ Coach",
+    "id": "coach-coach",
+    "name": "Coach",
     "username": "coach",
     "passcode": "coach2026",
-    "role": "tbq_coach",
+    "role": "jbq_coach",
     "createdAt": "2026-10-02T23:23:17.132Z"
   }
 ]

@@ -1,23 +1,8 @@
 {
   "_version": "v2_fresh_scratch",
-  "activeLeague": "tbq",
-  "tbq": {
-    "activeMeetId": "tbq-meet-1",
-    "meets": {
-      "tbq-meet-1": {
-        "id": "tbq-meet-1",
-        "league": "tbq",
-        "title": "TBQ Tournament 2026",
-        "date": "2026-10-09",
-        "status": "active",
-        "teams": [],
-        "activeMatchId": "",
-        "matches": {}
-      }
-    }
-  },
+  "activeLeague": "jbq",
   "jbq": {
-    "activeMeetId": "jbq-meet-1",
+    "activeMeetId": "jbq-meet-1791577559578",
     "activeDivision": "b_level",
     "meets": {
       "jbq-meet-1": {
@@ -375,6 +360,27 @@
             "description": "Beginner Division",
             "teams": [],
             "activeMatchId": "",
+            "matches": {}
+          }
+        }
+      },
+      "jbq-meet-1791577559578": {
+        "id": "jbq-meet-1791577559578",
+        "league": "jbq",
+        "title": "Meet1(Stone Church)",
+        "date": "2026-10-17",
+        "status": "active",
+        "divisions": {
+          "b_level": {
+            "name": "B-Level",
+            "teams": [],
+            "activeMatchId": null,
+            "matches": {}
+          },
+          "c_level": {
+            "name": "C-Level",
+            "teams": [],
+            "activeMatchId": null,
             "matches": {}
           }
         }

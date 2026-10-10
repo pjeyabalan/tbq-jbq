@@ -1,13 +1,13 @@
 /**
- * TBQ 4-Team Tournament & Match Platform Engine
- * Supports Chicago Indian Church (Teams 1 & 2) + 2 Opponents (Configurable on the fly)
+ * JBQ Tournament & Match Platform Engine
+ * Official Junior Bible Quiz (JBQ) Scoring & Tournament System
  */
 
 const state = {
   auth: null,
   currentTab: 'scoresheet',
-  currentLeague: 'tbq', // 'tbq' | 'jbq'
-  currentMeetId: 'tbq-meet-1',
+  currentLeague: 'jbq',
+  currentMeetId: 'jbq-meet-1',
   currentDivision: 'b_level', // 'b_level' | 'c_level'
   platformContext: null,
   publicData: null,
@@ -116,15 +116,11 @@ function setLoggedInCoach(token, user) {
   if (user.role === 'supercoach') {
     roleBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-amber-400 text-brand-950 border-amber-300';
     roleBadge.textContent = '👑 Super Coach';
-  } else if (user.role === 'jbq_coach') {
+  } else {
     roleBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-purple-500/20 text-purple-200 border-purple-400/30';
     roleBadge.textContent = '🎒 JBQ Coach';
-    state.currentLeague = 'jbq';
-  } else {
-    roleBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-200 border-emerald-400/30';
-    roleBadge.textContent = '📖 TBQ Coach';
-    state.currentLeague = 'tbq';
   }
+  state.currentLeague = 'jbq';
 
   const coachesTabBtn = document.getElementById('tab-btn-coaches');
   const mobCoachesBtn = document.getElementById('mob-tab-btn-coaches');
@@ -270,15 +266,13 @@ async function fetchPlatformContext() {
     const ctx = await res.json();
     state.platformContext = ctx;
 
-    if (!state.currentLeague) state.currentLeague = ctx.activeLeague || 'tbq';
-    const lData = ctx[state.currentLeague];
+    if (!state.currentLeague) state.currentLeague = ctx.activeLeague || 'jbq';
+    const lData = ctx[state.currentLeague] || ctx.jbq;
     if (lData) {
       if (!state.currentMeetId || !lData.meets.some(m => m.id === state.currentMeetId)) {
-        state.currentMeetId = lData.activeMeetId || lData.meets[0]?.id || `${state.currentLeague}-meet-1`;
+        state.currentMeetId = lData.activeMeetId || lData.meets[0]?.id || 'jbq-meet-1';
       }
-      if (state.currentLeague === 'jbq') {
-        state.currentDivision = lData.activeDivision || 'b_level';
-      }
+      state.currentDivision = lData.activeDivision || 'b_level';
     }
 
     renderPlatformHeader();
@@ -288,26 +282,19 @@ async function fetchPlatformContext() {
 }
 
 function getActiveDivisionKey() {
-  if (state.currentLeague === 'jbq') {
-    return state.currentDivision === 'c_level' ? 'jbq_c' : 'jbq_b';
-  }
-  return 'tbq';
+  return state.currentDivision === 'c_level' ? 'jbq_c' : 'jbq_b';
 }
 
 function getDivisionDisplayName(key) {
   if (key === 'jbq_c' || key === 'c_level') return '🌟 JBQ C-Level (Beginner)';
-  if (key === 'jbq_b' || key === 'b_level') return '⚡ JBQ B-Level (Intermediate)';
-  return '📖 TBQ (Teen Bible Quiz)';
+  return '⚡ JBQ B-Level (Intermediate)';
 }
 
 function getDivisionBadgeHtml(key) {
   if (key === 'jbq_c' || key === 'c_level') {
     return '<span class="bg-blue-100 text-blue-900 border border-blue-300 font-extrabold px-2 py-0.5 rounded text-[10px] uppercase">🌟 JBQ C-Level</span>';
   }
-  if (key === 'jbq_b' || key === 'b_level') {
-    return '<span class="bg-purple-100 text-purple-900 border border-purple-300 font-extrabold px-2 py-0.5 rounded text-[10px] uppercase">⚡ JBQ B-Level</span>';
-  }
-  return '<span class="bg-amber-100 text-amber-900 border border-amber-300 font-extrabold px-2 py-0.5 rounded text-[10px] uppercase">📖 TBQ</span>';
+  return '<span class="bg-purple-100 text-purple-900 border border-purple-300 font-extrabold px-2 py-0.5 rounded text-[10px] uppercase">⚡ JBQ B-Level</span>';
 }
 
 async function fetchTeamsByDivision() {
@@ -323,22 +310,18 @@ async function fetchTeamsByDivision() {
 }
 
 async function setActiveDivisionKey(divKey) {
-  if (divKey === 'tbq') {
-    state.currentLeague = 'tbq';
-    state.currentDivision = null;
-  } else if (divKey === 'jbq_c' || divKey === 'c_level') {
-    state.currentLeague = 'jbq';
+  state.currentLeague = 'jbq';
+  if (divKey === 'jbq_c' || divKey === 'c_level') {
     state.currentDivision = 'c_level';
   } else {
-    state.currentLeague = 'jbq';
     state.currentDivision = 'b_level';
   }
 
-  if (state.platformContext && state.platformContext[state.currentLeague]) {
-    const lData = state.platformContext[state.currentLeague];
-    state.currentMeetId = lData.activeMeetId || (lData.meets && lData.meets[0]?.id) || `${state.currentLeague}-meet-1`;
+  if (state.platformContext && state.platformContext.jbq) {
+    const lData = state.platformContext.jbq;
+    state.currentMeetId = lData.activeMeetId || (lData.meets && lData.meets[0]?.id) || 'jbq-meet-1';
   } else {
-    state.currentMeetId = `${state.currentLeague}-meet-1`;
+    state.currentMeetId = 'jbq-meet-1';
   }
 
   renderPlatformHeader();
@@ -363,7 +346,6 @@ async function setActiveDivisionKey(divKey) {
 
 function renderPlatformHeader() {
   const divKey = getActiveDivisionKey();
-  const isJBQ = state.currentLeague === 'jbq';
 
   // 1. Brand Logo & Title
   const logoIcon = document.getElementById('brand-logo-icon');
@@ -372,44 +354,31 @@ function renderPlatformHeader() {
   const meetSubtitle = document.getElementById('brand-meet-subtitle');
 
   if (logoIcon) {
-    logoIcon.textContent = divKey === 'jbq_c' ? '🌟' : (divKey === 'jbq_b' ? '⚡' : '📖');
+    logoIcon.textContent = divKey === 'jbq_c' ? '🌟' : '⚡';
   }
   if (leagueBadge) {
-    leagueBadge.textContent = divKey === 'jbq_c' ? 'JBQ C-Level' : (divKey === 'jbq_b' ? 'JBQ B-Level' : 'TBQ Ministry');
+    leagueBadge.textContent = divKey === 'jbq_c' ? 'JBQ C-Level' : 'JBQ B-Level';
   }
   if (leagueTitle) {
-    leagueTitle.textContent = divKey === 'jbq_c' ? 'Junior Bible Quiz (C)' : (divKey === 'jbq_b' ? 'Junior Bible Quiz (B)' : 'Teen Bible Quiz');
+    leagueTitle.textContent = 'Junior Bible Quiz';
   }
 
-  // 2. 3-Division Header Navigation Switcher
-  const btnTbq = document.getElementById('btn-nav-tbq');
+  // 2. JBQ Division Navigation Switcher
   const btnJbqB = document.getElementById('btn-nav-jbq-b');
   const btnJbqC = document.getElementById('btn-nav-jbq-c');
 
   const activeBtnClass = 'px-2.5 sm:px-3 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1';
   const inactiveBtnClass = 'px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1';
 
-  if (btnTbq) btnTbq.className = divKey === 'tbq' ? activeBtnClass : inactiveBtnClass;
   if (btnJbqB) btnJbqB.className = divKey === 'jbq_b' ? activeBtnClass : inactiveBtnClass;
   if (btnJbqC) btnJbqC.className = divKey === 'jbq_c' ? activeBtnClass : inactiveBtnClass;
-
-  // All 3 divisions are available for all coaches
-  if (btnTbq) btnTbq.classList.remove('hidden');
   if (btnJbqB) btnJbqB.classList.remove('hidden');
   if (btnJbqC) btnJbqC.classList.remove('hidden');
-
-  // Also support legacy buttons if present in DOM
-  const legBtnTbq = document.getElementById('btn-league-tbq');
-  const legBtnJbq = document.getElementById('btn-league-jbq');
-  if (legBtnTbq && legBtnJbq) {
-    legBtnTbq.className = !isJBQ ? activeBtnClass : inactiveBtnClass;
-    legBtnJbq.className = isJBQ ? activeBtnClass : inactiveBtnClass;
-  }
 
   // 3. Meet Dropdown
   const meetSelect = document.getElementById('global-meet-select');
   if (meetSelect && state.platformContext) {
-    const lData = state.platformContext[state.currentLeague];
+    const lData = state.platformContext.jbq;
     if (lData && Array.isArray(lData.meets) && lData.meets.length > 0) {
       meetSelect.innerHTML = lData.meets.map(m => `
         <option value="${m.id}" ${m.id === state.currentMeetId ? 'selected' : ''}>
@@ -445,11 +414,7 @@ function renderPlatformHeader() {
 }
 
 function handleSwitchLeague(league) {
-  if (league === 'jbq') {
-    setActiveDivisionKey(state.currentDivision === 'c_level' ? 'jbq_c' : 'jbq_b');
-  } else {
-    setActiveDivisionKey('tbq');
-  }
+  setActiveDivisionKey(state.currentDivision === 'c_level' ? 'jbq_c' : 'jbq_b');
 }
 
 function handleMeetChange(meetId) {
@@ -579,18 +544,16 @@ function renderPublicSummaryUI() {
   if (!state.publicData) return;
   const { title, teams, matches } = state.publicData;
 
-  document.getElementById('public-meet-title').textContent = title || 'TBQ Tournament 2026';
+  document.getElementById('public-meet-title').textContent = title || 'Junior Bible Quiz (JBQ) Tournament 2026';
 
   // Sync public division switcher tabs
   const currentDiv = getActiveDivisionKey();
-  const pubTbq = document.getElementById('pub-tab-tbq');
   const pubJbqB = document.getElementById('pub-tab-jbq-b');
   const pubJbqC = document.getElementById('pub-tab-jbq-c');
 
   const pubActive = 'px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1.5 whitespace-nowrap';
   const pubInactive = 'px-3 py-1.5 rounded-xl text-xs font-bold transition-all text-white/80 hover:text-white flex items-center gap-1.5 whitespace-nowrap';
 
-  if (pubTbq) pubTbq.className = currentDiv === 'tbq' ? pubActive : pubInactive;
   if (pubJbqB) pubJbqB.className = currentDiv === 'jbq_b' ? pubActive : pubInactive;
   if (pubJbqC) pubJbqC.className = currentDiv === 'jbq_c' ? pubActive : pubInactive;
 
@@ -690,7 +653,7 @@ async function fetchTbqData(matchId) {
     }
     renderOfficialScoresheet();
   } catch (err) {
-    console.error('Error fetching TBQ scoresheet:', err);
+    console.error('Error fetching scoresheet:', err);
   }
 }
 
@@ -861,7 +824,7 @@ function renderOfficialScoresheet() {
   const divMetaEl = document.getElementById('scoresheet-meta-division');
   if (divMetaEl) {
     const curDiv = getActiveDivisionKey();
-    divMetaEl.textContent = curDiv === 'jbq_c' ? '🌟 JBQ C-Level' : (curDiv === 'jbq_b' ? '⚡ JBQ B-Level' : '📖 TBQ');
+    divMetaEl.textContent = curDiv === 'jbq_c' ? '🌟 JBQ C-Level' : '⚡ JBQ B-Level';
   }
   document.getElementById('meta-match-num').textContent = activeRound.matchNumber || "01";
   document.getElementById('print-match-num').textContent = activeRound.matchNumber || "01";
@@ -1348,17 +1311,17 @@ function renderStudentsSelectionGrid(activeRound) {
     let extraWarning = '';
 
     if (isQO) {
-      statusHtml = `<span class="text-amber-800 font-black">${stat.errors === 0 ? '⭐ PERFECT QO (+20)' : '🎉 QUIZ OUT (+0)'}</span>`;
+      statusHtml = `<span class="text-amber-800 font-black">${stat.errors === 0 ? '⭐ PERFECT QO (+10)' : '🎉 QUIZ OUT (+0)'}</span>`;
     } else if (isEO) {
       statusHtml = `<span class="text-rose-700 font-black">❌ ERRORED OUT (3/3)</span>`;
     } else {
       const cStyle = isSelected ? 'text-emerald-100 font-black' : 'text-emerald-700 font-extrabold';
       const eStyle = stat.errors > 0 ? (isSelected ? 'text-rose-200 font-black underline' : 'text-rose-600 font-black') : (isSelected ? 'text-slate-200' : 'text-slate-500');
-      statusHtml = `<span class="${cStyle}">✅ ${stat.correct}/5 C</span> • <span class="${eStyle}">❌ ${stat.errors}/3 E</span>`;
+      statusHtml = `<span class="${cStyle}">✅ ${stat.correct}/6 C</span> • <span class="${eStyle}">❌ ${stat.errors}/3 E</span>`;
 
-      if (stat.correct === 4 && stat.errors === 2) {
+      if (stat.correct === 5 && stat.errors === 2) {
         extraWarning = '<div class="text-[9px] font-black text-amber-800 bg-amber-200 rounded px-1 mt-1 animate-pulse">⚠️ 1 to QO • 1 to EO</div>';
-      } else if (stat.correct === 4) {
+      } else if (stat.correct === 5) {
         extraWarning = '<div class="text-[9px] font-black text-amber-800 bg-amber-200 rounded px-1 mt-1">⚠️ 1 more to QO</div>';
       } else if (stat.errors === 2) {
         extraWarning = '<div class="text-[9px] font-black text-rose-800 bg-rose-200 rounded px-1 mt-1">⚠️ 1 error to EO</div>';
@@ -2103,13 +2066,13 @@ function renderIndividualQuizzersStats(activeRound) {
       let statusBadge = '';
       if (isQO) {
         statusBadge = stat.errors === 0 
-          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300">⭐ Perfect QO (+20)</span>`
+          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300">⭐ Perfect QO (+10)</span>`
           : `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-50 text-amber-800 border border-amber-200">🎉 Quiz Out (+0)</span>`;
       } else if (isEO) {
         statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">❌ Errored Out (3/3)</span>`;
       } else if (stat.errors === 2) {
         statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-50 text-rose-700 border border-rose-200">⚠️ 1 Error to Lockout</span>`;
-      } else if (stat.correct === 4) {
+      } else if (stat.correct === 5) {
         statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-50 text-amber-700 border border-amber-200">⚡ 1 to Quiz Out</span>`;
       } else {
         statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-600">Active</span>`;
@@ -2151,7 +2114,7 @@ function renderIndividualQuizzersStats(activeRound) {
               <!-- Correct Count -->
               <div class="text-center">
                 <span class="text-[11px] font-black font-mono-score text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  ${stat.correct}/${activeRound.qoThreshold || 5} C
+                  ${stat.correct}/${activeRound.qoThreshold || 6} C
                 </span>
               </div>
 
@@ -2575,29 +2538,25 @@ async function handleSaveFoul(event) {
 function renderTeamsManagerUI() {
   const divKey = getActiveDivisionKey();
 
-  // 1. Update 3-Way Division Segregation Tabs
-  const tabTbq = document.getElementById('teams-tab-tbq');
+  // 1. Update Division Segregation Tabs (JBQ B & JBQ C)
   const tabJbqB = document.getElementById('teams-tab-jbq-b');
   const tabJbqC = document.getElementById('teams-tab-jbq-c');
 
-  const countTbq = document.getElementById('teams-count-tbq');
   const countJbqB = document.getElementById('teams-count-jbq-b');
   const countJbqC = document.getElementById('teams-count-jbq-c');
 
   const divs = state.tbqData?.divisionsSummary || state.allDivisionTeams?.divisionsSummary || state.platformContext?.divisionsSummary || {};
-  if (countTbq) countTbq.textContent = `${divs.tbq?.teamsCount || 0} Teams • ${divs.tbq?.matchesCount || 0} M`;
   if (countJbqB) countJbqB.textContent = `${divs.jbq_b?.teamsCount || 0} Teams • ${divs.jbq_b?.matchesCount || 0} M`;
   if (countJbqC) countJbqC.textContent = `${divs.jbq_c?.teamsCount || 0} Teams • ${divs.jbq_c?.matchesCount || 0} M`;
 
   const activeTabClass = 'flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-xs whitespace-nowrap bg-amber-400 text-brand-950';
   const inactiveTabClass = 'flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap text-slate-600 hover:text-slate-900 bg-transparent';
 
-  if (tabTbq) tabTbq.className = divKey === 'tbq' ? activeTabClass : inactiveTabClass;
   if (tabJbqB) tabJbqB.className = divKey === 'jbq_b' ? activeTabClass : inactiveTabClass;
   if (tabJbqC) tabJbqC.className = divKey === 'jbq_c' ? activeTabClass : inactiveTabClass;
 
   // Resolve teams & matches for the current division
-  const isMatchingTbqData = state.tbqData && state.tbqData.league === state.currentLeague && (state.currentLeague === 'tbq' || state.tbqData.division === state.currentDivision);
+  const isMatchingTbqData = state.tbqData && state.tbqData.division === state.currentDivision;
   const teams = isMatchingTbqData 
     ? (state.tbqData.meet?.teams || []) 
     : ((state.allDivisionTeams && state.allDivisionTeams[divKey]) || (state.tbqData?.meet?.teams || []));
@@ -2608,7 +2567,7 @@ function renderTeamsManagerUI() {
   const bannerTitle = document.getElementById('teams-div-banner-title');
   const bannerDesc = document.getElementById('teams-div-banner-desc');
 
-  if (bannerIcon) bannerIcon.textContent = divKey === 'jbq_c' ? '🌟' : (divKey === 'jbq_b' ? '⚡' : '📖');
+  if (bannerIcon) bannerIcon.textContent = divKey === 'jbq_c' ? '🌟' : '⚡';
   if (bannerTitle) bannerTitle.textContent = getDivisionDisplayName(divKey);
   if (bannerDesc) {
     bannerDesc.textContent = `${teams.length} Teams Configured • ${(matchesList || []).length} Matches Scheduled in this Division`;
@@ -3094,11 +3053,9 @@ function renderCoachesTable(coaches) {
           <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
             c.role === 'supercoach'
               ? 'bg-amber-100 text-amber-900 border border-amber-300'
-              : (c.role === 'jbq_coach'
-                ? 'bg-purple-100 text-purple-900 border border-purple-300'
-                : 'bg-emerald-100 text-emerald-900 border border-emerald-300')
+              : 'bg-purple-100 text-purple-900 border border-purple-300'
           }">
-            ${c.role === 'supercoach' ? '👑 Super Coach' : (c.role === 'jbq_coach' ? '🎒 JBQ Coach' : '📖 TBQ Coach')}
+            ${c.role === 'supercoach' ? '👑 Super Coach' : '🎒 JBQ Coach'}
           </span>
         </td>
         <td class="py-3 font-mono text-slate-700">${escapeHtml(c.passcode)}</td>
@@ -3225,7 +3182,7 @@ async function downloadScoresBackup() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tbq-tournament-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `jbq-tournament-backup-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
