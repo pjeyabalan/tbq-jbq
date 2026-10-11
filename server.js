@@ -1958,6 +1958,8 @@ async function initStorage() {
       const loaded = scoresRes.rows[0].value;
       if (loaded._version === DATA_VERSION && loaded.jbq) {
         platformData = loaded;
+        platformData.activeLeague = 'jbq';
+        if (platformData.tbq) delete platformData.tbq;
         console.log(`[PG] Restored clean scratch platform data from database.`);
         saveScoresDataLocal();
       } else {
