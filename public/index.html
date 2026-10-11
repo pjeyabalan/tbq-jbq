@@ -163,8 +163,11 @@
           <select id="global-meet-select" onchange="handleMeetChange(this.value)" class="bg-transparent text-amber-300 font-black text-xs focus:outline-none cursor-pointer pr-1">
             <!-- Dynamically populated via JS -->
           </select>
-          <button id="btn-create-meet-nav" onclick="openCreateMeetModal()" title="Create New Meet" class="hidden text-[10px] bg-amber-400 hover:bg-amber-300 text-brand-950 font-black px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs transition-all flex items-center gap-1">
+          <button id="btn-create-meet-nav" onclick="openCreateMeetModal()" title="Manage / Create Meets" class="hidden text-[10px] bg-amber-400 hover:bg-amber-300 text-brand-950 font-black px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs transition-all flex items-center gap-1">
             <span>+ Meet</span>
+          </button>
+          <button id="btn-delete-meet-nav" onclick="confirmDeleteCurrentMeet()" title="Delete Currently Selected Meet" class="hidden text-[10px] bg-rose-600/80 hover:bg-rose-500 text-white font-black px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs transition-all flex items-center gap-1">
+            <span>🗑️ Delete</span>
           </button>
         </div>
       </div>
@@ -777,6 +780,9 @@
         <button onclick="openAddMatchModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-black px-3.5 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1">
           <span>➕ Add Match</span>
         </button>
+        <button onclick="openCreateMeetModal()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-bold px-3 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1" title="Manage Meets (Add / Delete)">
+          <span>📅 Meets</span>
+        </button>
         <button onclick="clearAllTeams()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2 rounded-xl shadow-xs transition-colors" title="Clear all teams in active division">
           <span>🗑️ Clear Division Teams</span>
         </button>
@@ -1209,39 +1215,67 @@
     </div>
   </div>
 
-  <!-- 7. SUPER COACH: CREATE MEET MODAL -->
+  <!-- 7. COACH: MEET MANAGER & CREATOR MODAL -->
   <div id="create-meet-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
-      <div class="flex justify-between items-center mb-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center pb-3 mb-4 border-b border-slate-100">
         <div>
-          <span class="text-xs font-black text-amber-600 uppercase tracking-wider">Super Coach Panel</span>
-          <h3 class="text-base font-black text-slate-900">📅 Create New Meet</h3>
+          <span class="text-xs font-black text-amber-600 uppercase tracking-wider">Tournament Management</span>
+          <h3 class="text-base font-black text-slate-900 mt-0.5">📅 Meets Manager</h3>
         </div>
-        <button onclick="closeCreateMeetModal()" class="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+        <button onclick="closeCreateMeetModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
 
-      <form onsubmit="handleCreateMeet(event)" class="space-y-3">
-        <input type="hidden" id="new-meet-league" value="jbq">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Meet Title</label>
-          <input type="text" id="new-meet-title" placeholder="e.g. Meet 2 (Nov / Dec 2026)" required class="w-full px-3 py-2 border rounded-xl text-sm font-semibold">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Meet Date</label>
-          <input type="date" id="new-meet-date" class="w-full px-3 py-2 border rounded-xl text-sm font-medium">
-        </div>
-        <div class="flex items-center gap-2 pt-1">
-          <input type="checkbox" id="new-meet-copy-roster" checked class="w-4 h-4 text-amber-500 rounded">
-          <label for="new-meet-copy-roster" class="text-xs font-bold text-slate-700 cursor-pointer">
-            Copy team rosters from current meet
-          </label>
+      <div class="overflow-y-auto space-y-5 flex-1 pr-1">
+        <!-- CREATE NEW MEET SECTION -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2.5">
+            <h4 class="text-xs font-black uppercase text-slate-700 tracking-wider">➕ Create New Meet</h4>
+          </div>
+          <form onsubmit="handleCreateMeet(event)" class="space-y-3">
+            <input type="hidden" id="new-meet-league" value="jbq">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Meet Title</label>
+              <input type="text" id="new-meet-title" placeholder="e.g. Meet 2 (Stone Church / Dec 2026)" required class="w-full px-3 py-2 border rounded-xl text-sm font-semibold bg-white border-slate-300">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Meet Date</label>
+              <input type="date" id="new-meet-date" class="w-full px-3 py-2 border rounded-xl text-sm font-medium bg-white border-slate-300">
+            </div>
+            <div class="flex items-center gap-2 pt-1">
+              <input type="checkbox" id="new-meet-copy-roster" checked class="w-4 h-4 text-amber-500 rounded">
+              <label for="new-meet-copy-roster" class="text-xs font-bold text-slate-700 cursor-pointer">
+                Copy team rosters from current meet
+              </label>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+              <button type="submit" class="px-4 py-2 text-xs font-black bg-amber-500 hover:bg-amber-400 text-brand-950 rounded-xl shadow-xs transition-colors">
+                ➕ Create Meet
+              </button>
+            </div>
+          </form>
         </div>
 
-        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
-          <button type="button" onclick="closeCreateMeetModal()" class="px-3 py-2 text-xs font-semibold text-slate-600">Cancel</button>
-          <button type="submit" class="px-4 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm">Create Meet</button>
+        <!-- EXISTING MEETS LIST WITH DELETE BUTTONS -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="text-xs font-black uppercase text-slate-700 tracking-wider">
+              📋 Existing Meets in JBQ
+            </h4>
+            <span id="meets-count-badge" class="text-[11px] font-bold text-slate-400"></span>
+          </div>
+          <div id="existing-meets-list" class="space-y-2">
+            <!-- Dynamically populated via renderMeetsManagerList() -->
+          </div>
         </div>
-      </form>
+      </div>
+
+      <div class="pt-3 mt-4 flex justify-end border-t border-slate-100">
+        <button type="button" onclick="closeCreateMeetModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+          Close
+        </button>
+      </div>
     </div>
   </div>
 

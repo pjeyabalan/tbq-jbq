@@ -396,13 +396,21 @@ function renderPlatformHeader() {
     }
   }
 
-  // 4. "+ Meet" button (Visible to all logged-in coaches)
+  // 4. "+ Meet" and "🗑️ Delete" buttons (Visible to all logged-in coaches)
   const createMeetBtn = document.getElementById('btn-create-meet-nav');
+  const deleteMeetBtn = document.getElementById('btn-delete-meet-nav');
   if (createMeetBtn) {
     if (state.auth) {
       createMeetBtn.classList.remove('hidden');
     } else {
       createMeetBtn.classList.add('hidden');
+    }
+  }
+  if (deleteMeetBtn) {
+    if (state.auth) {
+      deleteMeetBtn.classList.remove('hidden');
+    } else {
+      deleteMeetBtn.classList.add('hidden');
     }
   }
 
@@ -432,13 +440,128 @@ function handleDivisionSwitch(divKey) {
 }
 
 function openCreateMeetModal() {
-  document.getElementById('new-meet-league').value = state.currentLeague;
-  document.getElementById('new-meet-title').value = '';
+  const leagueInput = document.getElementById('new-meet-league');
+  const titleInput = document.getElementById('new-meet-title');
+  const dateInput = document.getElementById('new-meet-date');
+  if (leagueInput) leagueInput.value = state.currentLeague || 'jbq';
+  if (titleInput) titleInput.value = '';
+  if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+
+  renderMeetsManagerList();
   document.getElementById('create-meet-modal').classList.remove('hidden');
 }
 
 function closeCreateMeetModal() {
   document.getElementById('create-meet-modal').classList.add('hidden');
+}
+
+function renderMeetsManagerList() {
+  const container = document.getElementById('existing-meets-list');
+  const countBadge = document.getElementById('meets-count-badge');
+  if (!container) return;
+
+  const meets = (state.platformContext && state.platformContext.jbq && state.platformContext.jbq.meets) || [];
+  if (countBadge) countBadge.textContent = `${meets.length} Meet${meets.length === 1 ? '' : 's'}`;
+
+  if (meets.length === 0) {
+    container.innerHTML = '<div class="p-3 text-center text-xs text-slate-400 bg-slate-50 rounded-xl">No meets configured yet.</div>';
+    return;
+  }
+
+  let html = '';
+  meets.forEach((m) => {
+    const isCurrent = m.id === state.currentMeetId;
+    const bDiv = (m.divisionsSummary || []).find(d => d.id === 'b_level') || { teamsCount: 0, matchesCount: 0 };
+    const cDiv = (m.divisionsSummary || []).find(d => d.id === 'c_level') || { teamsCount: 0, matchesCount: 0 };
+    const totalTeams = (bDiv.teamsCount || 0) + (cDiv.teamsCount || 0);
+    const totalMatches = (bDiv.matchesCount || 0) + (cDiv.matchesCount || 0);
+
+    html += `
+      <div class="p-3 rounded-xl border ${isCurrent ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-300' : 'bg-white border-slate-200'} flex items-center justify-between gap-3 transition-all hover:border-slate-300">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="font-black text-sm text-slate-900 truncate">${escapeHtml(m.title)}</span>
+            ${isCurrent ? '<span class="text-[9px] font-black uppercase bg-amber-400 text-brand-950 px-1.5 py-0.5 rounded shadow-2xs">✓ Active Meet</span>' : ''}
+          </div>
+          <div class="text-[11px] text-slate-500 font-medium mt-0.5 flex items-center gap-2 flex-wrap">
+            <span>📅 ${escapeHtml(m.date || 'No date set')}</span>
+            <span>•</span>
+            <span class="font-mono">${totalTeams} Teams</span>
+            <span>•</span>
+            <span class="font-mono">${totalMatches} Matches</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          ${!isCurrent ? `
+            <button type="button" onclick="switchMeetAndCloseModal('${m.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer">
+              Select
+            </button>
+          ` : ''}
+          <button type="button" onclick="handleDeleteMeet('${m.id}', '${escapeHtml(m.title)}')" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold px-2.5 py-1.5 rounded-lg border border-rose-200 transition-colors flex items-center gap-1 cursor-pointer" title="Delete Meet">
+            <span>🗑️ Delete</span>
+          </button>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function switchMeetAndCloseModal(meetId) {
+  closeCreateMeetModal();
+  handleMeetChange(meetId);
+}
+
+function confirmDeleteCurrentMeet() {
+  const meets = (state.platformContext && state.platformContext.jbq && state.platformContext.jbq.meets) || [];
+  const currentMeet = meets.find(m => m.id === state.currentMeetId) || { title: 'Current Meet', id: state.currentMeetId };
+  handleDeleteMeet(currentMeet.id, currentMeet.title);
+}
+
+async function handleDeleteMeet(meetId, title) {
+  const meets = (state.platformContext && state.platformContext.jbq && state.platformContext.jbq.meets) || [];
+  const isOnlyMeet = meets.length <= 1;
+  const promptMsg = isOnlyMeet
+    ? `Are you sure you want to delete "${title}"? This is the only meet configured. A fresh clean meet will be initialized.`
+    : `Are you sure you want to permanently delete the meet "${title}"?\n\nThis will permanently delete all teams, matches, and scores in this meet.`;
+
+  if (!confirm(promptMsg)) return;
+  await deleteMeetById(meetId, title);
+}
+
+async function deleteMeetById(meetId, title) {
+  try {
+    const res = await authFetch('/api/meets/delete', {
+      method: 'POST',
+      body: JSON.stringify({ meetId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to delete meet.');
+      return;
+    }
+
+    state.currentMeetId = data.activeMeetId;
+    await fetchPlatformContext();
+    renderMeetsManagerList();
+
+    if (state.auth) {
+      fetchTeamsByDivision();
+      await fetchTbqData(null);
+      if (state.currentTab === 'teams') {
+        renderTeamsManagerUI();
+      } else if (state.currentTab === 'scoresheet') {
+        renderOfficialScoresheet();
+      }
+    } else {
+      await fetchPublicSummary();
+    }
+
+    showMatchToast(`🗑️ Meet "${title || meetId}" deleted successfully.`, 'info');
+  } catch (err) {
+    alert('Error deleting meet.');
+  }
 }
 
 async function handleCreateMeet(event) {
@@ -468,10 +591,17 @@ async function handleCreateMeet(event) {
     state.currentMeetId = data.meetId;
     await fetchPlatformContext();
     if (state.auth) {
-      fetchTbqData();
+      fetchTeamsByDivision();
+      await fetchTbqData(null);
+      if (state.currentTab === 'teams') {
+        renderTeamsManagerUI();
+      } else if (state.currentTab === 'scoresheet') {
+        renderOfficialScoresheet();
+      }
     } else {
-      fetchPublicSummary();
+      await fetchPublicSummary();
     }
+    showMatchToast(`➕ Created meet "${title}"!`, 'success');
   } catch (err) {
     alert('Network error while creating meet.');
   }
@@ -2274,11 +2404,12 @@ async function submitQuestionScore(event) {
     const newStat = newList.find(q => q.name && answeredQuizzer && q.name.trim().toLowerCase() === answeredQuizzer.trim().toLowerCase());
 
     if (newStat) {
-      if (prevCorrect < 5 && newStat.correct >= 5) {
+      const qoTarget = result.activeRound?.qoThreshold || 6;
+      if (prevCorrect < qoTarget && newStat.correct >= qoTarget) {
         if (newStat.errors === 0) {
-          showMatchToast(`⭐ ${newStat.name || answeredQuizzer} has QUIZZED OUT! Perfect 5/5 (+20 Bonus Points awarded)!`, 'success');
+          showMatchToast(`⭐ ${newStat.name || answeredQuizzer} has QUIZZED OUT! Perfect ${qoTarget}/${qoTarget} (+10 Bonus Points awarded)!`, 'success');
         } else {
-          showMatchToast(`🎉 ${newStat.name || answeredQuizzer} has QUIZZED OUT! 5 correct answers. Sits back with maximum score!`, 'warning');
+          showMatchToast(`🎉 ${newStat.name || answeredQuizzer} has QUIZZED OUT! ${qoTarget} correct answers. Sits back with maximum score!`, 'warning');
         }
       } else if (prevErrors < 3 && newStat.errors >= 3) {
         showMatchToast(`❌ ${newStat.name || answeredQuizzer} has ERRORED OUT! 3 errors reached. Must remain seated for remainder of match.`, 'error');

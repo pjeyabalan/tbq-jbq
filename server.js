@@ -1164,18 +1164,45 @@ app.post('/api/meets/create', authenticateCoach, (req, res) => {
 // Delete a Meet
 app.post('/api/meets/delete', authenticateCoach, (req, res) => {
   const { meetId } = req.body;
+  if (!meetId) {
+    return res.status(400).json({ error: 'Meet ID is required.' });
+  }
+
   const meets = platformData.jbq.meets;
   if (!meets[meetId]) {
     return res.status(404).json({ error: 'Meet not found.' });
   }
 
+  const deletedTitle = meets[meetId].title || meetId;
   delete meets[meetId];
-  if (platformData.jbq.activeMeetId === meetId) {
-    platformData.jbq.activeMeetId = Object.keys(meets)[0] || null;
+
+  // Defensive fallback: If all meets were deleted, ensure at least one clean meet exists
+  if (Object.keys(meets).length === 0) {
+    const defMeet = {
+      id: 'jbq-meet-1',
+      league: 'jbq',
+      title: 'JBQ Tournament 2026',
+      date: new Date().toISOString().split('T')[0],
+      status: 'active',
+      divisions: {
+        b_level: { name: 'B-Level', description: 'Intermediate Division', teams: [], matches: {}, activeMatchId: null },
+        c_level: { name: 'C-Level', description: 'Beginner Division', teams: [], matches: {}, activeMatchId: null }
+      }
+    };
+    meets[defMeet.id] = defMeet;
+    platformData.jbq.activeMeetId = defMeet.id;
+  } else if (platformData.jbq.activeMeetId === meetId) {
+    platformData.jbq.activeMeetId = Object.keys(meets)[0];
   }
 
   saveScoresData();
-  res.json({ success: true, activeMeetId: platformData.jbq.activeMeetId, divisionsSummary: getDivisionsSummary() });
+  console.log(`[MEETS] Coach ${req.user.name} deleted meet "${deletedTitle}" (${meetId}). Active meet now: ${platformData.jbq.activeMeetId}`);
+  res.json({
+    success: true,
+    deletedMeetId: meetId,
+    activeMeetId: platformData.jbq.activeMeetId,
+    divisionsSummary: getDivisionsSummary()
+  });
 });
 
 // Reset Platform to Scratch (All meets, teams, matches, scores)
