@@ -3387,3 +3387,12 @@ function showMatchToast(message, type = 'info') {
     if (toast.parentElement) toast.remove();
   }, 7000);
 }
+
+// Live Tournament Poller: Automatically updates standings and matches for spectators & coaches
+setInterval(() => {
+  if (!state.auth || state.currentTab === 'questions') {
+    fetchPublicSummary();
+  } else if (state.currentTab === 'teams') {
+    fetchTeamsByDivision();
+  }
+}, 15000);
