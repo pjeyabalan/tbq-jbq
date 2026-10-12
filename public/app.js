@@ -1084,22 +1084,34 @@ function renderOfficialScoresheet() {
 
   // 1. Matches Selector Pills Bar
   const pillsBar = document.getElementById('match-selector-pills');
+  const countBadge = document.getElementById('matches-count-badge');
+  if (countBadge) {
+    const totalM = (matchesList || []).length;
+    countBadge.textContent = `${totalM} Match${totalM === 1 ? '' : 'es'}`;
+  }
+
   let pillsHtml = '';
   (matchesList || []).forEach(m => {
     const isActive = m.id === state.activeMatchId;
     const isDone = m.isCompleted || m.status === 'Completed';
     const statusIcon = isDone ? '🏁' : '⚡';
+    const tA = m.teamAName || 'Left Team';
+    const tB = m.teamBName || 'Right Team';
     pillsHtml += `
-      <button onclick="fetchTbqData('${m.id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+      <button onclick="fetchTbqData('${m.id}')" class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer flex-shrink-0 active:scale-95 shadow-2xs ${
         isActive 
           ? 'bg-amber-400 text-slate-950 font-black shadow-md ring-2 ring-amber-300' 
-          : (isDone ? 'bg-emerald-950/70 text-emerald-300 hover:text-white hover:bg-emerald-900 border border-emerald-500/30' : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700')
+          : (isDone 
+              ? 'bg-emerald-50 text-emerald-950 border border-emerald-300 hover:bg-emerald-100' 
+              : 'bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 hover:text-slate-950')
       }">
-        <span>${statusIcon} M#${m.matchNumber} (Meet ${m.meetNum || m.roundNum})${isDone ? ' [Final]' : ''}</span>
+        <span class="font-black">${statusIcon} M#${m.matchNumber}</span>
+        <span class="text-[11px] font-semibold opacity-80">(${escapeHtml(tA)} vs ${escapeHtml(tB)})</span>
+        ${isDone ? '<span class="text-[9px] bg-emerald-200 text-emerald-950 px-1.5 py-0.2 rounded font-black">FINAL</span>' : ''}
       </button>
     `;
   });
-  pillsBar.innerHTML = pillsHtml;
+  if (pillsBar) pillsBar.innerHTML = pillsHtml || '<span class="text-xs text-slate-400 py-1">No matches scheduled in this division</span>';
 
   // 2. Header Metadata
   const divMetaEl = document.getElementById('scoresheet-meta-division');
@@ -3437,14 +3449,24 @@ async function openAddMatchModal() {
   const badgeEl = document.getElementById('match-modal-badge');
   if (badgeEl) badgeEl.textContent = `${getDivisionDisplayName(currentDiv)} Schedule`;
   const titleEl = document.getElementById('match-modal-title');
-  if (titleEl) titleEl.textContent = '➕ Add Meet / Match';
+  if (titleEl) titleEl.textContent = '➕ Add Match';
   const submitBtn = document.getElementById('match-modal-submit-btn');
   if (submitBtn) submitBtn.textContent = 'Save Match';
 
+  // Inherit active meet automatically from title bar selection
+  const meets = state.tbqData?.meetsList || (state.platformContext?.jbq?.meets) || [];
+  const activeMeet = meets.find(m => m.id === state.currentMeetId) || state.tbqData?.meet || (meets.length > 0 ? meets[0] : null);
+  const meetTitle = activeMeet?.title || activeMeet?.name || 'Meet 1';
+  const meetNumMatch = meetTitle.match(/\d+/);
+  const activeMeetNum = activeMeet?.meetNum || (meetNumMatch ? parseInt(meetNumMatch[0]) : 1);
+
+  const meetNameEl = document.getElementById('match-modal-meet-name');
+  if (meetNameEl) meetNameEl.textContent = meetTitle;
+  const meetInput = document.getElementById('match-meet-num');
+  if (meetInput) meetInput.value = activeMeetNum;
+
   const nextNum = (state.tbqData && state.tbqData.matchesList ? state.tbqData.matchesList.length + 1 : 1);
   document.getElementById('match-number-input').value = `0${nextNum}`;
-  const meetInput = document.getElementById('match-meet-num');
-  if (meetInput) meetInput.value = Math.ceil(nextNum / 2) || 1;
 
   document.getElementById('add-match-modal').classList.remove('hidden');
 }
@@ -3468,6 +3490,11 @@ function openEditMatchModal(matchId) {
   const submitBtn = document.getElementById('match-modal-submit-btn');
   if (submitBtn) submitBtn.textContent = 'Update Match';
 
+  const meets = state.tbqData?.meetsList || (state.platformContext?.jbq?.meets) || [];
+  const activeMeet = meets.find(item => item.id === (m.meetId || state.currentMeetId)) || state.tbqData?.meet;
+  const meetNameEl = document.getElementById('match-modal-meet-name');
+  if (meetNameEl) meetNameEl.textContent = activeMeet?.title || `Meet ${m.meetNum || m.roundNum || 1}`;
+
   document.getElementById('match-meet-num').value = m.meetNum || m.roundNum || 1;
   document.getElementById('match-number-input').value = m.matchNumber || '';
 
@@ -3485,6 +3512,7 @@ async function handleSaveMatch(event) {
   const division = divSelect ? divSelect.value : getActiveDivisionKey();
   const meetInput = document.getElementById('match-meet-num');
   const meetNum = parseInt(meetInput ? meetInput.value : 1) || 1;
+  const activeMeetId = state.currentMeetId || state.tbqData?.meet?.id || null;
   const matchNumber = document.getElementById('match-number-input').value.trim();
   const teamAId = document.getElementById('match-team-a-select').value;
   const teamBId = document.getElementById('match-team-b-select').value;
@@ -3503,6 +3531,7 @@ async function handleSaveMatch(event) {
   const payload = {
     matchId,
     division,
+    meetId: activeMeetId,
     meetNum,
     roundNum: meetNum,
     matchNumber,

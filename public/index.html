@@ -177,23 +177,36 @@
     <!-- ========================================== -->
     <main id="section-scoresheet" class="w-full px-3 py-3 flex-grow flex flex-col gap-2.5 print-container">
 
-      <!-- MATCH SELECTOR STRIP & QUICK ACTIONS -->
-      <div class="flex items-center justify-between gap-2">
-        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar touch-scroll py-0.5 flex-1" id="match-selector-pills">
-          <!-- Rendered dynamically: M#1, M#2, etc. -->
+      <!-- DEDICATED MATCHES SELECTOR BAR & QUICK ACTIONS -->
+      <div class="bg-white rounded-2xl p-2.5 shadow-2xs border border-slate-200 space-y-2">
+        <div class="flex items-center justify-between gap-2 px-1">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1">
+              <span>🏆</span>
+              <span>Matches</span>
+            </span>
+            <span id="matches-count-badge" class="text-[10px] font-black text-amber-900 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full"></span>
+          </div>
+
+          <!-- QUICK UTILITY ACTIONS -->
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button onclick="undoLastQuestion()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-1 cursor-pointer border border-slate-200 shadow-2xs" title="Undo Last Question Recorded">
+              <span>↩️</span>
+              <span>Undo</span>
+            </button>
+            <button id="btn-header-finish-match" onclick="finishCurrentMatch()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-xl font-black transition-all active:scale-95 flex items-center gap-1 cursor-pointer shadow-xs">
+              <span>🏁</span>
+              <span>Finish</span>
+            </button>
+            <button onclick="openMatchInfoModal()" title="Edit Match & Students" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 p-1.5 rounded-xl font-bold transition-all active:scale-95 cursor-pointer border border-slate-200 shadow-2xs">
+              ✏️
+            </button>
+          </div>
         </div>
-        <div class="flex items-center gap-1.5 flex-shrink-0">
-          <button onclick="undoLastQuestion()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-800 px-2.5 py-1.5 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-1 cursor-pointer shadow-2xs" title="Undo Last Question Recorded">
-            <span>↩️</span>
-            <span>Undo</span>
-          </button>
-          <button id="btn-header-finish-match" onclick="finishCurrentMatch()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-xl font-black transition-all active:scale-95 flex items-center gap-1 cursor-pointer shadow-xs">
-            <span>🏁</span>
-            <span>Finish</span>
-          </button>
-          <button onclick="openMatchInfoModal()" title="Edit Match & Students" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-800 p-1.5 rounded-xl font-bold transition-all active:scale-95 cursor-pointer">
-            ✏️
-          </button>
+
+        <!-- FULL-WIDTH TOUCH-SCROLL MATCH PILLS -->
+        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar touch-scroll py-0.5 px-0.5" id="match-selector-pills">
+          <!-- Rendered dynamically: M#01, M#02, etc. -->
         </div>
       </div>
 
@@ -900,23 +913,29 @@
 
       <form onsubmit="handleSaveMatch(event)" class="space-y-3">
         <input type="hidden" id="match-edit-id" value="">
+        <input type="hidden" id="match-meet-num" value="1">
 
-        <div>
-          <label class="block text-[11px] font-black uppercase text-slate-700 mb-1">Division</label>
-          <select id="match-division-select" onchange="handleMatchModalDivisionChange(this.value)" class="w-full px-3 py-2 border rounded-xl text-xs font-black bg-slate-50 border-slate-300">
-            <option value="jbq_b" selected>⚡ JBQ B-Level</option>
-            <option value="jbq_c">🌟 JBQ C-Level</option>
-          </select>
+        <!-- Active Meet Indicator (Inherited from Title Bar) -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-1.5 text-amber-950 font-bold truncate">
+            <span>📅</span>
+            <span>Associated Meet:</span>
+            <span id="match-modal-meet-name" class="font-black text-amber-900 truncate">Meet 1</span>
+          </div>
+          <span class="text-[10px] text-amber-800 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full font-bold flex-shrink-0">From Title Bar</span>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Meet #</label>
-            <input type="number" id="match-meet-num" min="1" max="20" value="1" required class="w-full px-3 py-2 border rounded-xl text-xs font-bold text-center">
+            <label class="block text-[11px] font-black uppercase text-slate-700 mb-1">Division</label>
+            <select id="match-division-select" onchange="handleMatchModalDivisionChange(this.value)" class="w-full px-3 py-2 border rounded-xl text-xs font-black bg-slate-50 border-slate-300">
+              <option value="jbq_b" selected>⚡ JBQ B-Level</option>
+              <option value="jbq_c">🌟 JBQ C-Level</option>
+            </select>
           </div>
           <div>
-            <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Match #</label>
-            <input type="text" id="match-number-input" placeholder="e.g. 02" required class="w-full px-3 py-2 border rounded-xl text-xs font-bold font-mono-score text-center">
+            <label class="block text-[11px] font-black uppercase text-slate-700 mb-1">Match #</label>
+            <input type="text" id="match-number-input" placeholder="e.g. 02" required class="w-full px-3 py-2 border rounded-xl text-xs font-black font-mono-score text-center bg-white border-slate-300">
           </div>
         </div>
 

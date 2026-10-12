@@ -1835,16 +1835,19 @@ app.post('/api/teams/clear-all', authenticateCoach, (req, res) => {
 // POST Add a New Match
 app.post('/api/matches/add', authenticateCoach, (req, res) => {
   const ctx = getPlatformContext(req);
-  const { roundNum, matchNumber, room, teamAId, teamBId } = req.body;
+  const { roundNum, meetNum, meetId, matchNumber, room, teamAId, teamBId } = req.body;
 
   const newId = `match-${Date.now()}`;
   const tA = getTeamById(teamAId, ctx.dataset) || (ctx.dataset.teams[0] || { id: "team-1", quizzers: [] });
   const tB = getTeamById(teamBId, ctx.dataset) || (ctx.dataset.teams[1] || { id: "team-2", quizzers: [] });
-  const mNum = parseInt(roundNum) || 1;
+  const mNum = parseInt(meetNum || roundNum) || 1;
+  const mIdMeet = meetId || ctx.dataset.activeMeetId || (ctx.dataset.meet && ctx.dataset.meet.id) || null;
   const seatLimit = ctx.isJBQ ? 4 : 5;
 
   const newMatch = {
     id: newId,
+    meetId: mIdMeet,
+    meetNum: mNum,
     roundNum: mNum,
     matchNumber: String(matchNumber || `0${Object.keys(ctx.dataset.matches).length + 1}`).trim(),
     room: String(room || "").trim(),
@@ -1878,7 +1881,7 @@ app.post('/api/matches/add', authenticateCoach, (req, res) => {
 // POST Update an Existing Match
 app.post('/api/matches/update', authenticateCoach, (req, res) => {
   const ctx = getPlatformContext(req);
-  const { matchId, roundNum, matchNumber, room, teamAId, teamBId } = req.body;
+  const { matchId, roundNum, meetNum, meetId, matchNumber, room, teamAId, teamBId } = req.body;
   if (!matchId || !ctx.dataset.matches[matchId]) {
     return res.status(404).json({ error: 'Match not found.' });
   }
@@ -1886,7 +1889,12 @@ app.post('/api/matches/update', authenticateCoach, (req, res) => {
   const match = ctx.dataset.matches[matchId];
   const seatLimit = ctx.isJBQ ? 4 : 5;
 
-  if (roundNum !== undefined) match.roundNum = parseInt(roundNum) || 1;
+  if (meetNum !== undefined || roundNum !== undefined) {
+    const num = parseInt(meetNum || roundNum) || 1;
+    match.meetNum = num;
+    match.roundNum = num;
+  }
+  if (meetId !== undefined) match.meetId = meetId;
   if (matchNumber !== undefined) match.matchNumber = String(matchNumber).trim();
   if (room !== undefined) match.room = String(room).trim();
 
