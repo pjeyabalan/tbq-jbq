@@ -5,3 +5,5 @@ cloudflared
 *.tmp
 .DS_Store
 data/sessions.json
+data/*.json
+data/*.tmp

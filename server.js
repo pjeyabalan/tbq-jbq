@@ -79,6 +79,19 @@ function saveSessionsLocal() {
   }
 }
 
+function saveSessions() {
+  if (dbPool) {
+    const entries = Array.from(activeSessions.entries());
+    dbPool.query(
+      `INSERT INTO tbq_store (key, value, updated_at) VALUES ('sessions', $1::jsonb, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+      [JSON.stringify(entries)]
+    ).catch(err => console.error('[PG] Error saving sessions to DB:', err.message));
+  } else {
+    saveSessionsLocal();
+  }
+}
+
 function getDefaultCoaches() {
   return [
     {
@@ -189,13 +202,14 @@ function saveCoachesLocal() {
 }
 
 function saveCoaches() {
-  saveCoachesLocal();
   if (dbPool) {
     dbPool.query(
-      `INSERT INTO tbq_store (key, value, updated_at) VALUES ('coaches', $1, NOW())
-       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      `INSERT INTO tbq_store (key, value, updated_at) VALUES ('coaches', $1::jsonb, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
       [JSON.stringify(coaches)]
     ).catch(err => console.error('[PG] Error saving coaches to DB:', err.message));
+  } else {
+    saveCoachesLocal();
   }
 }
 
@@ -271,7 +285,7 @@ app.post('/api/auth/login', (req, res) => {
     role: matched.role || (matched.username === 'supercoach' ? 'supercoach' : 'jbq_coach')
   };
   activeSessions.set(token, userSafe);
-  saveSessionsLocal();
+  saveSessions();
 
   console.log(`[AUTH] Coach logged in: ${matched.name} (${matched.username}) [${userSafe.role}]`);
 
@@ -288,7 +302,7 @@ app.post('/api/auth/logout', (req, res) => {
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : req.body?.token;
   if (token) {
     activeSessions.delete(token);
-    saveSessionsLocal();
+    saveSessions();
   }
   res.json({ success: true, message: 'Logged out.' });
 });
@@ -368,7 +382,7 @@ app.post('/api/coaches/delete', authenticateCoach, requireSuperCoach, (req, res)
   for (const [token, user] of activeSessions.entries()) {
     if (user.id === coachId) activeSessions.delete(token);
   }
-  saveSessionsLocal();
+  saveSessions();
 
   console.log(`[SUPERCOACH] Deleted coach: ${removed.name}`);
   res.json({ success: true, removed });
@@ -473,13 +487,14 @@ function saveScoresDataLocal() {
 }
 
 function saveScoresData() {
-  saveScoresDataLocal();
   if (dbPool) {
     dbPool.query(
-      `INSERT INTO tbq_store (key, value, updated_at) VALUES ('scores', $1, NOW())
-       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
-      [platformData]
+      `INSERT INTO tbq_store (key, value, updated_at) VALUES ('scores', $1::jsonb, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+      [JSON.stringify(platformData)]
     ).catch(err => console.error('[PG] Error persisting scores to DB:', err.message));
+  } else {
+    saveScoresDataLocal();
   }
 }
 
@@ -2529,73 +2544,106 @@ app.post('/api/tbq/restore', authenticateCoach, (req, res) => {
 // ==========================================
 
 async function initStorage() {
+  if (dbPool) {
+    console.log('[PG] Database-first mode active. Connecting to PostgreSQL...');
+    try {
+      await dbPool.query(`
+        CREATE TABLE IF NOT EXISTS tbq_store (
+          key VARCHAR(100) PRIMARY KEY,
+          value JSONB NOT NULL,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      console.log('[PG] Table "tbq_store" verified.');
+
+      // 1. Restore or seed Coaches directly from Database
+      const coachesRes = await dbPool.query(`SELECT value FROM tbq_store WHERE key = 'coaches'`);
+      if (coachesRes.rows.length > 0 && coachesRes.rows[0].value) {
+        let loadedCoaches = coachesRes.rows[0].value;
+        if (typeof loadedCoaches === 'string') {
+          try { loadedCoaches = JSON.parse(loadedCoaches); } catch (e) {}
+        }
+        if (Array.isArray(loadedCoaches) && loadedCoaches.length > 0) {
+          coaches = loadedCoaches;
+          ensureStandardCoaches();
+          console.log(`[PG] Restored ${coaches.length} coaches directly from database.`);
+        } else {
+          coaches = getDefaultCoaches();
+          await dbPool.query(
+            `INSERT INTO tbq_store (key, value, updated_at) VALUES ('coaches', $1::jsonb, NOW())
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+            [JSON.stringify(coaches)]
+          );
+          console.log('[PG] Initialized default coaches in database.');
+        }
+      } else {
+        coaches = getDefaultCoaches();
+        await dbPool.query(
+          `INSERT INTO tbq_store (key, value, updated_at) VALUES ('coaches', $1::jsonb, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+          [JSON.stringify(coaches)]
+        );
+        console.log('[PG] Seeded initial coaches into database.');
+      }
+
+      // 2. Restore or seed Scores Data directly from Database
+      const scoresRes = await dbPool.query(`SELECT value FROM tbq_store WHERE key = 'scores'`);
+      if (scoresRes.rows.length > 0 && scoresRes.rows[0].value) {
+        let loadedScores = scoresRes.rows[0].value;
+        if (typeof loadedScores === 'string') {
+          try { loadedScores = JSON.parse(loadedScores); } catch (e) {}
+        }
+        if (loadedScores && typeof loadedScores === 'object' && loadedScores.jbq) {
+          platformData = loadedScores;
+          platformData.activeLeague = 'jbq';
+          if (platformData.tbq) delete platformData.tbq;
+          console.log('[PG] Restored all JBQ meets, divisions, teams & matches directly from database.');
+        } else {
+          console.log('[PG] Initializing default platform data in database.');
+          platformData = getDefaultPlatformData();
+          await dbPool.query(
+            `INSERT INTO tbq_store (key, value, updated_at) VALUES ('scores', $1::jsonb, NOW())
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+            [JSON.stringify(platformData)]
+          );
+        }
+      } else {
+        platformData = getDefaultPlatformData();
+        await dbPool.query(
+          `INSERT INTO tbq_store (key, value, updated_at) VALUES ('scores', $1::jsonb, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+          [JSON.stringify(platformData)]
+        );
+        console.log('[PG] Seeded initial JBQ platform data into database.');
+      }
+
+      // 3. Restore Active Sessions directly from Database
+      const sessionsRes = await dbPool.query(`SELECT value FROM tbq_store WHERE key = 'sessions'`);
+      if (sessionsRes.rows.length > 0 && sessionsRes.rows[0].value) {
+        let loadedSessions = sessionsRes.rows[0].value;
+        if (typeof loadedSessions === 'string') {
+          try { loadedSessions = JSON.parse(loadedSessions); } catch (e) {}
+        }
+        if (Array.isArray(loadedSessions)) {
+          loadedSessions.forEach(([token, user]) => {
+            activeSessions.set(token, user);
+          });
+          console.log(`[PG] Restored ${activeSessions.size} active login sessions directly from database.`);
+        }
+      }
+
+      console.log('[PG] Database-first initialization complete. No static files loaded!');
+      return;
+    } catch (err) {
+      console.error('[PG] Database connection/init failed. Falling back to local files:', err.message);
+    }
+  }
+
+  // Fallback to local files ONLY if no DATABASE_URL or if database connection failed
+  console.log('[STORAGE] No DATABASE_URL configured or DB unreachable. Running in local fallback mode.');
   loadCoachesLocal();
   loadScoresDataLocal();
   loadSessionsLocal();
-
-  if (!dbPool) {
-    console.log('[STORAGE] No DATABASE_URL configured. Running with local JSON storage.');
-    return;
-  }
-
-  try {
-    console.log('[PG] Connecting to PostgreSQL database...');
-    await dbPool.query(`
-      CREATE TABLE IF NOT EXISTS tbq_store (
-        key VARCHAR(100) PRIMARY KEY,
-        value JSONB NOT NULL,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    console.log('[PG] Table "tbq_store" verified.');
-
-    // 1. Restore or seed Coaches
-    const coachesRes = await dbPool.query(`SELECT value FROM tbq_store WHERE key = 'coaches'`);
-    if (coachesRes.rows.length > 0 && Array.isArray(coachesRes.rows[0].value) && coachesRes.rows[0].value.length > 0) {
-      coaches = coachesRes.rows[0].value;
-      ensureStandardCoaches();
-      console.log(`[PG] Restored ${coaches.length} coaches from database.`);
-      saveCoachesLocal();
-    } else {
-      await dbPool.query(
-        `INSERT INTO tbq_store (key, value, updated_at) VALUES ('coaches', $1, NOW())
-         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
-        [JSON.stringify(coaches)]
-      );
-      console.log(`[PG] Seeded coaches table into database.`);
-    }
-
-    // 2. Restore or seed Scores Data
-    const scoresRes = await dbPool.query(`SELECT value FROM tbq_store WHERE key = 'scores'`);
-    if (scoresRes.rows.length > 0 && scoresRes.rows[0].value) {
-      const loaded = scoresRes.rows[0].value;
-      if (loaded._version === DATA_VERSION && loaded.jbq) {
-        platformData = loaded;
-        platformData.activeLeague = 'jbq';
-        if (platformData.tbq) {
-          delete platformData.tbq;
-          saveScoresData();
-        }
-        console.log(`[PG] Restored clean scratch platform data from database.`);
-        saveScoresDataLocal();
-      } else {
-        console.log(`[PG] Detected legacy/old persisted scores. Resetting to clean scratch state (version ${DATA_VERSION}).`);
-        platformData = getDefaultPlatformData();
-        saveScoresData();
-      }
-    } else {
-      await dbPool.query(
-        `INSERT INTO tbq_store (key, value, updated_at) VALUES ('scores', $1, NOW())
-         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
-        [platformData]
-      );
-      console.log(`[PG] Seeded clean scratch platform data into database.`);
-    }
-
-    console.log('[PG] Database sync complete. All JBQ data permanently persisted to PostgreSQL!');
-  } catch (err) {
-    console.error('[PG] Database initialization error (fallback to local files active):', err.message);
-  }
 }
 
 // Start Server after Storage initialization
