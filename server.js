@@ -987,6 +987,7 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam, targetSheetId, s
       seat: idx + 1,
       correct: 0,
       errors: 0,
+      fouls: 0,
       points: 0,
       isQuizzedOut: false,
       isErroredOut: false,
@@ -1002,6 +1003,7 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam, targetSheetId, s
       seat: idx + 1,
       correct: 0,
       errors: 0,
+      fouls: 0,
       points: 0,
       isQuizzedOut: false,
       isErroredOut: false,
@@ -1021,7 +1023,7 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam, targetSheetId, s
 
     if (q.quizzer && q.quizzer.trim()) {
       const fallbackName = q.quizzer.trim();
-      statsMap[fallbackName] = { name: fallbackName, correct: 0, errors: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
+      statsMap[fallbackName] = { name: fallbackName, correct: 0, errors: 0, fouls: 0, points: 0, isQuizzedOut: false, isErroredOut: false, quizOutBonus: 0 };
       return statsMap[fallbackName];
     }
 
@@ -1143,6 +1145,20 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam, targetSheetId, s
 
   const teamAFoulPts = (activeSheet.fouls?.teamA || []).reduce((sum, f) => sum + (f.penalty || 5), 0);
   const teamBFoulPts = (activeSheet.fouls?.teamB || []).reduce((sum, f) => sum + (f.penalty || 5), 0);
+
+  // Tally fouls per quizzer (does NOT count towards error count)
+  (activeSheet.fouls?.teamA || []).forEach(f => {
+    if (f.quizzer) {
+      const stat = resolveStat(teamAStats, studentsA, { quizzer: f.quizzer });
+      if (stat) stat.fouls = (stat.fouls || 0) + 1;
+    }
+  });
+  (activeSheet.fouls?.teamB || []).forEach(f => {
+    if (f.quizzer) {
+      const stat = resolveStat(teamBStats, studentsB, { quizzer: f.quizzer });
+      if (stat) stat.fouls = (stat.fouls || 0) + 1;
+    }
+  });
 
   const finalScoreA = teamARunning + teamABonusPts - teamAFoulPts;
   const finalScoreB = teamBRunning + teamBBonusPts - teamBFoulPts;
@@ -2169,7 +2185,7 @@ app.post('/api/tbq/timeout', authenticateCoach, (req, res) => {
 // POST Add or Delete Team Foul
 app.post('/api/tbq/foul', authenticateCoach, (req, res) => {
   const ctx = getPlatformContext(req);
-  const { matchId, team, action, foulId, reason, penalty } = req.body;
+  const { matchId, team, action, foulId, reason, penalty, quizzer, questionNum } = req.body;
   const mId = matchId || ctx.dataset.activeMatchId;
   const match = ctx.dataset.matches[mId];
 
@@ -2187,10 +2203,18 @@ app.post('/api/tbq/foul', authenticateCoach, (req, res) => {
 
   if (action === 'delete') {
     activeSheet.fouls[key] = activeSheet.fouls[key].filter(f => f.id !== foulId);
+  } else if (action === 'undo') {
+    if (activeSheet.fouls[key] && activeSheet.fouls[key].length > 0) {
+      activeSheet.fouls[key].pop();
+    }
   } else {
+    const quizzerClean = quizzer ? String(quizzer).trim() : null;
+    const defaultReason = quizzerClean ? `Foul on ${quizzerClean} (-5)` : 'Team Foul (-5)';
     const newFoul = {
       id: `foul-${Date.now()}`,
-      reason: (reason || 'Team Foul (-5)').trim(),
+      quizzer: quizzerClean,
+      questionNum: questionNum ? parseInt(questionNum) : null,
+      reason: (reason || defaultReason).trim(),
       penalty: parseInt(penalty) || 5,
       timestamp: new Date().toISOString(),
       calledBy: req.user.name

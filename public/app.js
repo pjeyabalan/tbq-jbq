@@ -19,6 +19,7 @@ const state = {
   scoreInput: {
     pointValue: 20,
     isInterruption: false,
+    isFoul: false,
     isRebound: false,
     team: 'teamA',
     seatNum: 1,
@@ -1422,6 +1423,16 @@ function updateSubmitButtonLabel() {
     }
   }
 
+  // Update Foul submit button labels
+  const foulSubmitLabel = document.getElementById('btn-submit-foul-label');
+  if (foulSubmitLabel) {
+    foulSubmitLabel.textContent = `RECORD FOUL FOR ${quizzer.toUpperCase()} (-5 PTS)`;
+  }
+  const quickFoulLabel = document.getElementById('btn-quick-foul-label');
+  if (quickFoulLabel) {
+    quickFoulLabel.textContent = `Quick Foul for ${quizzer} (-5 pts • 0 Errors)`;
+  }
+
   // Update legacy submit button if present
   const submitBtn = document.getElementById('score-submit-btn');
   if (submitBtn) {
@@ -1451,6 +1462,109 @@ function toggleInterruption(forceVal) {
     }
   }
   updateSubmitButtonLabel();
+}
+
+function toggleFoul(forceVal) {
+  const checkbox = document.getElementById('score-is-foul');
+  let newVal = typeof forceVal === 'boolean' ? forceVal : (checkbox ? !checkbox.checked : true);
+  if (checkbox) checkbox.checked = newVal;
+  state.scoreInput.isFoul = newVal;
+
+  const btn = document.getElementById('btn-toggle-foul');
+  if (btn) {
+    if (newVal) {
+      btn.className = 'w-full py-2 px-1 rounded-xl border-2 border-rose-600 bg-rose-600 text-white font-black text-xs flex items-center justify-center shadow-md cursor-pointer transition-all active:scale-95 text-center truncate';
+      btn.innerHTML = '<span>🚩 Foul: YES (-5)</span>';
+    } else {
+      btn.className = 'w-full py-2 px-1 rounded-xl border border-slate-300 bg-white text-slate-700 font-bold text-xs flex items-center justify-center hover:bg-slate-100 cursor-pointer transition-all active:scale-95 shadow-2xs text-center truncate';
+      btn.innerHTML = '<span class="text-slate-500">🚩 No Foul</span>';
+    }
+  }
+
+  const standardBtns = document.getElementById('standard-answer-buttons');
+  const foulBtns = document.getElementById('foul-answer-buttons');
+  if (newVal) {
+    if (standardBtns) standardBtns.classList.add('hidden');
+    if (foulBtns) foulBtns.classList.remove('hidden');
+  } else {
+    if (standardBtns) standardBtns.classList.remove('hidden');
+    if (foulBtns) foulBtns.classList.add('hidden');
+  }
+  updateSubmitButtonLabel();
+}
+
+async function recordFoul() {
+  if (state.tbqData?.activeRound?.isCompleted) {
+    showMatchToast('🏁 This match is already completed.', 'warning');
+    return;
+  }
+
+  const team = state.scoreInput.team || 'teamA';
+  const quizzer = state.scoreInput.quizzer || '';
+  if (!quizzer) {
+    alert('Please tap to select a student before recording a foul.');
+    return;
+  }
+
+  const currentQNum = state.tbqData?.activeRound?.pendingQuestionNum || parseInt(document.getElementById('score-question-num')?.value) || 1;
+  const teamName = team === 'teamA' ? (state.tbqData?.activeRound?.teamA?.name || 'Left Table') : (state.tbqData?.activeRound?.teamB?.name || 'Right Table');
+
+  try {
+    const res = await authFetch('/api/tbq/foul', {
+      method: 'POST',
+      body: JSON.stringify({
+        matchId: state.activeMatchId,
+        team,
+        quizzer,
+        questionNum: currentQNum,
+        reason: `Foul on ${quizzer} (-5)`,
+        penalty: 5,
+        sheetId: state.currentSheetId
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to record foul.');
+      return;
+    }
+
+    // Reset foul toggle back to false
+    toggleFoul(false);
+
+    state.tbqData.activeRound = data.activeRound;
+    renderOfficialScoresheet();
+
+    showMatchToast(`🚩 Foul (-5 pts) recorded for ${quizzer} (${teamName}). Error count unaffected (0 errors added).`, 'warning');
+  } catch (err) {
+    alert('Error recording foul: ' + err.message);
+  }
+}
+
+async function deleteFoul(team, foulId) {
+  if (!confirm('Remove this foul penalty (-5 pts)?')) return;
+  try {
+    const res = await authFetch('/api/tbq/foul', {
+      method: 'POST',
+      body: JSON.stringify({
+        matchId: state.activeMatchId,
+        team,
+        action: 'delete',
+        foulId,
+        sheetId: state.currentSheetId
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to remove foul.');
+      return;
+    }
+    state.tbqData.activeRound = data.activeRound;
+    renderOfficialScoresheet();
+    showMatchToast('🚩 Foul removed successfully.', 'info');
+  } catch (err) {
+    alert('Error removing foul.');
+  }
 }
 
 async function recordAnswer(isCorrect) {
@@ -1663,7 +1777,8 @@ function renderStudentsSelectionGrid(activeRound) {
     } else {
       const cStyle = isSelected ? 'text-emerald-100 font-black' : 'text-emerald-700 font-black';
       const eStyle = stat.errors > 0 ? (isSelected ? 'text-rose-200 font-black underline' : 'text-rose-600 font-black') : (isSelected ? 'text-slate-200' : 'text-slate-500');
-      statusHtml = `<span class="${cStyle}">✅ ${stat.correct}/6</span> • <span class="${eStyle}">❌ ${stat.errors}/3</span>`;
+      const foulBadge = (stat.fouls > 0) ? ` • <span class="${isSelected ? 'text-amber-200' : 'text-amber-700'} font-black" title="${stat.fouls} Fouls (-${stat.fouls * 5} pts)">🚩 ${stat.fouls}</span>` : '';
+      statusHtml = `<span class="${cStyle}">✅ ${stat.correct}/6</span> • <span class="${eStyle}">❌ ${stat.errors}/3</span>${foulBadge}`;
 
       if (stat.correct === 5 && stat.errors === 2) {
         extraWarning = '<div class="text-[9px] font-black text-amber-900 bg-amber-200 rounded px-1 mt-0.5 animate-pulse text-center">⚠️ 1 to QO • 1 to EO</div>';
@@ -1840,14 +1955,17 @@ function quickScoreFromTable(qNum, team, studentOrSeat, optName) {
       selectPoints(activeRound.reboundStatus.pointValue || pts);
       selectResult(true);
       toggleInterruption(false);
+      toggleFoul(false);
     } else if (targetQ) {
       selectResult(targetQ.isCorrect);
       toggleInterruption(!!targetQ.isInterruption);
+      toggleFoul(false);
       const rebCheck = document.getElementById('score-is-rebound');
       if (rebCheck) rebCheck.checked = !!targetQ.isRebound;
     } else {
       selectResult(true);
       toggleInterruption(false);
+      toggleFoul(false);
       const rebCheck = document.getElementById('score-is-rebound');
       if (rebCheck) rebCheck.checked = false;
     }
@@ -1939,6 +2057,7 @@ function jumpToQuestion(qNum) {
       selectPoints(activeRound.reboundStatus.pointValue || 20);
       selectResult(true);
       toggleInterruption(false);
+      toggleFoul(false);
       if (activeRound.reboundStatus.team) {
         state.scoreInput.team = activeRound.reboundStatus.team;
       }
@@ -1948,6 +2067,7 @@ function jumpToQuestion(qNum) {
         selectPoints(qObj.pointValue || 20);
         selectResult(qObj.isCorrect);
         toggleInterruption(!!qObj.isInterruption);
+        toggleFoul(false);
         const rebCheck = document.getElementById('score-is-rebound');
         if (rebCheck) rebCheck.checked = !!qObj.isRebound;
         if (qObj.team && qObj.quizzer) {
@@ -1958,6 +2078,7 @@ function jumpToQuestion(qNum) {
         if (row) selectPoints(row.pointValue || 20);
         selectResult(true);
         toggleInterruption(false);
+        toggleFoul(false);
         const rebCheck = document.getElementById('score-is-rebound');
         if (rebCheck) rebCheck.checked = false;
       }
@@ -2332,11 +2453,21 @@ function renderScoresheetSummaryRows(activeRound) {
   document.getElementById('summary-home-bonus-pts').textContent = activeRound.teamA?.bonusPoints ? `+${activeRound.teamA.bonusPoints}` : '0';
   document.getElementById('summary-opp-bonus-pts').textContent = activeRound.teamB?.bonusPoints ? `+${activeRound.teamB.bonusPoints}` : '0';
 
-  const homeFoulsList = (activeRound.teamA?.fouls || []).map(f => `${f.reason}`).join(', ') || 'None';
-  const oppFoulsList = (activeRound.teamB?.fouls || []).map(f => `${f.reason}`).join(', ') || 'None';
+  const foulsA = activeRound.teamA?.fouls || [];
+  const foulsB = activeRound.teamB?.fouls || [];
 
-  document.getElementById('summary-home-fouls').textContent = homeFoulsList;
-  document.getElementById('summary-opp-fouls').textContent = oppFoulsList;
+  const homeFoulsEl = document.getElementById('summary-home-fouls');
+  if (homeFoulsEl) {
+    homeFoulsEl.innerHTML = foulsA.length > 0
+      ? foulsA.map(f => `<span class="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-800 px-1.5 py-0.5 rounded text-[10px] mr-1 mb-1 font-bold"><span>🚩 ${escapeHtml(f.reason)}</span><button type="button" onclick="deleteFoul('teamA', '${f.id}')" title="Delete foul" class="text-rose-500 hover:text-rose-900 ml-0.5 cursor-pointer font-black text-xs">×</button></span>`).join('')
+      : 'None';
+  }
+  const oppFoulsEl = document.getElementById('summary-opp-fouls');
+  if (oppFoulsEl) {
+    oppFoulsEl.innerHTML = foulsB.length > 0
+      ? foulsB.map(f => `<span class="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-800 px-1.5 py-0.5 rounded text-[10px] mr-1 mb-1 font-bold"><span>🚩 ${escapeHtml(f.reason)}</span><button type="button" onclick="deleteFoul('teamB', '${f.id}')" title="Delete foul" class="text-rose-500 hover:text-rose-900 ml-0.5 cursor-pointer font-black text-xs">×</button></span>`).join('')
+      : 'None';
+  }
   document.getElementById('summary-home-foul-pts').textContent = activeRound.teamA?.foulPenalty ? `-${activeRound.teamA.foulPenalty}` : '0';
   document.getElementById('summary-opp-foul-pts').textContent = activeRound.teamB?.foulPenalty ? `-${activeRound.teamB.foulPenalty}` : '0';
 
@@ -2610,6 +2741,7 @@ async function submitQuestionScore(event) {
     document.getElementById('score-is-interruption').checked = false;
     document.getElementById('score-is-rebound').checked = false;
     toggleInterruption(false);
+    toggleFoul(false);
     selectPoints(20);
     selectResult(true);
 

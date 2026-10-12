@@ -296,6 +296,7 @@
       <form id="quick-scorer-form" onsubmit="submitQuestionScore(event)" class="space-y-2">
         <input type="number" id="score-question-num" min="1" max="30" value="1" class="hidden">
         <input type="checkbox" id="score-is-interruption" class="hidden">
+        <input type="checkbox" id="score-is-foul" class="hidden">
         <input type="checkbox" id="score-is-rebound" class="hidden">
 
         <!-- Selected Student Pill Indicator -->
@@ -334,9 +335,10 @@
           </div>
         </div>
 
-        <!-- 2. POINTER VALUES & INTERRUPTION CONTROLS (SINGLE COMPACT ROW) -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-1.5 shadow-2xs">
-          <div class="grid grid-cols-4 gap-1.5 items-center">
+        <!-- 2. POINTER VALUES & TOGGLES (INTERRUPTION & FOUL) -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-1.5 shadow-2xs space-y-1.5">
+          <!-- Row 1: Points Selection (3 Columns) -->
+          <div class="grid grid-cols-3 gap-1.5 items-center">
             <!-- 10 PTS -->
             <button type="button" onclick="selectPoints(10)" id="btn-pts-10" class="pts-btn py-2 rounded-xl border border-slate-300 bg-white font-black text-xs text-slate-700 hover:bg-slate-100 cursor-pointer transition-all active:scale-95 text-center">
               10 Pts
@@ -349,22 +351,50 @@
             <button type="button" onclick="selectPoints(30)" id="btn-pts-30" class="pts-btn py-2 rounded-xl border border-slate-300 bg-white font-black text-xs text-slate-700 hover:bg-slate-100 cursor-pointer transition-all active:scale-95 text-center">
               30 Pts
             </button>
+          </div>
+          <!-- Row 2: Interruption & Foul Toggles (2 Columns) -->
+          <div class="grid grid-cols-2 gap-1.5 items-center">
             <!-- INTERRUPTION TOGGLE -->
             <button type="button" id="btn-toggle-interruption" onclick="toggleInterruption()" class="py-2 px-1 rounded-xl border border-slate-300 bg-white text-slate-700 font-bold text-[11px] flex items-center justify-center hover:bg-slate-100 cursor-pointer transition-all active:scale-95 shadow-2xs text-center truncate">
               <span>⚡ No Int</span>
             </button>
+            <!-- FOUL TOGGLE -->
+            <button type="button" id="btn-toggle-foul" onclick="toggleFoul()" class="py-2 px-1 rounded-xl border border-slate-300 bg-white text-slate-700 font-bold text-[11px] flex items-center justify-center hover:bg-slate-100 cursor-pointer transition-all active:scale-95 shadow-2xs text-center truncate">
+              <span class="text-slate-500">🚩 No Foul</span>
+            </button>
           </div>
         </div>
 
-        <!-- 3. GIANT TOUCH ANSWER SUBMISSION BUTTONS -->
-        <div class="grid grid-cols-2 gap-2 pt-0.5">
-          <button type="button" onclick="recordAnswer(true)" id="btn-direct-correct" class="py-3 px-2 rounded-2xl border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-sm flex items-center justify-center gap-1 shadow-md shadow-emerald-600/25 cursor-pointer transition-all">
-            <span>✅ CORRECT</span>
-            <span class="text-xs font-normal opacity-90">(+20)</span>
-          </button>
-          <button type="button" onclick="recordAnswer(false)" id="btn-direct-incorrect" class="py-3 px-2 rounded-2xl border-2 border-rose-500 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-sm flex items-center justify-center gap-1 shadow-md shadow-rose-600/25 cursor-pointer transition-all">
-            <span>❌ INCORRECT</span>
-            <span class="text-xs font-normal opacity-90">(-10)</span>
+        <!-- 3. GIANT TOUCH ANSWER SUBMISSION & FOUL ACTION BUTTONS -->
+        <div id="standard-answer-buttons" class="space-y-1">
+          <div class="grid grid-cols-2 gap-2 pt-0.5">
+            <button type="button" onclick="recordAnswer(true)" id="btn-direct-correct" class="py-3 px-2 rounded-2xl border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-sm flex items-center justify-center gap-1 shadow-md shadow-emerald-600/25 cursor-pointer transition-all">
+              <span>✅ CORRECT</span>
+              <span class="text-xs font-normal opacity-90">(+20)</span>
+            </button>
+            <button type="button" onclick="recordAnswer(false)" id="btn-direct-incorrect" class="py-3 px-2 rounded-2xl border-2 border-rose-500 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-sm flex items-center justify-center gap-1 shadow-md shadow-rose-600/25 cursor-pointer transition-all">
+              <span>❌ INCORRECT</span>
+              <span class="text-xs font-normal opacity-90">(-10)</span>
+            </button>
+          </div>
+          <div class="flex justify-end pt-0.5">
+            <button type="button" onclick="recordFoul()" id="btn-quick-foul" class="text-[11px] font-black text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1 rounded-xl transition-all flex items-center gap-1 cursor-pointer">
+              <span>🚩</span>
+              <span id="btn-quick-foul-label">Quick Foul (-5 pts • 0 Errors)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- FOUL SUBMISSION BUTTON (ACTIVE WHEN FOUL TOGGLED YES) -->
+        <div id="foul-answer-buttons" class="hidden pt-0.5">
+          <button type="button" onclick="recordFoul()" id="btn-submit-foul" class="w-full py-3.5 px-3 rounded-2xl border-2 border-rose-600 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-sm flex flex-col items-center justify-center shadow-md shadow-rose-600/30 cursor-pointer transition-all">
+            <div class="text-sm sm:text-base flex items-center gap-1.5 font-black">
+              <span>🚩</span>
+              <span id="btn-submit-foul-label">RECORD FOUL FOR STUDENT (-5 PTS)</span>
+            </div>
+            <div class="text-[11px] font-bold text-rose-100 tracking-wide mt-0.5">
+              ❌ 0 Errors Added (Error Count Unaffected) • -5 Team Points
+            </div>
           </button>
         </div>
 
