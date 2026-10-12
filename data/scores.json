@@ -109,8 +109,70 @@
           "c_level": {
             "name": "C-Level",
             "teams": [],
-            "activeMatchId": null,
-            "matches": {}
+            "activeMatchId": "match-1791772767542",
+            "matches": {
+              "match-1791772767542": {
+                "id": "match-1791772767542",
+                "roundNum": 1,
+                "matchNumber": "01",
+                "room": "",
+                "teamAId": "team-1",
+                "teamBId": "team-2",
+                "seats": {
+                  "teamA": [
+                    "Student 1"
+                  ],
+                  "teamB": [
+                    "Student 1"
+                  ],
+                  "home": [
+                    "Student 1"
+                  ],
+                  "opponent": [
+                    "Student 1"
+                  ]
+                },
+                "timeouts": {
+                  "teamA": [
+                    {
+                      "id": 1,
+                      "used": false,
+                      "questionNum": ""
+                    },
+                    {
+                      "id": 2,
+                      "used": false,
+                      "questionNum": ""
+                    }
+                  ],
+                  "teamB": [
+                    {
+                      "id": 1,
+                      "used": false,
+                      "questionNum": ""
+                    },
+                    {
+                      "id": 2,
+                      "used": false,
+                      "questionNum": ""
+                    }
+                  ]
+                },
+                "fouls": {
+                  "teamA": [],
+                  "teamB": []
+                },
+                "questions": [],
+                "studentsA": [
+                  "Student 1"
+                ],
+                "studentsB": [
+                  "Student 1"
+                ],
+                "status": "Completed",
+                "isCompleted": true
+              }
+            }
           }
         }
       }

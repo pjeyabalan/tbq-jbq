@@ -1206,7 +1206,7 @@ function updateSubmitButtonLabel() {
     if (isInterruption) {
       directIncorrectBtn.innerHTML = `<span>❌ ERROR (-${penaltyPts}⚡)</span>`;
     } else {
-      directIncorrectBtn.innerHTML = `<span>❌ ERROR (0)</span>`;
+      directIncorrectBtn.innerHTML = `<span>❌ ERROR (-${penaltyPts})</span>`;
     }
   }
 
@@ -1218,7 +1218,7 @@ function updateSubmitButtonLabel() {
       submitBtn.innerHTML = `<span>Record for ${escapeHtml(quizzer)} (+${pts} pts) ⚡</span>`;
     } else {
       submitBtn.className = 'col-span-2 sm:col-span-1 bg-rose-600 hover:bg-rose-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-xs sm:text-sm shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer';
-      submitBtn.innerHTML = `<span>Record Error for ${escapeHtml(quizzer)} ❌</span>`;
+      submitBtn.innerHTML = `<span>Record Error for ${escapeHtml(quizzer)} (-${penaltyPts} pts) ❌</span>`;
     }
   }
 }
@@ -1861,7 +1861,7 @@ function renderScoresheetMobileFeed(activeRound) {
         const teamName = isTeamA ? activeRound.teamA.name : activeRound.teamB.name;
         const teamBadgeColor = isTeamA ? 'text-brand-900' : 'text-rose-900';
         const isCorrect = ans.isCorrect;
-        const pointsScored = isCorrect ? `+${ans.pointValue}` : (ans.isInterruption ? `-${Math.floor(ans.pointValue / 2)}` : '0');
+        const pointsScored = isCorrect ? `+${ans.pointValue}` : `-${Math.floor(ans.pointValue / 2)}`;
         const scoreClass = isCorrect ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-rose-100 text-rose-800 border-rose-300';
 
         return `

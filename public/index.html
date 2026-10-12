@@ -346,7 +346,7 @@
           </button>
           <button type="button" onclick="recordAnswer(false)" id="btn-direct-incorrect" class="py-3 px-2 rounded-2xl border-2 border-rose-500 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-sm flex items-center justify-center gap-1 shadow-md shadow-rose-600/25 cursor-pointer transition-all">
             <span>❌ INCORRECT</span>
-            <span class="text-xs font-normal opacity-90">(Err)</span>
+            <span class="text-xs font-normal opacity-90">(-10)</span>
           </button>
         </div>
 
@@ -715,7 +715,8 @@
           <li>• <strong>Point Values:</strong> 10, 20, or 30 points.</li>
           <li>• <strong>Quiz Out:</strong> 6 correct answers = Quiz Out (+10 bonus if 0 errors).</li>
           <li>• <strong>Errored Out:</strong> 3 errors = Errored Out for regulation.</li>
-          <li>• <strong>Interruption Error:</strong> Half-point penalty + Re-Read rebound for opposite team!</li>
+          <li>• <strong>Incorrect Answers:</strong> -5 on 10-pointers, -10 on 20-pointers, -15 on 30-pointers (irrespective of interruption).</li>
+          <li>• <strong>Interruption Error:</strong> Re-Read rebound for opposite team!</li>
         </ul>
       </div>
 

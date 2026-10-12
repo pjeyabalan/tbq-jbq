@@ -759,20 +759,14 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
         stat.points += delta;
         if (stat.correct >= qoThreshold) stat.isQuizzedOut = true;
       } else {
-        if (q.isInterruption) {
-          const penalty = Math.round(q.pointValue / 2);
-          cellText = `-${penalty}`;
-          if (isTeamA) teamARunning -= penalty;
-          else teamBRunning -= penalty;
+        const penalty = Math.round((q.pointValue || pts) / 2);
+        cellText = `-${penalty}`;
+        if (isTeamA) teamARunning -= penalty;
+        else teamBRunning -= penalty;
 
-          stat.errors += 1;
-          stat.points -= penalty;
-          if (stat.errors >= 3) stat.isErroredOut = true;
-        } else {
-          cellText = "0 (Err)";
-          stat.errors += 1;
-          if (stat.errors >= 3) stat.isErroredOut = true;
-        }
+        stat.errors += 1;
+        stat.points -= penalty;
+        if (stat.errors >= 3) stat.isErroredOut = true;
       }
 
       targetCells[studentIdx] = targetCells[studentIdx] ? `${targetCells[studentIdx]}, ${cellText}` : cellText;

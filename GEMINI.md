@@ -26,10 +26,15 @@ This document contains binding architectural and functional rules for Google Ant
 3. **Interruption Selection**:
    - Simple toggle / button: `⚡ Interruption?` (Yes / No).
 
-4. **Answer Submission**:
+4. **Answer Submission & Incorrect Answer Penalties**:
    - Clear, immediate scoring options:
      - `✅ CORRECT (+Pts)`
      - `❌ INCORRECT (Err)`
+   - **Incorrect Answer Penalties (Irrespective of Interruption)**:
+     - For every **10-pointer**, the incorrect answer penalty is **-5 pts**.
+     - For every **20-pointer**, the incorrect answer penalty is **-10 pts**.
+     - For every **30-pointer**, the incorrect answer penalty is **-15 pts**.
+     - This penalty applies to **ALL incorrect answers**, irrespective of whether an interruption occurred or not.
    - Record and update live totals instantly.
 
 5. **Simplicity Over Clutter**:
