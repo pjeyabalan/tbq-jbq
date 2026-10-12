@@ -744,34 +744,105 @@ function renderPublicSummaryUI() {
       resultBadge = `<span class="bg-slate-100 text-slate-600 font-bold px-2.5 py-1 rounded-full text-xs border border-slate-200">⏳ ${m.status}</span>`;
     }
 
-    matchesHtml += `
-      <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-white transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-brand-900 text-white flex items-center justify-center font-black text-sm font-mono-score">
-            M#${m.matchNumber}
-          </div>
-          <div>
-            <div class="text-xs font-extrabold uppercase text-slate-500 tracking-wider">
-              Meet ${m.meetNum || m.roundNum}
-            </div>
-            <div class="text-sm sm:text-base font-bold text-slate-800 mt-0.5">
-              <span>${escapeHtml(m.teamAName)}</span>
-              <span class="text-slate-400 font-normal"> vs </span>
-              <span>${escapeHtml(m.teamBName)}</span>
-            </div>
-          </div>
-        </div>
+    const isSuperCoach = state.auth && state.auth.user && state.auth.user.role === 'supercoach';
+    const audit = m.audit;
 
-        <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t border-slate-200/50 sm:border-t-0">
-          <div class="font-mono-score font-black text-base sm:text-lg text-slate-900">
-            <span class="${m.teamAScore > m.teamBScore ? 'text-brand-700' : 'text-slate-700'}">${m.teamAScore}</span>
-            <span class="text-slate-300 mx-1">-</span>
-            <span class="${m.teamBScore > m.teamAScore ? 'text-rose-600' : 'text-slate-700'}">${m.teamBScore}</span>
+    let auditNoticeHtml = '';
+    if (audit) {
+      if (audit.status === 'single_coach') {
+        // Blindly use the single active coach's sheet
+        auditNoticeHtml = `
+          <div class="mt-2 text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Scored by Coach ${escapeHtml(audit.officialCoachName || 'Coach')}</span>
           </div>
-          <div>
-            ${resultBadge}
+        `;
+      } else if (audit.status === 'aligned') {
+        auditNoticeHtml = `
+          <div class="mt-2 text-[11px] font-bold text-emerald-700 bg-emerald-50/80 px-2 py-1 rounded-lg border border-emerald-200/60 flex items-center gap-1.5">
+            <span>✅</span>
+            <span>Both Coaches Agree (${(audit.scoredSheets || []).map(s => escapeHtml(s.coachName)).join(' & ')})</span>
+          </div>
+        `;
+      } else if (audit.status === 'resolved') {
+        auditNoticeHtml = `
+          <div class="mt-2 text-[11px] font-bold text-purple-700 bg-purple-50/80 px-2.5 py-1.5 rounded-xl border border-purple-200/60 flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-1.5">
+              <span>👑</span>
+              <span>Official: Coach ${escapeHtml(audit.officialCoachName || 'Official')}</span>
+            </div>
+            ${isSuperCoach ? `
+              <div class="flex items-center gap-1 flex-wrap">
+                <span class="text-[9px] font-black uppercase text-purple-600">Switch:</span>
+                ${(audit.scoredSheets || []).map(s => `
+                  <button onclick="setOfficialSheet('${m.id}', '${s.sheetId}')" class="text-[10px] font-extrabold ${s.sheetId === audit.officialSheetId ? 'bg-purple-700 text-white' : 'bg-white text-slate-700 hover:bg-purple-100 border border-purple-200'} px-2 py-0.5 rounded-md transition-all cursor-pointer">
+                    ${escapeHtml(s.coachName)} (${s.teamAScore}-${s.teamBScore})
+                  </button>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      } else if (audit.status === 'mismatch') {
+        auditNoticeHtml = `
+          <div class="mt-2.5 text-xs font-bold bg-amber-50 border border-amber-300 rounded-xl p-2.5 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+            <div class="flex items-center gap-2">
+              <span class="text-base flex-shrink-0">⚠️</span>
+              <div>
+                <div class="font-black text-amber-900">Score Mismatch Between Coaches</div>
+                <div class="text-[11px] font-normal text-amber-800">
+                  ${(audit.scoredSheets || []).map(s => `<strong>${escapeHtml(s.coachName)}:</strong> ${s.teamAScore}-${s.teamBScore}`).join(' • ')}
+                </div>
+              </div>
+            </div>
+            ${isSuperCoach ? `
+              <div class="flex items-center gap-1.5 flex-wrap pt-1 sm:pt-0 border-t border-amber-200 sm:border-t-0">
+                <span class="text-[10px] font-black uppercase text-amber-900 whitespace-nowrap">Choose Official:</span>
+                ${(audit.scoredSheets || []).map(s => `
+                  <button onclick="setOfficialSheet('${m.id}', '${s.sheetId}')" class="text-xs font-black bg-amber-400 hover:bg-amber-300 active:scale-95 text-brand-950 px-2.5 py-1 rounded-lg border border-amber-500 shadow-2xs flex items-center gap-1 cursor-pointer">
+                    <span>👑 Use ${escapeHtml(s.coachName)} (${s.teamAScore}-${s.teamBScore})</span>
+                  </button>
+                `).join('')}
+              </div>
+            ` : `
+              <span class="text-[10px] font-extrabold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">Awaiting Super Coach Resolution</span>
+            `}
+          </div>
+        `;
+      }
+    }
+
+    matchesHtml += `
+      <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-white transition-all flex flex-col gap-2">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-brand-900 text-white flex items-center justify-center font-black text-sm font-mono-score">
+              M#${m.matchNumber}
+            </div>
+            <div>
+              <div class="text-xs font-extrabold uppercase text-slate-500 tracking-wider">
+                Meet ${m.meetNum || m.roundNum}
+              </div>
+              <div class="text-sm sm:text-base font-bold text-slate-800 mt-0.5">
+                <span>${escapeHtml(m.teamAName)}</span>
+                <span class="text-slate-400 font-normal"> vs </span>
+                <span>${escapeHtml(m.teamBName)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t border-slate-200/50 sm:border-t-0">
+            <div class="font-mono-score font-black text-base sm:text-lg text-slate-900">
+              <span class="${m.teamAScore > m.teamBScore ? 'text-brand-700' : 'text-slate-700'}">${m.teamAScore}</span>
+              <span class="text-slate-300 mx-1">-</span>
+              <span class="${m.teamBScore > m.teamAScore ? 'text-rose-600' : 'text-slate-700'}">${m.teamBScore}</span>
+            </div>
+            <div>
+              ${resultBadge}
+            </div>
           </div>
         </div>
+        ${auditNoticeHtml}
       </div>
     `;
   });
@@ -813,6 +884,34 @@ async function fetchTbqData(matchId, sheetId) {
 function handleCoachSheetChange(sheetId) {
   state.currentSheetId = sheetId;
   fetchTbqData(state.activeMatchId, sheetId);
+}
+
+async function setOfficialSheet(matchId, sheetId) {
+  if (!confirm('Designate this coach sheet as the official result for this match? This will update tournament standings and results.')) return;
+  try {
+    const res = await authFetch('/api/matches/set-official-sheet', {
+      method: 'POST',
+      body: JSON.stringify({ matchId, sheetId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to designate official sheet.');
+      return;
+    }
+    showMatchToast(`👑 Designated official scoresheet for Match #${data.matchId}`, 'success');
+    await fetchPublicSummary();
+    if (state.activeMatchId === matchId) {
+      await fetchTbqData(matchId, sheetId);
+    }
+  } catch (err) {
+    console.error('Error setting official sheet:', err);
+    alert('Failed to set official sheet.');
+  }
+}
+
+async function handlePromoteCurrentSheetToOfficial() {
+  if (!state.activeMatchId || !state.currentSheetId) return;
+  await setOfficialSheet(state.activeMatchId, state.currentSheetId);
 }
 
 async function skipRebound(qNum) {
@@ -1050,6 +1149,44 @@ function renderOfficialScoresheet() {
       } else {
         sheetBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300 whitespace-nowrap';
         sheetBadge.textContent = `👀 ${activeRound.sheetCoachName || 'Coach'}`;
+      }
+    }
+
+    const promoteBtn = document.getElementById('btn-promote-official-sheet');
+    if (promoteBtn) {
+      const isSuper = state.auth?.user && state.auth.user.role === 'supercoach';
+      const isAlreadyOfficial = (curSheetId === 'default') || (activeRound.audit && curSheetId === activeRound.audit.officialSheetId);
+      if (isSuper && curSheetId !== 'default' && !isAlreadyOfficial) {
+        promoteBtn.classList.remove('hidden');
+        promoteBtn.textContent = `👑 Set as Official`;
+      } else {
+        promoteBtn.classList.add('hidden');
+      }
+    }
+
+    const discBanner = document.getElementById('match-discrepancy-banner');
+    if (discBanner) {
+      if (activeRound.audit && activeRound.audit.status === 'mismatch') {
+        discBanner.classList.remove('hidden');
+        const scoresStr = (activeRound.audit.scoredSheets || []).map(s => `<strong>${escapeHtml(s.coachName)}:</strong> ${s.teamAScore}-${s.teamBScore}`).join(' • ');
+        discBanner.innerHTML = `
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm">⚠️</span>
+              <div>
+                <span class="font-black text-amber-900">Score Mismatch:</span>
+                <span class="text-[11px] text-amber-800 ml-1">${scoresStr}</span>
+              </div>
+            </div>
+            ${state.auth?.user?.role === 'supercoach' ? `
+              <button type="button" onclick="handlePromoteCurrentSheetToOfficial()" class="text-[10px] font-black bg-amber-400 hover:bg-amber-300 active:scale-95 text-brand-950 px-2 py-1 rounded-lg border border-amber-500 shadow-2xs cursor-pointer">
+                👑 Use Current Sheet as Official
+              </button>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        discBanner.classList.add('hidden');
       }
     }
   }

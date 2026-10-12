@@ -752,11 +752,108 @@ function resolveTargetSheetId(req, match, dataset) {
   return 'default';
 }
 
+// Helper: Audit and reconcile per-coach scoresheets for a match
+function getMatchAuditStatus(match, dataset, isJBQ) {
+  if (!match) return { status: 'none', hasDiscrepancy: false, effectiveSheetId: 'default', scoredSheets: [] };
+  ensureMatchSheets(match, dataset);
+
+  const scoredSheets = [];
+  Object.keys(match.sheets || {}).forEach(sheetKey => {
+    if (sheetKey === 'default') return;
+    const s = match.sheets[sheetKey];
+    if (s && Array.isArray(s.questions) && s.questions.length > 0) {
+      // Calculate sheet stats with skipAudit = true to avoid recursion
+      const stats = calculateMatchStats(match.id, dataset, isJBQ, sheetKey, true);
+      if (stats) {
+        let coachDisplayName = s.coachName;
+        if (!coachDisplayName || coachDisplayName.startsWith('coach-') || coachDisplayName === s.coachId) {
+          const foundCoach = coaches.find(c => c.id === s.coachId || c.username === s.coachId);
+          if (foundCoach) coachDisplayName = foundCoach.name;
+        }
+        scoredSheets.push({
+          sheetId: s.id,
+          coachId: s.coachId,
+          coachName: coachDisplayName || 'Coach',
+          questionsCount: s.questions.length,
+          teamAScore: stats.teamA.finalScore,
+          teamBScore: stats.teamB.finalScore,
+          status: stats.status,
+          isCompleted: stats.isCompleted
+        });
+      }
+    }
+  });
+
+  // Explicit Super Coach override
+  if (match.officialSheetId && match.sheets[match.officialSheetId]) {
+    const chosen = match.sheets[match.officialSheetId];
+    return {
+      status: 'resolved',
+      hasDiscrepancy: false,
+      effectiveSheetId: match.officialSheetId,
+      officialSheetId: match.officialSheetId,
+      officialCoachName: chosen.coachName || 'Official Scorer',
+      scoredSheets,
+      message: `Official sheet selected: ${chosen.coachName || 'Coach'}`
+    };
+  }
+
+  // Case 1: No coach has scored in private sheets
+  if (scoredSheets.length === 0) {
+    const defQuestions = (match.sheets['default']?.questions || []).length;
+    return {
+      status: defQuestions > 0 ? 'official_master' : 'not_started',
+      hasDiscrepancy: false,
+      effectiveSheetId: 'default',
+      scoredSheets,
+      message: defQuestions > 0 ? 'Using master sheet' : 'Not started yet'
+    };
+  }
+
+  // Case 2: Exactly 1 coach has scored (e.g. other coach didn't even open sheet to score)
+  // CORE USER REQUIREMENT: "blindly use the one scored by a coach"
+  if (scoredSheets.length === 1) {
+    return {
+      status: 'single_coach',
+      hasDiscrepancy: false,
+      effectiveSheetId: scoredSheets[0].sheetId,
+      officialCoachName: scoredSheets[0].coachName,
+      scoredSheets,
+      message: `Scored by ${scoredSheets[0].coachName}`
+    };
+  }
+
+  // Case 3: 2 or more coaches scored
+  const first = scoredSheets[0];
+  const allAgree = scoredSheets.slice(1).every(s =>
+    s.teamAScore === first.teamAScore && s.teamBScore === first.teamBScore
+  );
+
+  if (allAgree) {
+    return {
+      status: 'aligned',
+      hasDiscrepancy: false,
+      effectiveSheetId: first.sheetId,
+      officialCoachName: 'Both Coaches (Scores Align)',
+      scoredSheets,
+      message: 'Both coaches agree on score'
+    };
+  } else {
+    return {
+      status: 'mismatch',
+      hasDiscrepancy: true,
+      effectiveSheetId: first.sheetId, // Fallback until Super Coach picks
+      scoredSheets,
+      message: `Score Mismatch: ${scoredSheets.map(s => `${s.coachName} (${s.teamAScore}-${s.teamBScore})`).join(' vs ')}`
+    };
+  }
+}
+
 // ==========================================
 // 3. STATS & SCORING CALCULATION ENGINE
 // ==========================================
 
-function calculateMatchStats(matchId, datasetParam, isJBQParam, targetSheetId) {
+function calculateMatchStats(matchId, datasetParam, isJBQParam, targetSheetId, skipAudit = false) {
   let dataset = datasetParam;
   let isJBQ = isJBQParam;
   if (!dataset) {
@@ -780,7 +877,18 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam, targetSheetId) {
 
   // Ensure sheets exist on match
   ensureMatchSheets(match, dataset);
-  const sheetKey = targetSheetId || 'default';
+
+  let sheetKey = targetSheetId;
+  let auditStatus = null;
+  if (!skipAudit) {
+    auditStatus = getMatchAuditStatus(match, dataset, isJBQ);
+    if (!sheetKey) {
+      sheetKey = auditStatus ? auditStatus.effectiveSheetId : 'default';
+    }
+  } else {
+    if (!sheetKey) sheetKey = 'default';
+  }
+
   const activeSheet = getMatchSheet(match, sheetKey) || match.sheets['default'];
 
   const teamAObj = getTeamById(match.teamAId, dataset) || { name: "Team 1", church: "Church 1", quizzers: [] };
@@ -1105,6 +1213,7 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam, targetSheetId) {
     sheetCoachId: activeSheet.coachId,
     sheetCoachName: activeSheet.coachName,
     availableSheets: getAvailableSheetsList(match, dataset),
+    audit: auditStatus,
     status: sheetStatus,
     isCompleted,
     completedQuestionsCount,
@@ -1438,7 +1547,8 @@ app.get('/api/tbq/public-summary', (req, res) => {
       isCompleted: stats.isCompleted,
       status: stats.status,
       totalQuestions: stats.totalQuestions,
-      completedQuestionsCount: stats.completedQuestionsCount
+      completedQuestionsCount: stats.completedQuestionsCount,
+      audit: stats.audit
     });
   });
 
@@ -1524,7 +1634,8 @@ app.get('/api/tbq', authenticateCoach, (req, res) => {
       teamBName: tB ? tB.name : "Team 2",
       status: stats ? stats.status : (m.status || "Scheduled"),
       isCompleted: stats ? stats.isCompleted : !!m.isCompleted,
-      winner: stats ? stats.winner : null
+      winner: stats ? stats.winner : null,
+      audit: stats ? stats.audit : null
     };
   });
 
@@ -2233,7 +2344,20 @@ app.post('/api/tbq/reset-round', authenticateCoach, (req, res) => {
     delete activeSheet.isCompleted;
     activeSheet.status = 'Scheduled';
 
-    if (targetSheetId === 'default') {
+    if (targetSheetId === 'default' || req.body.resetAllSheets || (!req.body.sheetId && req.user?.role === 'supercoach')) {
+      Object.keys(match.sheets || {}).forEach(k => {
+        const s = match.sheets[k];
+        s.questions = [];
+        s.skippedRebounds = [];
+        s.timeouts = {
+          teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
+          teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
+        };
+        s.fouls = { teamA: [], teamB: [] };
+        delete s.isCompleted;
+        s.status = 'Scheduled';
+      });
+      delete match.officialSheetId;
       match.questions = [];
       match.skippedRebounds = [];
       match.timeouts = {
@@ -2281,6 +2405,66 @@ app.post('/api/tbq/copy-from-official', authenticateCoach, (req, res) => {
 
   saveScoresData();
   res.json({ success: true, message: 'Copied official master sheet.', activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ, targetSheetId) });
+});
+
+// POST Designate Official Sheet for a Match (Super Coach only)
+app.post('/api/matches/set-official-sheet', authenticateCoach, (req, res) => {
+  const ctx = getPlatformContext(req);
+  const { matchId, sheetId } = req.body;
+  const mId = matchId || ctx.dataset.activeMatchId;
+  const match = ctx.dataset.matches[mId];
+
+  if (!match) return res.status(404).json({ error: 'Match not found.' });
+  if (req.user.role !== 'supercoach') {
+    return res.status(403).json({ error: 'Only Super Coaches can resolve discrepancies and designate the official scoresheet.' });
+  }
+
+  ensureMatchSheets(match, ctx.dataset);
+
+  if (!sheetId || sheetId === 'auto') {
+    delete match.officialSheetId;
+    saveScoresData();
+    const audit = getMatchAuditStatus(match, ctx.dataset, ctx.isJBQ);
+    return res.json({ success: true, matchId: mId, officialSheetId: null, audit });
+  }
+
+  const chosenSheet = match.sheets[sheetId];
+  if (!chosenSheet) {
+    return res.status(400).json({ error: 'Selected sheet does not exist.' });
+  }
+
+  match.officialSheetId = sheetId;
+
+  // Mirror chosen sheet to 'default' master sheet
+  match.sheets['default'].questions = JSON.parse(JSON.stringify(chosenSheet.questions || []));
+  match.sheets['default'].studentsA = JSON.parse(JSON.stringify(chosenSheet.studentsA || []));
+  match.sheets['default'].studentsB = JSON.parse(JSON.stringify(chosenSheet.studentsB || []));
+  match.sheets['default'].timeouts = JSON.parse(JSON.stringify(chosenSheet.timeouts || { teamA: [], teamB: [] }));
+  match.sheets['default'].fouls = JSON.parse(JSON.stringify(chosenSheet.fouls || { teamA: [], teamB: [] }));
+  match.sheets['default'].skippedRebounds = JSON.parse(JSON.stringify(chosenSheet.skippedRebounds || []));
+  match.sheets['default'].status = chosenSheet.status;
+  match.sheets['default'].isCompleted = chosenSheet.isCompleted;
+
+  match.questions = match.sheets['default'].questions;
+  match.studentsA = match.sheets['default'].studentsA;
+  match.studentsB = match.sheets['default'].studentsB;
+  match.timeouts = match.sheets['default'].timeouts;
+  match.fouls = match.sheets['default'].fouls;
+  match.skippedRebounds = match.sheets['default'].skippedRebounds;
+  match.status = match.sheets['default'].status;
+  match.isCompleted = match.sheets['default'].isCompleted;
+
+  saveScoresData();
+  console.log(`[AUDIT] Super Coach ${req.user.name} set official sheet for match ${mId} to ${sheetId} (${chosenSheet.coachName})`);
+
+  const audit = getMatchAuditStatus(match, ctx.dataset, ctx.isJBQ);
+  res.json({
+    success: true,
+    matchId: mId,
+    officialSheetId: sheetId,
+    audit,
+    activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ, sheetId)
+  });
 });
 
 // POST Update Meet Title / Overall Settings

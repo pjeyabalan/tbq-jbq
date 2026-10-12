@@ -123,7 +123,24 @@
                 ],
                 "coachId": "coach-1790968015318",
                 "coachName": "Dev",
-                "coachUsername": "dev"
+                "coachUsername": "dev",
+                "coach2Id": "coach-1790968050827",
+                "coach2Name": "Hanna",
+                "coach2Username": "hanna",
+                "coaches": [
+                  {
+                    "id": "coach-1790968015318",
+                    "name": "Dev",
+                    "username": "dev",
+                    "role": "primary"
+                  },
+                  {
+                    "id": "coach-1790968050827",
+                    "name": "Hanna",
+                    "username": "hanna",
+                    "role": "assistant"
+                  }
+                ]
               }
             ],
             "activeMatchId": "match-1791839526828",
@@ -139,7 +156,8 @@
                   "teamA": [
                     "Devbalaji",
                     "Jevin",
-                    "Advik"
+                    "Advik",
+                    "Student 1"
                   ],
                   "teamB": [
                     "Q1",
@@ -150,7 +168,8 @@
                   "home": [
                     "Devbalaji",
                     "Jevin",
-                    "Advik"
+                    "Advik",
+                    "Student 1"
                   ],
                   "opponent": [
                     "Q1",
@@ -189,24 +208,12 @@
                   "teamA": [],
                   "teamB": []
                 },
-                "questions": [
-                  {
-                    "id": "q-1791839534465-700",
-                    "questionNum": 1,
-                    "pointValue": 10,
-                    "isInterruption": false,
-                    "isRebound": false,
-                    "team": "teamA",
-                    "quizzer": "Devbalaji",
-                    "isCorrect": true,
-                    "scoredBy": "Dev",
-                    "timestamp": "2026-10-12T21:12:14.465Z"
-                  }
-                ],
+                "questions": [],
                 "studentsA": [
                   "Devbalaji",
                   "Jevin",
-                  "Advik"
+                  "Advik",
+                  "Student 1"
                 ],
                 "studentsB": [
                   "Q1",
@@ -214,31 +221,19 @@
                   "Q3",
                   "Q4"
                 ],
-                "status": "In Progress",
+                "status": "Scheduled",
                 "sheets": {
                   "default": {
                     "id": "default",
                     "label": "⭐ Official Master Sheet",
                     "coachId": "default",
                     "coachName": "Official Scorekeeper",
-                    "questions": [
-                      {
-                        "id": "q-1791839534465-700",
-                        "questionNum": 1,
-                        "pointValue": 10,
-                        "isInterruption": false,
-                        "isRebound": false,
-                        "team": "teamA",
-                        "quizzer": "Devbalaji",
-                        "isCorrect": true,
-                        "scoredBy": "Dev",
-                        "timestamp": "2026-10-12T21:12:14.465Z"
-                      }
-                    ],
+                    "questions": [],
                     "studentsA": [
                       "Devbalaji",
                       "Jevin",
-                      "Advik"
+                      "Advik",
+                      "Student 1"
                     ],
                     "studentsB": [
                       "Q1",
@@ -277,14 +272,64 @@
                       "teamB": []
                     },
                     "skippedRebounds": [],
-                    "isCompleted": false,
-                    "status": "In Progress"
+                    "status": "Scheduled"
                   },
                   "coach-1790968015318": {
                     "id": "coach-1790968015318",
                     "label": "🎒 Dev's Sheet",
                     "coachId": "coach-1790968015318",
                     "coachName": "Dev",
+                    "questions": [],
+                    "studentsA": [
+                      "Devbalaji",
+                      "Jevin",
+                      "Advik",
+                      "Student 1"
+                    ],
+                    "studentsB": [
+                      "Q1",
+                      "Q2",
+                      "Q3",
+                      "Q4"
+                    ],
+                    "timeouts": {
+                      "teamA": [
+                        {
+                          "id": 1,
+                          "used": false,
+                          "questionNum": ""
+                        },
+                        {
+                          "id": 2,
+                          "used": false,
+                          "questionNum": ""
+                        }
+                      ],
+                      "teamB": [
+                        {
+                          "id": 1,
+                          "used": false,
+                          "questionNum": ""
+                        },
+                        {
+                          "id": 2,
+                          "used": false,
+                          "questionNum": ""
+                        }
+                      ]
+                    },
+                    "fouls": {
+                      "teamA": [],
+                      "teamB": []
+                    },
+                    "skippedRebounds": [],
+                    "status": "Scheduled"
+                  },
+                  "coach-jbq": {
+                    "id": "coach-jbq",
+                    "label": "🎒 JBQ Coach's Sheet",
+                    "coachId": "coach-jbq",
+                    "coachName": "JBQ Coach",
                     "questions": [],
                     "studentsA": [
                       "Devbalaji",
@@ -328,92 +373,14 @@
                       "teamB": []
                     },
                     "skippedRebounds": [],
-                    "isCompleted": false,
                     "status": "Scheduled"
-                  },
-                  "coach-jbq": {
-                    "id": "coach-jbq",
-                    "label": "🎒 JBQ Coach's Sheet",
-                    "coachId": "coach-jbq",
-                    "coachName": "JBQ Coach",
-                    "questions": [
-                      {
-                        "id": "q-1791842601588-758",
-                        "questionNum": 1,
-                        "pointValue": 10,
-                        "isInterruption": false,
-                        "isRebound": false,
-                        "team": "teamA",
-                        "quizzer": "Devbalaji",
-                        "isCorrect": true,
-                        "scoredBy": "JBQ Coach",
-                        "timestamp": "2026-10-12T22:03:21.588Z"
-                      }
-                    ],
-                    "studentsA": [
-                      "Devbalaji",
-                      "Jevin",
-                      "Advik"
-                    ],
-                    "studentsB": [
-                      "Q1",
-                      "Q2",
-                      "Q3",
-                      "Q4"
-                    ],
-                    "timeouts": {
-                      "teamA": [
-                        {
-                          "id": 1,
-                          "used": false,
-                          "questionNum": ""
-                        },
-                        {
-                          "id": 2,
-                          "used": false,
-                          "questionNum": ""
-                        }
-                      ],
-                      "teamB": [
-                        {
-                          "id": 1,
-                          "used": false,
-                          "questionNum": ""
-                        },
-                        {
-                          "id": 2,
-                          "used": false,
-                          "questionNum": ""
-                        }
-                      ]
-                    },
-                    "fouls": {
-                      "teamA": [],
-                      "teamB": []
-                    },
-                    "skippedRebounds": [],
-                    "isCompleted": false,
-                    "status": "In Progress"
                   },
                   "coach-coach": {
                     "id": "coach-coach",
                     "label": "🎒 Coach's Sheet",
                     "coachId": "coach-coach",
                     "coachName": "Coach",
-                    "questions": [
-                      {
-                        "id": "q-1791842601596-585",
-                        "questionNum": 1,
-                        "pointValue": 10,
-                        "isInterruption": false,
-                        "isRebound": false,
-                        "team": "teamA",
-                        "quizzer": "Devbalaji",
-                        "isCorrect": false,
-                        "scoredBy": "Coach",
-                        "timestamp": "2026-10-12T22:03:21.596Z"
-                      }
-                    ],
+                    "questions": [],
                     "studentsA": [
                       "Devbalaji",
                       "Jevin",
@@ -456,11 +423,60 @@
                       "teamB": []
                     },
                     "skippedRebounds": [],
-                    "isCompleted": false,
-                    "status": "In Progress"
+                    "status": "Scheduled"
+                  },
+                  "coach-1790968050827": {
+                    "id": "coach-1790968050827",
+                    "label": "🎒 Coach Sheet (coach-1790968050827)",
+                    "coachId": "coach-1790968050827",
+                    "coachName": "coach-1790968050827",
+                    "questions": [],
+                    "studentsA": [
+                      "Devbalaji",
+                      "Jevin",
+                      "Advik"
+                    ],
+                    "studentsB": [
+                      "Q1",
+                      "Q2",
+                      "Q3",
+                      "Q4"
+                    ],
+                    "timeouts": {
+                      "teamA": [
+                        {
+                          "id": 1,
+                          "used": false,
+                          "questionNum": ""
+                        },
+                        {
+                          "id": 2,
+                          "used": false,
+                          "questionNum": ""
+                        }
+                      ],
+                      "teamB": [
+                        {
+                          "id": 1,
+                          "used": false,
+                          "questionNum": ""
+                        },
+                        {
+                          "id": 2,
+                          "used": false,
+                          "questionNum": ""
+                        }
+                      ]
+                    },
+                    "fouls": {
+                      "teamA": [],
+                      "teamB": []
+                    },
+                    "skippedRebounds": [],
+                    "status": "Scheduled"
                   }
                 },
-                "isCompleted": false
+                "skippedRebounds": []
               },
               "match-1791839526828": {
                 "id": "match-1791839526828",
