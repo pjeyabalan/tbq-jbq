@@ -125,11 +125,11 @@ function setLoggedInCoach(token, user) {
   const coachesTabBtn = document.getElementById('tab-btn-coaches');
   const mobCoachesBtn = document.getElementById('mob-tab-btn-coaches');
   if (user.role === 'supercoach') {
-    coachesTabBtn.classList.remove('hidden');
+    if (coachesTabBtn) coachesTabBtn.classList.remove('hidden');
     if (mobCoachesBtn) mobCoachesBtn.classList.remove('hidden');
   } else {
-    coachesTabBtn.classList.add('hidden');
-    if (mobCoachesBtn) mobCoachesBtn.classList.add('hidden');
+    if (coachesTabBtn) coachesTabBtn.classList.remove('hidden');
+    if (mobCoachesBtn) mobCoachesBtn.classList.remove('hidden');
   }
 
   renderPlatformHeader();
@@ -144,11 +144,12 @@ function setLoggedOutView() {
 
   document.getElementById('auth-login-btn').classList.remove('hidden');
   document.getElementById('auth-user-menu').classList.add('hidden');
-  document.getElementById('coach-nav-tabs').classList.add('hidden');
+  const coachNavTabs = document.getElementById('coach-nav-tabs');
+  if (coachNavTabs) coachNavTabs.classList.add('hidden');
   document.getElementById('user-role-badge').classList.add('hidden');
 
   const mobNav = document.getElementById('mobile-bottom-nav');
-  if (mobNav) mobNav.classList.add('hidden');
+  if (mobNav) mobNav.classList.remove('hidden');
 
   document.getElementById('section-scoresheet').classList.add('hidden');
   document.getElementById('section-teams').classList.add('hidden');
@@ -611,7 +612,7 @@ async function handleCreateMeet(event) {
 function switchTab(tab) {
   state.currentTab = tab;
 
-  const isQuestions = tab === 'questions';
+  const isQuestions = tab === 'questions' || tab === 'standings';
   document.getElementById('section-public').classList.toggle('hidden', !isQuestions);
   document.getElementById('section-scoresheet').classList.toggle('hidden', tab !== 'scoresheet');
   document.getElementById('section-teams').classList.toggle('hidden', tab !== 'teams');
@@ -630,16 +631,19 @@ function switchTab(tab) {
 
   // Sync mobile bottom navigation
   const mobScoresheet = document.getElementById('mob-tab-btn-scoresheet');
+  const mobStandings = document.getElementById('mob-tab-btn-standings');
   const mobTeams = document.getElementById('mob-tab-btn-teams');
   const mobCoaches = document.getElementById('mob-tab-btn-coaches');
 
   const mobActive = 'text-amber-400 font-black';
-  const mobInactive = 'text-brand-300 font-bold hover:text-white';
+  const mobInactive = 'text-slate-400 font-bold hover:text-white';
 
-  if (mobScoresheet) mobScoresheet.className = `flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs transition-all ${tab === 'scoresheet' ? mobActive : mobInactive}`;
-  if (mobTeams) mobTeams.className = `flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs transition-all ${tab === 'teams' ? mobActive : mobInactive}`;
-  if (mobCoaches) mobCoaches.className = `flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs transition-all ${tab === 'coaches' ? 'text-amber-400 font-black' : 'text-amber-200/70 font-bold'}`;
+  if (mobScoresheet) mobScoresheet.className = `flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs transition-all cursor-pointer ${tab === 'scoresheet' ? mobActive : mobInactive}`;
+  if (mobStandings) mobStandings.className = `flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs transition-all cursor-pointer ${isQuestions ? mobActive : mobInactive}`;
+  if (mobTeams) mobTeams.className = `flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs transition-all cursor-pointer ${tab === 'teams' ? mobActive : mobInactive}`;
+  if (mobCoaches) mobCoaches.className = `flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs transition-all cursor-pointer ${tab === 'coaches' ? mobActive : mobInactive}`;
 
+  if (isQuestions) fetchPublicSummary();
   if (tab === 'scoresheet') fetchTbqData(state.activeMatchId);
   if (tab === 'teams') {
     renderTeamsManagerUI();
@@ -972,8 +976,8 @@ function renderOfficialScoresheet() {
   const foulA = activeRound.teamA.foulPenalty !== undefined ? activeRound.teamA.foulPenalty : (activeRound.teamA.foulPenaltyPoints || 0);
   const foulB = activeRound.teamB.foulPenalty !== undefined ? activeRound.teamB.foulPenalty : (activeRound.teamB.foulPenaltyPoints || 0);
 
-  document.getElementById('home-bonus-badge').textContent = `Regulation: ${regA} | Bonus: +${activeRound.teamA.bonusPoints || 0} | Fouls: -${foulA}`;
-  document.getElementById('opp-bonus-badge').textContent = `Regulation: ${regB} | Bonus: +${activeRound.teamB.bonusPoints || 0} | Fouls: -${foulB}`;
+  document.getElementById('home-bonus-badge').textContent = foulA > 0 ? `Reg: ${regA} | Bon: +${activeRound.teamA.bonusPoints || 0} | Foul: -${foulA}` : `Reg: ${regA} | Bon: +${activeRound.teamA.bonusPoints || 0}`;
+  document.getElementById('opp-bonus-badge').textContent = foulB > 0 ? `Reg: ${regB} | Bon: +${activeRound.teamB.bonusPoints || 0} | Foul: -${foulB}` : `Reg: ${regB} | Bon: +${activeRound.teamB.bonusPoints || 0}`;
 
   // 4. Quick Buzzer Box UI / Match Completion
   const isMatchDone = !!activeRound.isCompleted;
@@ -1194,15 +1198,15 @@ function updateSubmitButtonLabel() {
   // Update 1-tap direct score buttons
   const directCorrectBtn = document.getElementById('btn-direct-correct');
   if (directCorrectBtn) {
-    directCorrectBtn.innerHTML = `<span>✅ Record Correct (+${pts} pts)</span>`;
+    directCorrectBtn.innerHTML = `<span>✅ CORRECT (+${pts})</span>`;
   }
 
   const directIncorrectBtn = document.getElementById('btn-direct-incorrect');
   if (directIncorrectBtn) {
     if (isInterruption) {
-      directIncorrectBtn.innerHTML = `<span>❌ Record Error (-${penaltyPts} pts) ⚡</span>`;
+      directIncorrectBtn.innerHTML = `<span>❌ ERROR (-${penaltyPts}⚡)</span>`;
     } else {
-      directIncorrectBtn.innerHTML = `<span>❌ Record Error (0 pts)</span>`;
+      directIncorrectBtn.innerHTML = `<span>❌ ERROR (0)</span>`;
     }
   }
 
@@ -1227,11 +1231,11 @@ function toggleInterruption(forceVal) {
   const btn = document.getElementById('btn-toggle-interruption');
   if (btn) {
     if (newVal) {
-      btn.className = 'w-full py-2.5 px-4 rounded-xl border-2 border-amber-500 bg-amber-400 text-brand-950 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95';
-      btn.innerHTML = '<span>⚡ Interruption: YES</span>';
+      btn.className = 'w-full py-2 px-1 rounded-xl border-2 border-amber-500 bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-md cursor-pointer transition-all active:scale-95 text-center truncate';
+      btn.innerHTML = '<span>⚡ Int: YES</span>';
     } else {
-      btn.className = 'w-full py-2.5 px-4 rounded-xl border-2 border-slate-200 bg-white text-slate-700 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 hover:bg-slate-100 cursor-pointer transition-all active:scale-95 shadow-xs';
-      btn.innerHTML = '<span class="text-slate-500">⚡ Interruption: NO</span>';
+      btn.className = 'w-full py-2 px-1 rounded-xl border border-slate-300 bg-white text-slate-700 font-bold text-xs flex items-center justify-center hover:bg-slate-100 cursor-pointer transition-all active:scale-95 shadow-2xs text-center truncate';
+      btn.innerHTML = '<span class="text-slate-500">⚡ No Int</span>';
     }
   }
   updateSubmitButtonLabel();
@@ -1441,33 +1445,33 @@ function renderStudentsSelectionGrid(activeRound) {
     let extraWarning = '';
 
     if (isQO) {
-      statusHtml = `<span class="text-amber-800 font-black">${stat.errors === 0 ? '⭐ PERFECT QO (+10)' : '🎉 QUIZ OUT (+0)'}</span>`;
+      statusHtml = `<span class="text-amber-900 font-black">${stat.errors === 0 ? '⭐ PERFECT QO (+10)' : '🎉 QUIZ OUT (+0)'}</span>`;
     } else if (isEO) {
       statusHtml = `<span class="text-rose-700 font-black">❌ ERRORED OUT (3/3)</span>`;
     } else {
-      const cStyle = isSelected ? 'text-emerald-100 font-black' : 'text-emerald-700 font-extrabold';
+      const cStyle = isSelected ? 'text-emerald-100 font-black' : 'text-emerald-700 font-black';
       const eStyle = stat.errors > 0 ? (isSelected ? 'text-rose-200 font-black underline' : 'text-rose-600 font-black') : (isSelected ? 'text-slate-200' : 'text-slate-500');
-      statusHtml = `<span class="${cStyle}">✅ ${stat.correct}/6 C</span> • <span class="${eStyle}">❌ ${stat.errors}/3 E</span>`;
+      statusHtml = `<span class="${cStyle}">✅ ${stat.correct}/6</span> • <span class="${eStyle}">❌ ${stat.errors}/3</span>`;
 
       if (stat.correct === 5 && stat.errors === 2) {
-        extraWarning = '<div class="text-[9px] font-black text-amber-800 bg-amber-200 rounded px-1 mt-1 animate-pulse">⚠️ 1 to QO • 1 to EO</div>';
+        extraWarning = '<div class="text-[9px] font-black text-amber-900 bg-amber-200 rounded px-1 mt-0.5 animate-pulse text-center">⚠️ 1 to QO • 1 to EO</div>';
       } else if (stat.correct === 5) {
-        extraWarning = '<div class="text-[9px] font-black text-amber-800 bg-amber-200 rounded px-1 mt-1">⚠️ 1 more to QO</div>';
+        extraWarning = '<div class="text-[9px] font-black text-amber-900 bg-amber-200 rounded px-1 mt-0.5 text-center">⚠️ 1 more to QO</div>';
       } else if (stat.errors === 2) {
-        extraWarning = '<div class="text-[9px] font-black text-rose-800 bg-rose-200 rounded px-1 mt-1">⚠️ 1 error to EO</div>';
+        extraWarning = '<div class="text-[9px] font-black text-rose-900 bg-rose-200 rounded px-1 mt-0.5 text-center">⚠️ 1 error to EO</div>';
       }
     }
 
     const selectedStyle = team === 'teamA'
-      ? 'bg-brand-600 border-brand-700 text-white shadow-md ring-2 ring-brand-400 scale-[1.02]'
-      : 'bg-rose-600 border-rose-700 text-white shadow-md ring-2 ring-rose-400 scale-[1.02]';
+      ? 'bg-brand-600 border-brand-700 text-white shadow-md ring-2 ring-brand-400'
+      : 'bg-rose-600 border-rose-700 text-white shadow-md ring-2 ring-rose-400';
 
     const unselectedStyle = team === 'teamA'
-      ? 'bg-white border-brand-200 text-slate-800 hover:border-brand-500 hover:bg-brand-50/60 shadow-xs'
-      : 'bg-white border-rose-200 text-slate-800 hover:border-rose-500 hover:bg-rose-50/60 shadow-xs';
+      ? 'bg-white border-brand-200 text-slate-800 hover:border-brand-400 hover:bg-brand-50/60 shadow-2xs'
+      : 'bg-white border-rose-200 text-slate-800 hover:border-rose-400 hover:bg-rose-50/60 shadow-2xs';
 
     return `
-      <button type="button" ${isDisabled ? 'disabled' : ''} onclick="selectStudent('${team}', '${escapeHtml(name)}')" class="p-2 sm:p-2.5 rounded-xl text-center border-2 transition-all flex flex-col justify-between items-stretch cursor-pointer active:scale-95 ${
+      <button type="button" ${isDisabled ? 'disabled' : ''} onclick="selectStudent('${team}', '${escapeHtml(name)}')" class="w-full p-2 rounded-xl text-left border-2 transition-all flex flex-col justify-between cursor-pointer active:scale-95 ${
         isQO 
           ? 'bg-amber-50/80 border-amber-300 text-amber-950 opacity-80 cursor-not-allowed' 
           : isEO
@@ -1476,16 +1480,18 @@ function renderStudentsSelectionGrid(activeRound) {
               ? selectedStyle 
               : unselectedStyle
       }">
-        <div class="flex items-center justify-between gap-1 mb-1">
-          <span class="text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${isSelected ? 'bg-white/25 text-white' : (team === 'teamA' ? 'bg-brand-100 text-brand-800' : 'bg-rose-100 text-rose-800')}">
-            ${stat.points} pts
+        <div class="flex items-center justify-between gap-1 w-full">
+          <span class="font-extrabold text-xs sm:text-sm truncate ${isSelected ? 'text-white' : 'text-slate-900'}">
+            ${escapeHtml(name)}
           </span>
-          ${isSelected ? '<span class="text-[9px] font-black uppercase bg-white ' + (team === 'teamA' ? 'text-brand-700' : 'text-rose-700') + ' px-1 rounded shadow-xs">✓ SELECTED</span>' : ''}
-          ${isQO ? '<span class="text-[9px] font-black bg-amber-200 text-amber-900 px-1 rounded">QO</span>' : ''}
-          ${isEO ? '<span class="text-[9px] font-black bg-rose-200 text-rose-900 px-1 rounded">EO</span>' : ''}
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <span class="text-[10px] font-black px-1.5 py-0.2 rounded font-mono-score ${isSelected ? 'bg-white/20 text-white' : (team === 'teamA' ? 'bg-brand-100 text-brand-900' : 'bg-rose-100 text-rose-900')}">
+              ${stat.points}p
+            </span>
+            ${isSelected ? '<span class="text-[9px] font-black bg-white ' + (team === 'teamA' ? 'text-brand-700' : 'text-rose-700') + ' px-1 rounded">✓</span>' : ''}
+          </div>
         </div>
-        <div class="font-black text-xs sm:text-sm truncate my-0.5 ${isSelected ? 'text-white' : 'text-slate-900'}">${escapeHtml(name)}</div>
-        <div class="text-[10px] font-black mt-1 py-0.5 px-1 rounded ${isSelected ? 'bg-black/20 text-white' : 'bg-slate-100 text-slate-700'}">
+        <div class="text-[10px] font-bold mt-1 flex items-center justify-between w-full">
           ${statusHtml}
         </div>
         ${extraWarning}
@@ -1565,9 +1571,9 @@ function selectPoints(pts) {
     const btn = document.getElementById(`btn-pts-${p}`);
     if (btn) {
       if (p === pts) {
-        btn.className = 'pts-btn py-2.5 rounded-xl border-2 border-brand-500 bg-brand-50 font-black text-xs sm:text-sm text-brand-900 ring-2 ring-brand-300 shadow-xs cursor-pointer transition-all';
+        btn.className = 'pts-btn py-2 rounded-xl border-2 border-brand-500 bg-brand-50 font-black text-xs text-brand-900 ring-1 ring-brand-300 shadow-2xs cursor-pointer transition-all active:scale-95 text-center';
       } else {
-        btn.className = 'pts-btn py-2.5 rounded-xl border border-slate-300 bg-white font-black text-xs sm:text-sm text-slate-700 hover:bg-slate-100 cursor-pointer transition-all';
+        btn.className = 'pts-btn py-2 rounded-xl border border-slate-300 bg-white font-black text-xs text-slate-700 hover:bg-slate-100 cursor-pointer transition-all active:scale-95 text-center';
       }
     }
   });

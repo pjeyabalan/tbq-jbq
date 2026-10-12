@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Junior Bible Quiz (JBQ) | Official Match Scoresheet Platform</title>
+  <title>Junior Bible Quiz (JBQ) Scorer</title>
   <script>
-    const APP_BUILD_VER = '20261003_11';
+    const APP_BUILD_VER = '20261004_12';
     try {
       if (localStorage.getItem('tbq_ver') !== APP_BUILD_VER) {
         localStorage.setItem('tbq_ver', APP_BUILD_VER);
@@ -47,63 +47,44 @@
     body { 
       font-family: 'Plus Jakarta Sans', sans-serif; 
       -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    input, textarea, select {
+      user-select: text;
+      -webkit-user-select: text;
     }
     .font-mono-score { font-family: 'JetBrains Mono', monospace; }
     
-    /* Custom mobile utilities */
+    /* Mobile scroll utilities */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .touch-scroll { -webkit-overflow-scrolling: touch; }
 
-    /* Prevent iOS Safari auto-zoom on input focus by setting minimum 16px */
+    /* Prevent iOS auto-zoom on input focus */
     @media screen and (max-width: 767px) {
       input, select, textarea {
         font-size: 16px !important;
       }
     }
 
-    /* Sticky columns in scoresheet table */
-    .sticky-col-q {
-      position: sticky;
-      left: 0;
-      z-index: 10;
-    }
-    .sticky-col-pts {
-      position: sticky;
-      left: 48px;
-      z-index: 10;
-      box-shadow: 2px 0 4px -1px rgba(0, 0, 0, 0.08);
-    }
-    .sticky-head-q {
-      position: sticky;
-      left: 0;
-      z-index: 25;
-    }
-    .sticky-head-pts {
-      position: sticky;
-      left: 48px;
-      z-index: 25;
-      box-shadow: 2px 0 4px -1px rgba(0, 0, 0, 0.12);
+    /* Active touch micro-animations */
+    button:active, .active-tap:active {
+      transform: scale(0.96);
     }
 
-    /* On desktop (>=768px), force both team panels in the scorer to display */
-    @media (min-width: 768px) {
-      .scorer-team-panel {
-        display: block !important;
-      }
-    }
-
-    /* Active button micro-animation for touch responsiveness */
-    button:active, .touch-btn:active {
-      transform: scale(0.97);
-    }
-
-    /* Safe area padding for mobile devices with home indicator */
+    /* Safe bottom for iPhone home indicator */
     @supports (padding-bottom: env(safe-area-inset-bottom)) {
       .safe-bottom {
-        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+        padding-bottom: calc(0.4rem + env(safe-area-inset-bottom));
       }
     }
+
+    /* Sticky columns in scoresheet table */
+    .sticky-col-q { position: sticky; left: 0; z-index: 10; }
+    .sticky-col-pts { position: sticky; left: 48px; z-index: 10; box-shadow: 2px 0 4px -1px rgba(0, 0, 0, 0.08); }
+    .sticky-head-q { position: sticky; left: 0; z-index: 25; }
+    .sticky-head-pts { position: sticky; left: 48px; z-index: 25; box-shadow: 2px 0 4px -1px rgba(0, 0, 0, 0.12); }
 
     @media print {
       .no-print { display: none !important; }
@@ -112,835 +93,686 @@
       .print-container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
       table { border-collapse: collapse !important; width: 100% !important; }
       th, td { border: 1px solid #333 !important; padding: 3px 5px !important; }
-      .print-shadow-none { box-shadow: none !important; border: 1px solid #333 !important; }
       @page { size: landscape; margin: 0.5cm; }
     }
     .print-only { display: none; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col pb-20 md:pb-0">
+<body class="bg-slate-950 text-slate-900 min-h-screen flex flex-col items-center justify-start">
 
-  <!-- ========================================== -->
-  <!-- TOP NAVIGATION HEADER                      -->
-  <!-- ========================================== -->
-  <header class="bg-brand-900 text-white shadow-lg border-b border-brand-800 no-print sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-3 flex flex-wrap md:flex-nowrap items-center justify-between gap-2 sm:gap-3">
-      
-      <!-- LOGO & BRAND -->
-      <div class="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer" onclick="handleLogoClick()">
-        <div id="brand-logo-box" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-400 text-brand-950 flex items-center justify-center font-black text-lg sm:text-xl shadow-inner flex-shrink-0 transition-transform hover:scale-105">
-          <span id="brand-logo-icon">⚡</span>
-        </div>
-        <div>
-          <div class="flex items-center gap-1 sm:gap-2">
-            <span id="brand-league-badge" class="bg-amber-400/20 text-amber-300 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full border border-amber-400/30">
-              JBQ Tournament 2026
-            </span>
-            <span id="user-role-badge" class="hidden text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full border items-center gap-1"></span>
+  <!-- ==================================================== -->
+  <!-- NATIVE MOBILE APP SHELL (CENTERED ON DESKTOP & FULL ON PHONE) -->
+  <!-- ==================================================== -->
+  <div class="w-full max-w-xl min-h-screen bg-slate-50 flex flex-col relative shadow-2xl pb-24 border-x border-slate-800/40">
+
+    <!-- ========================================== -->
+    <!-- 1. STICKY COMPACT TOP APP BAR              -->
+    <!-- ========================================== -->
+    <header class="bg-slate-900 text-white shadow-md border-b border-slate-800 no-print sticky top-0 z-40">
+      <div class="px-3 py-2 flex items-center justify-between gap-2">
+        
+        <!-- BRAND & LEAGUE INFO -->
+        <div class="flex items-center gap-2 cursor-pointer flex-shrink-0" onclick="handleLogoClick()">
+          <div id="brand-logo-box" class="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-base shadow-xs transition-transform active:scale-95">
+            <span id="brand-logo-icon">⚡</span>
           </div>
-          <h1 class="text-sm sm:text-lg font-black tracking-tight mt-0.5 flex items-center gap-1 sm:gap-1.5 leading-none">
-            <span id="brand-league-title">Junior Bible Quiz</span>
-            <span id="brand-meet-subtitle" class="text-amber-400 font-normal text-[11px] sm:text-sm">B-Level</span>
-          </h1>
-        </div>
-      </div>
-
-      <!-- LEAGUE & MEET SELECTOR TOOLBAR -->
-      <div class="flex items-center gap-1.5 sm:gap-2">
-        <!-- UNIFIED JBQ DIVISION SWITCHER (JBQ B vs JBQ C) -->
-        <div id="league-nav-pills" class="flex items-center bg-brand-950/90 p-0.5 sm:p-1 rounded-xl border border-brand-800/80 shadow-inner">
-          <button id="btn-nav-jbq-b" onclick="setActiveDivisionKey('jbq_b')" class="px-2.5 sm:px-3 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1">
-            <span>⚡ JBQ B-Level</span>
-          </button>
-          <button id="btn-nav-jbq-c" onclick="setActiveDivisionKey('jbq_c')" class="px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1">
-            <span>🌟 JBQ C-Level</span>
-          </button>
-        </div>
-
-        <!-- MEET SELECTOR DROPDOWN -->
-        <div class="flex items-center gap-1 sm:gap-1.5 bg-brand-950/90 px-2 sm:px-2.5 py-1 rounded-xl border border-brand-800/80 text-xs shadow-inner">
-          <span class="text-[11px] text-brand-300 font-bold hidden xl:inline">Meet:</span>
-          <select id="global-meet-select" onchange="handleMeetChange(this.value)" class="bg-transparent text-amber-300 font-black text-xs focus:outline-none cursor-pointer pr-1">
-            <!-- Dynamically populated via JS -->
-          </select>
-          <button id="btn-create-meet-nav" onclick="openCreateMeetModal()" title="Manage / Create Meets" class="hidden text-[10px] bg-amber-400 hover:bg-amber-300 text-brand-950 font-black px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs transition-all flex items-center gap-1">
-            <span>+ Meet</span>
-          </button>
-          <button id="btn-delete-meet-nav" onclick="confirmDeleteCurrentMeet()" title="Delete Currently Selected Meet" class="hidden text-[10px] bg-rose-600/80 hover:bg-rose-500 text-white font-black px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs transition-all flex items-center gap-1">
-            <span>🗑️ Delete</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- NAVIGATION CONTROLS & AUTH -->
-      <div class="flex items-center gap-2 sm:gap-3">
-        <!-- LOGGED-IN NAVIGATION TABS (Visible on desktop md:flex, on mobile replaced by bottom nav) -->
-        <div id="coach-nav-tabs" class="hidden md:flex bg-brand-950/80 p-1 rounded-xl items-center gap-1 border border-brand-800/80">
-          <button onclick="switchTab('scoresheet')" id="tab-btn-scoresheet" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5">
-            <span>📋 Scoresheet</span>
-          </button>
-          <button onclick="switchTab('teams')" id="tab-btn-teams" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white hover:bg-brand-800/60 flex items-center gap-1.5">
-            <span>👥 Teams & Matches</span>
-          </button>
-          <button onclick="switchTab('coaches')" id="tab-btn-coaches" class="hidden px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-amber-300 hover:text-amber-100 hover:bg-brand-800/60 flex items-center gap-1">
-            <span>🛡️ Manage Coaches</span>
-          </button>
-        </div>
-
-        <!-- AUTH BUTTONS -->
-        <button id="auth-login-btn" onclick="openCoachLoginModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-extrabold px-3 py-1.5 sm:px-3.5 sm:py-1.5 rounded-xl transition-all shadow-md flex items-center gap-1">
-          <span>🔒 Coach Login</span>
-        </button>
-
-        <div id="auth-user-menu" class="hidden flex items-center gap-1.5 sm:gap-2">
-          <span id="auth-user-name" class="text-xs font-bold text-brand-200 hidden sm:inline-block">Coach</span>
-          <button onclick="logoutCoach()" class="text-xs bg-rose-600/90 hover:bg-rose-600 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl transition-colors font-bold shadow-sm">
-            Sign Out
-          </button>
-        </div>
-      </div>
-
-    </div>
-  </header>
-
-  <!-- ========================================== -->
-  <!-- 1. PUBLIC VIEW (WITHOUT LOGIN)             -->
-  <!-- ========================================== -->
-  <main id="section-public" class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full">
-
-
-
-      <!-- HERO PUBLIC BANNER -->
-      <div class="bg-gradient-to-br from-brand-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-xl mb-8 relative overflow-hidden border border-brand-800">
-      <div class="relative z-10">
-        <div class="inline-flex items-center gap-2 bg-amber-400/20 text-amber-300 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full border border-amber-400/30 mb-3">
-          <span>🏆 Live Tournament Standings</span>
-        </div>
-        <h2 id="public-meet-title" class="text-2xl sm:text-4xl font-black tracking-tight text-white mb-2">
-          Junior Bible Quiz (JBQ) Tournament 2026
-        </h2>
-        <p class="text-brand-200 text-xs sm:text-sm max-w-2xl leading-relaxed mb-4">
-          Real-time tournament standings, round results, and church scores. Officials and coaches can sign in for live scoresheets and buzzer entry.
-        </p>
-
-        <!-- PUBLIC DIVISION SEGREGATION SWITCHER -->
-        <div class="flex items-center gap-1.5 sm:gap-2 mb-5 bg-white/10 p-1 rounded-2xl w-fit border border-white/15 overflow-x-auto">
-          <button id="pub-tab-jbq-b" onclick="setActiveDivisionKey('jbq_b')" class="px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1.5 whitespace-nowrap">
-            <span>⚡ JBQ B-Level Standings</span>
-          </button>
-          <button id="pub-tab-jbq-c" onclick="setActiveDivisionKey('jbq_c')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all text-white/80 hover:text-white flex items-center gap-1.5 whitespace-nowrap">
-            <span>🌟 JBQ C-Level Standings</span>
-          </button>
-        </div>
-
-        <!-- 4-TEAMS LEADERBOARD TABLE -->
-        <div class="bg-white/10 rounded-2xl p-4 sm:p-5 border border-white/15 backdrop-blur-xs overflow-x-auto">
-          <table class="w-full text-left text-xs sm:text-sm">
-            <thead>
-              <tr class="text-amber-300 text-[11px] font-black uppercase tracking-wider border-b border-white/20 pb-2">
-                <th class="pb-2 text-center w-12">Rank</th>
-                <th class="pb-2">Team / Church</th>
-                <th class="pb-2 text-center">Meets Played</th>
-                <th class="pb-2 text-center">Won</th>
-                <th class="pb-2 text-center">Lost</th>
-                <th class="pb-2 text-right">Total Pts</th>
-              </tr>
-            </thead>
-            <tbody id="public-standings-tbody" class="divide-y divide-white/10 font-bold">
-              <!-- Rendered via JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- MATCHES & MEETS RESULTS LIST -->
-    <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 mb-8">
-      <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-100">
-        <div>
-          <h3 class="text-lg sm:text-xl font-black text-slate-900">Meets & Results</h3>
-          <p class="text-xs sm:text-sm text-slate-500">Scores between participating church teams across all round robin meets.</p>
-        </div>
-        <span class="text-xs font-bold text-brand-700 bg-brand-50 px-3 py-1 rounded-full border border-brand-100" id="public-matches-badge">
-          Meets List
-        </span>
-      </div>
-
-      <div id="public-matches-list" class="space-y-3">
-        <!-- Rendered dynamically via JS -->
-      </div>
-    </div>
-
-    <!-- INLINE COACH LOGIN BOX -->
-    <div class="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 max-w-xl mx-auto">
-      <div class="text-center mb-6">
-        <div class="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center text-2xl mx-auto mb-3 font-black">
-          🔒
-        </div>
-        <h3 class="text-xl font-black text-white">Coach & Official Login</h3>
-        <p class="text-slate-400 text-xs sm:text-sm mt-1">
-          Sign in to access the <strong>Official 20-Question Scoresheet</strong>, configure teams, and record buzzer answers.
-        </p>
-        <div class="mt-4 pt-3 border-t border-slate-800">
-          <button type="button" onclick="autoLoginSuperCoach()" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-brand-950 font-black py-3 px-4 rounded-xl text-sm shadow-lg shadow-amber-400/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98">
-            <span>⚡ Open Official Scoresheet (One-Click)</span>
-            <span>→</span>
-          </button>
-        </div>
-      </div>
-
-      <form onsubmit="handleInlineLogin(event)" class="space-y-4">
-        <div id="inline-login-error" class="hidden p-3 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-200 text-xs font-bold text-center">
-          Invalid username or passcode.
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Username</label>
-          <input type="text" id="inline-username" placeholder="e.g. coach or supercoach" required class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm font-semibold">
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Passcode</label>
-          <input type="password" id="inline-passcode" placeholder="Enter passcode" required class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm font-semibold">
-        </div>
-
-        <button type="submit" class="w-full bg-amber-400 hover:bg-amber-300 active:scale-98 text-brand-950 font-black py-3.5 px-4 rounded-xl text-sm shadow-lg shadow-amber-400/20 transition-all flex items-center justify-center gap-2">
-          <span>Sign In to Scoresheet</span>
-          <span>⚡</span>
-        </button>
-      </form>
-    </div>
-
-  </main>
-
-  <!-- ========================================== -->
-  <!-- 2. OFFICIAL JBQ SCORESHEET (LOGGED IN)     -->
-  <!-- ========================================== -->
-  <main id="section-scoresheet" class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full hidden print-container">
-
-    <!-- MATCH SELECTOR BAR (SWITCH BETWEEN MATCHES OR ADD NEW) -->
-    <div class="bg-slate-900 text-white rounded-2xl p-3 sm:p-4 shadow-sm border border-slate-800 mb-4 sm:mb-5 no-print flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
-      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0 touch-scroll" id="match-selector-pills">
-        <!-- Rendered via JS -->
-      </div>
-      <div class="flex items-center gap-2 self-stretch sm:self-auto justify-end flex-shrink-0">
-        <button onclick="openAddMatchModal()" class="w-full sm:w-auto text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-black px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1">
-          <span>➕ Add Meet / Match</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- OFFICIAL MATCH HEADER CARD -->
-    <div id="official-match-header-card" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 mb-5 no-print">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-100">
-        <!-- MATCH METADATA BAR -->
-        <div class="flex items-center gap-2 sm:gap-4 text-xs font-bold text-slate-800">
-          <div class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200">
-            <span class="text-slate-500 text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold">DIVISION:</span>
-            <span id="scoresheet-meta-division" class="text-brand-900 font-black">⚡ JBQ B-Level</span>
-          </div>
-          <div class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200">
-            <span class="text-slate-500 text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold">MATCH #:</span>
-            <span id="meta-match-num" class="text-brand-700 font-black font-mono-score">01</span>
+          <div class="leading-tight">
+            <div class="flex items-center gap-1">
+              <span class="text-xs font-black tracking-tight text-white" id="brand-league-title">JBQ Scorer</span>
+              <span id="user-role-badge" class="hidden text-[9px] font-bold px-1.5 py-0.2 rounded-full border"></span>
+            </div>
+            <div class="text-[10px] text-amber-300 font-bold truncate max-w-[90px]" id="brand-meet-subtitle">B-Level</div>
           </div>
         </div>
 
-        <!-- ACTIONS & SAVE BUTTONS -->
-        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <div id="save-status-indicator" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-1.5 shadow-2xs">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <!-- DIVISION SWITCHER PILLS (JBQ B vs JBQ C) -->
+        <div id="league-nav-pills" class="flex items-center bg-slate-950/90 p-0.5 rounded-xl border border-slate-800 shadow-inner flex-shrink-0">
+          <button id="btn-nav-jbq-b" onclick="setActiveDivisionKey('jbq_b')" class="px-2.5 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-slate-950 shadow-xs flex items-center gap-1 active:scale-95">
+            <span>⚡ B</span>
+          </button>
+          <button id="btn-nav-jbq-c" onclick="setActiveDivisionKey('jbq_c')" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white flex items-center gap-1 active:scale-95">
+            <span>🌟 C</span>
+          </button>
+        </div>
+
+        <!-- MEET SELECTOR & QUICK ACCESS -->
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          <div class="flex items-center bg-slate-950/90 px-2 py-1 rounded-xl border border-slate-800 text-xs">
+            <select id="global-meet-select" onchange="handleMeetChange(this.value)" class="bg-transparent text-amber-300 font-black text-xs focus:outline-none cursor-pointer pr-1">
+              <!-- Dynamically populated via JS -->
+            </select>
+          </div>
+
+          <!-- LOGIN BUTTON (IF SIGNED OUT) -->
+          <button id="auth-login-btn" onclick="openCoachLoginModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-2.5 py-1 rounded-xl transition-all shadow-xs flex items-center gap-1 active:scale-95">
+            <span>🔒 Login</span>
+          </button>
+
+          <!-- QUICK SETTINGS BUTTON (IF SIGNED IN) -->
+          <div id="auth-user-menu" class="hidden flex items-center gap-1">
+            <button onclick="switchTab('coaches')" title="Settings & Tools" class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 rounded-xl transition-colors font-bold flex items-center justify-center active:scale-95">
+              ⚙️
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- HIDDEN DOM ANCHORS (PRESERVED FOR BACKWARDS COMPATIBILITY WITH APP.JS) -->
+      <div class="hidden">
+        <span id="brand-league-badge"></span>
+        <span id="auth-user-name"></span>
+        <div id="coach-nav-tabs">
+          <button id="tab-btn-scoresheet" onclick="switchTab('scoresheet')"></button>
+          <button id="tab-btn-teams" onclick="switchTab('teams')"></button>
+          <button id="tab-btn-coaches" onclick="switchTab('coaches')"></button>
+        </div>
+        <button id="btn-create-meet-nav" onclick="openCreateMeetModal()"></button>
+        <button id="btn-delete-meet-nav" onclick="confirmDeleteCurrentMeet()"></button>
+      </div>
+    </header>
+
+    <!-- ========================================== -->
+    <!-- 2. OFFICIAL JBQ SCORESHEET TAB             -->
+    <!-- ========================================== -->
+    <main id="section-scoresheet" class="w-full px-3 py-3 flex-grow flex flex-col gap-2.5 print-container">
+
+      <!-- MATCH SELECTOR STRIP & QUICK ACTIONS -->
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar touch-scroll py-0.5 flex-1" id="match-selector-pills">
+          <!-- Rendered dynamically: M#1, M#2, etc. -->
+        </div>
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          <button onclick="undoLastQuestion()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-800 px-2.5 py-1.5 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-1 cursor-pointer shadow-2xs" title="Undo Last Question Recorded">
+            <span>↩️</span>
+            <span>Undo</span>
+          </button>
+          <button id="btn-header-finish-match" onclick="finishCurrentMatch()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-xl font-black transition-all active:scale-95 flex items-center gap-1 cursor-pointer shadow-xs">
+            <span>🏁</span>
+            <span>Finish</span>
+          </button>
+          <button onclick="openMatchInfoModal()" title="Edit Match & Students" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-800 p-1.5 rounded-xl font-bold transition-all active:scale-95 cursor-pointer">
+            ✏️
+          </button>
+        </div>
+      </div>
+
+      <!-- HIGH-CONTRAST LIVE SCOREBOARD -->
+      <div class="bg-white rounded-2xl p-3 shadow-xs border border-slate-200" id="official-match-header-card">
+        <div class="grid grid-cols-2 gap-2">
+          <!-- LEFT TEAM -->
+          <div class="bg-brand-50/80 border border-brand-200 rounded-xl p-2 flex flex-col justify-between">
+            <div class="flex items-center justify-between gap-1">
+              <span id="scoresheet-home-name" class="text-brand-950 text-xs sm:text-sm font-black truncate block">Left Team</span>
+              <span class="text-[10px] text-brand-700 font-bold truncate" id="home-bonus-badge">Reg: 0</span>
+            </div>
+            <div class="mt-1 flex items-baseline justify-between">
+              <span class="text-[9px] font-extrabold text-brand-600/80 uppercase tracking-wider">PTS</span>
+              <span id="scoresheet-home-total" class="text-2xl sm:text-3xl font-black text-brand-900 font-mono-score">0</span>
+            </div>
+          </div>
+
+          <!-- RIGHT TEAM -->
+          <div class="bg-rose-50/80 border border-rose-200 rounded-xl p-2 flex flex-col justify-between">
+            <div class="flex items-center justify-between gap-1">
+              <span id="scoresheet-opp-name" class="text-rose-950 text-xs sm:text-sm font-black truncate block">Right Team</span>
+              <span class="text-[10px] text-rose-700 font-bold truncate" id="opp-bonus-badge">Reg: 0</span>
+            </div>
+            <div class="mt-1 flex items-baseline justify-between">
+              <span class="text-[9px] font-extrabold text-rose-600/80 uppercase tracking-wider">PTS</span>
+              <span id="scoresheet-opp-total" class="text-2xl sm:text-3xl font-black text-rose-900 font-mono-score">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CENTER ACTIVE QUESTION STRIP -->
+        <div class="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-1.5">
+            <span class="font-black uppercase text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded-md" id="active-question-badge-category">⚡ Scorer</span>
+            <span class="font-black text-slate-800 text-xs" id="active-question-badge">Question #1</span>
+          </div>
+          <div id="save-status-indicator" class="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>Live Auto-Saved</span>
           </div>
-          <button id="scoresheet-save-btn" onclick="handleManualSaveSheet()" class="flex-1 sm:flex-none text-xs bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black px-3.5 py-1.5 rounded-lg shadow-sm transition-all flex items-center justify-center gap-1 cursor-pointer">
-            <span>💾 Save Sheet</span>
-          </button>
-          <button onclick="openMatchInfoModal()" class="flex-1 sm:flex-none text-xs bg-brand-50 hover:bg-brand-100 text-brand-900 border border-brand-300 font-black px-3 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer">
-            <span>✏️ Edit Seats & Match</span>
-          </button>
-          <button onclick="window.print()" class="flex-1 sm:flex-none text-xs bg-slate-800 hover:bg-slate-700 text-white font-bold px-3 py-1.5 sm:px-3.5 rounded-lg shadow-sm transition-all flex items-center justify-center gap-1 cursor-pointer">
-            <span>🖨️ Print</span>
-          </button>
+        </div>
+
+        <!-- HIDDEN METADATA REQUIRED BY JS -->
+        <div class="hidden">
+          <span id="scoresheet-meta-division">⚡ JBQ B-Level</span>
+          <span id="meta-match-num">01</span>
+          <button id="scoresheet-save-btn" onclick="handleManualSaveSheet()"></button>
+          <button onclick="coachResetRound()"></button>
+          <button type="button" onclick="toggleQuickScorer()" id="quick-scorer-toggle-btn"></button>
         </div>
       </div>
 
-      <!-- TEAMS LIVE SCORE STRIP -->
-      <div class="grid grid-cols-2 gap-2 sm:gap-4 pt-3 sm:pt-4">
-        <!-- FIRST TEAM -->
-        <div class="bg-brand-50 border border-brand-100 rounded-xl p-2.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <div class="min-w-0">
-            <div class="flex items-center gap-1">
-              <span id="scoresheet-home-name" class="text-brand-950 text-xs sm:text-base font-black truncate block">Chicago Indian Church - Team 1</span>
-            </div>
-            <div class="text-[10px] sm:text-[11px] text-brand-700 font-medium truncate" id="home-bonus-badge">Regulation: 0 pts</div>
-          </div>
-          <div class="text-right flex-shrink-0 self-end sm:self-auto">
-            <div id="scoresheet-home-total" class="text-2xl sm:text-4xl md:text-5xl font-black text-brand-900 font-mono-score">0</div>
-          </div>
-        </div>
+      <!-- MATCH TOAST NOTIFICATIONS (QUIZ OUT, ERROR OUT) -->
+      <div id="match-toast-container" class="space-y-1.5"></div>
 
-        <!-- SECOND TEAM -->
-        <div class="bg-rose-50 border border-rose-100 rounded-xl p-2.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <div class="min-w-0">
-            <div class="flex items-center gap-1">
-              <span id="scoresheet-opp-name" class="text-rose-950 text-xs sm:text-base font-black truncate block">Team 3 (TBD)</span>
-            </div>
-            <div class="text-[10px] sm:text-[11px] text-rose-700 font-medium truncate" id="opp-bonus-badge">Regulation: 0 pts</div>
-          </div>
-          <div class="text-right flex-shrink-0 self-end sm:self-auto">
-            <div id="scoresheet-opp-total" class="text-2xl sm:text-4xl md:text-5xl font-black text-rose-900 font-mono-score">0</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- CONTROLS: UNDO & RESET & FINISH -->
-      <div class="flex items-center justify-between sm:justify-end gap-2 mt-3 pt-2.5 border-t border-slate-100">
-        <button id="btn-header-finish-match" onclick="finishCurrentMatch()" class="flex-1 sm:flex-none text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold border border-emerald-500 transition-colors flex items-center justify-center gap-1 cursor-pointer">
-          <span>🏁 Finish Match</span>
-        </button>
-        <button onclick="undoLastQuestion()" class="flex-1 sm:flex-none text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg font-bold border border-slate-700 transition-colors flex items-center justify-center gap-1 cursor-pointer">
-          <span>↩️ Undo Last</span>
-        </button>
-        <button onclick="coachResetRound()" class="flex-1 sm:flex-none text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg font-bold border border-rose-200 transition-colors flex items-center justify-center gap-1 cursor-pointer">
-          <span>🔄 Reset Match</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- MATCH NOTIFICATIONS & MILESTONE TOASTS (QUIZ OUT / ERROR OUT) -->
-    <div id="match-toast-container" class="space-y-2 mb-4 no-print"></div>
-
-    <!-- QUICK BUZZER QUESTION ENTRY BOX -->
-    <div class="bg-white rounded-2xl p-3.5 sm:p-5 shadow-sm border border-slate-200 mb-6 no-print">
-      <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
-        <div class="flex items-center gap-2">
-          <span class="text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-300" id="active-question-badge-category">
-            ⚡ Scorer
-          </span>
-          <h3 class="text-sm sm:text-base font-black text-slate-900" id="active-question-badge">
-            Question #1
-          </h3>
-        </div>
-        <div class="text-xs text-slate-500 flex items-center gap-2 sm:gap-3">
-          <span class="hidden sm:inline">5 Correct = <strong class="text-emerald-600 font-bold">Quiz Out (+20)</strong></span>
-          <button type="button" onclick="toggleQuickScorer()" id="quick-scorer-toggle-btn" class="text-brand-600 font-bold hover:underline text-xs">
-            Hide Box ▴
-          </button>
-        </div>
-      </div>
-
-      <!-- MATCH COMPLETED CELEBRATION & ACTIONS PANEL -->
-      <div id="match-completed-panel" class="hidden bg-gradient-to-br from-amber-50/90 via-orange-50/70 to-emerald-50/60 border-2 border-amber-300 rounded-2xl p-5 sm:p-7 text-center space-y-4 shadow-sm my-2">
-        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-400 text-slate-950 text-3xl shadow-md">
-          🏆
-        </div>
+      <!-- MATCH COMPLETED PANEL (WHEN 20 QUESTIONS ARE SCORED) -->
+      <div id="match-completed-panel" class="hidden bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-4 text-center space-y-3 shadow-xs">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 text-2xl shadow-xs">🏆</div>
         <div>
-          <span class="inline-block px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 mb-1.5">
+          <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 mb-1">
             Official Final • 20 Questions Scored
           </span>
-          <h2 id="match-completed-winner-text" class="text-xl sm:text-2xl font-black text-slate-900">
-            Match Completed!
-          </h2>
-          <p id="match-completed-score-summary" class="text-xs sm:text-sm font-bold text-slate-600 mt-1">
-            Regulation questions concluded.
-          </p>
+          <h2 id="match-completed-winner-text" class="text-lg sm:text-xl font-black text-slate-900">Match Completed!</h2>
+          <p id="match-completed-score-summary" class="text-xs font-bold text-slate-600 mt-0.5">Regulation questions concluded.</p>
         </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto pt-1 text-left text-xs bg-white/90 p-3.5 rounded-xl border border-amber-200 shadow-xs">
+        <div class="grid grid-cols-2 gap-2 text-left text-xs bg-white/90 p-2.5 rounded-xl border border-amber-200">
           <div id="match-completed-team-a-recap"></div>
           <div id="match-completed-team-b-recap"></div>
         </div>
-
-        <div class="flex flex-wrap items-center justify-center gap-2.5 pt-2">
-          <button type="button" id="btn-next-match" class="hidden px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-brand-950 font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer">
-            ⏭️ Next Match
-          </button>
-          <button type="button" onclick="switchTab('standings')" class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer">
-            📊 View Leaderboard
-          </button>
-          <button type="button" onclick="undoLastQuestion()" class="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer">
-            ↩️ Undo Q#20
-          </button>
-          <button type="button" onclick="window.print()" class="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer">
-            🖨️ Print Scoresheet
-          </button>
+        <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+          <button type="button" id="btn-next-match" class="hidden px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shadow-xs active:scale-95">⏭️ Next Match</button>
+          <button type="button" onclick="switchTab('questions')" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-xs active:scale-95">📊 Standings</button>
+          <button type="button" onclick="undoLastQuestion()" class="px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 font-bold text-xs active:scale-95">↩️ Undo Q#20</button>
+          <button type="button" onclick="window.print()" class="px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 font-bold text-xs active:scale-95">🖨️ Print</button>
         </div>
       </div>
 
-      <form id="quick-scorer-form" onsubmit="submitQuestionScore(event)" class="space-y-4">
-        <!-- HIDDEN INPUTS TO PRESERVE COMPATIBILITY -->
+      <!-- ========================================== -->
+      <!-- SCORING FORM (THE MAIN ACTIVE ENGINE)      -->
+      <!-- ========================================== -->
+      <form id="quick-scorer-form" onsubmit="submitQuestionScore(event)" class="space-y-2">
         <input type="number" id="score-question-num" min="1" max="30" value="1" class="hidden">
         <input type="checkbox" id="score-is-interruption" class="hidden">
         <input type="checkbox" id="score-is-rebound" class="hidden">
 
-        <!-- 1. CHOOSE STUDENT (INDIVIDUAL TILES FOR BOTH TEAMS) -->
-        <div>
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <span class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-              <span>👤</span>
-              <span>1. Choose Student Who Answered:</span>
-            </span>
-            <div id="selected-student-pill" class="text-xs font-black px-3 py-1 rounded-full bg-brand-600 text-white shadow-xs transition-all">
-              Selected: Tap a student below
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="scorer-tables-container">
-            <!-- LEFT TABLE STUDENTS -->
-            <div class="border-2 border-brand-300 rounded-2xl p-3 bg-brand-50/50 shadow-xs" id="scorer-home-box">
-              <div class="text-xs font-black text-brand-950 uppercase tracking-wider mb-2 flex justify-between items-center pb-1.5 border-b border-brand-200">
-                <span id="scorer-home-label" class="truncate font-black text-sm">Left Table</span>
-                <button type="button" onclick="promptAddStudent('teamA')" class="text-[11px] font-bold text-brand-700 hover:text-brand-900 bg-brand-100 hover:bg-brand-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer">
-                  ➕ Add Student
-                </button>
-              </div>
-              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2" id="home-seats-btn-grid"></div>
-            </div>
-
-            <!-- RIGHT TABLE STUDENTS -->
-            <div class="border-2 border-rose-300 rounded-2xl p-3 bg-rose-50/50 shadow-xs" id="scorer-opp-box">
-              <div class="text-xs font-black text-rose-950 uppercase tracking-wider mb-2 flex justify-between items-center pb-1.5 border-b border-rose-200">
-                <span id="scorer-opp-label" class="truncate font-black text-sm">Right Table</span>
-                <button type="button" onclick="promptAddStudent('teamB')" class="text-[11px] font-bold text-rose-700 hover:text-rose-900 bg-rose-100 hover:bg-rose-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer">
-                  ➕ Add Student
-                </button>
-              </div>
-              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2" id="opp-seats-btn-grid"></div>
-            </div>
-          </div>
+        <!-- Selected Student Pill Indicator -->
+        <div class="flex items-center justify-between text-xs px-1">
+          <span class="font-black uppercase tracking-wider text-slate-700 text-[11px] flex items-center gap-1">
+            <span>👤</span>
+            <span>Tap Student Who Answered:</span>
+          </span>
+          <span id="selected-student-pill" class="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-brand-600 text-white shadow-2xs">
+            Selected: Tap below
+          </span>
         </div>
 
-        <!-- 2. CONTROLS: POINTER VALUE & INTERRUPTION TOGGLE -->
-        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 sm:p-3.5">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-            <!-- POINTER SELECTOR -->
-            <div>
-              <span class="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1.5">
-                2. Choose Point Value:
-              </span>
-              <div class="grid grid-cols-3 gap-2">
-                <button type="button" onclick="selectPoints(10)" id="btn-pts-10" class="pts-btn py-2.5 rounded-xl border border-slate-300 bg-white font-black text-xs sm:text-sm text-slate-700 hover:bg-slate-100 cursor-pointer transition-all">
-                  10 Pts
-                </button>
-                <button type="button" onclick="selectPoints(20)" id="btn-pts-20" class="pts-btn py-2.5 rounded-xl border-2 border-brand-500 bg-brand-50 font-black text-xs sm:text-sm text-brand-900 ring-2 ring-brand-300 shadow-xs cursor-pointer transition-all">
-                  20 Pts
-                </button>
-                <button type="button" onclick="selectPoints(30)" id="btn-pts-30" class="pts-btn py-2.5 rounded-xl border border-slate-300 bg-white font-black text-xs sm:text-sm text-slate-700 hover:bg-slate-100 cursor-pointer transition-all">
-                  30 Pts
-                </button>
-              </div>
-            </div>
-
-            <!-- INTERRUPTION TOGGLE -->
-            <div>
-              <span class="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1.5">
-                3. Interruption?
-              </span>
-              <button type="button" id="btn-toggle-interruption" onclick="toggleInterruption()" class="w-full py-2.5 px-4 rounded-xl border-2 border-slate-200 bg-white text-slate-700 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 hover:bg-slate-100 cursor-pointer transition-all active:scale-95 shadow-xs">
-                <span class="text-slate-500">⚡ Interruption: NO</span>
+        <!-- 1. STUDENT TILES (SIDE-BY-SIDE VERTICAL LIST) -->
+        <div class="grid grid-cols-2 gap-2" id="scorer-tables-container">
+          <!-- LEFT TEAM STUDENTS -->
+          <div class="border-2 border-brand-300 rounded-2xl p-2 bg-brand-50/40 shadow-2xs transition-all" id="scorer-home-box">
+            <div class="text-xs font-black text-brand-950 mb-1.5 flex justify-between items-center pb-1 border-b border-brand-200">
+              <span id="scorer-home-label" class="truncate font-black text-xs">Left Table</span>
+              <button type="button" onclick="promptAddStudent('teamA')" class="text-[10px] font-bold text-brand-700 hover:text-brand-900 bg-brand-100 px-1.5 py-0.5 rounded transition-all cursor-pointer">
+                ➕
               </button>
             </div>
+            <div class="flex flex-col gap-1.5" id="home-seats-btn-grid"></div>
+          </div>
+
+          <!-- RIGHT TEAM STUDENTS -->
+          <div class="border-2 border-rose-300 rounded-2xl p-2 bg-rose-50/40 shadow-2xs transition-all" id="scorer-opp-box">
+            <div class="text-xs font-black text-rose-950 mb-1.5 flex justify-between items-center pb-1 border-b border-rose-200">
+              <span id="scorer-opp-label" class="truncate font-black text-xs">Right Table</span>
+              <button type="button" onclick="promptAddStudent('teamB')" class="text-[10px] font-bold text-rose-700 hover:text-rose-900 bg-rose-100 px-1.5 py-0.5 rounded transition-all cursor-pointer">
+                ➕
+              </button>
+            </div>
+            <div class="flex flex-col gap-1.5" id="opp-seats-btn-grid"></div>
           </div>
         </div>
 
-        <!-- 3. ACTION BUTTONS: DIRECT 1-TAP SCORING -->
-        <div class="grid grid-cols-2 gap-2.5 sm:gap-4 pt-1">
-          <button type="button" onclick="recordAnswer(true)" id="btn-direct-correct" class="py-3.5 px-4 rounded-2xl border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-all">
-            <span>✅ Record Correct (+20 pts)</span>
+        <!-- 2. POINTER VALUES & INTERRUPTION CONTROLS (SINGLE COMPACT ROW) -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-1.5 shadow-2xs">
+          <div class="grid grid-cols-4 gap-1.5 items-center">
+            <!-- 10 PTS -->
+            <button type="button" onclick="selectPoints(10)" id="btn-pts-10" class="pts-btn py-2 rounded-xl border border-slate-300 bg-white font-black text-xs text-slate-700 hover:bg-slate-100 cursor-pointer transition-all active:scale-95 text-center">
+              10 Pts
+            </button>
+            <!-- 20 PTS -->
+            <button type="button" onclick="selectPoints(20)" id="btn-pts-20" class="pts-btn py-2 rounded-xl border-2 border-brand-500 bg-brand-50 font-black text-xs text-brand-900 ring-1 ring-brand-300 shadow-2xs cursor-pointer transition-all active:scale-95 text-center">
+              20 Pts
+            </button>
+            <!-- 30 PTS -->
+            <button type="button" onclick="selectPoints(30)" id="btn-pts-30" class="pts-btn py-2 rounded-xl border border-slate-300 bg-white font-black text-xs text-slate-700 hover:bg-slate-100 cursor-pointer transition-all active:scale-95 text-center">
+              30 Pts
+            </button>
+            <!-- INTERRUPTION TOGGLE -->
+            <button type="button" id="btn-toggle-interruption" onclick="toggleInterruption()" class="py-2 px-1 rounded-xl border border-slate-300 bg-white text-slate-700 font-bold text-[11px] flex items-center justify-center hover:bg-slate-100 cursor-pointer transition-all active:scale-95 shadow-2xs text-center truncate">
+              <span>⚡ No Int</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. GIANT TOUCH ANSWER SUBMISSION BUTTONS -->
+        <div class="grid grid-cols-2 gap-2 pt-0.5">
+          <button type="button" onclick="recordAnswer(true)" id="btn-direct-correct" class="py-3 px-2 rounded-2xl border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-sm flex items-center justify-center gap-1 shadow-md shadow-emerald-600/25 cursor-pointer transition-all">
+            <span>✅ CORRECT</span>
+            <span class="text-xs font-normal opacity-90">(+20)</span>
           </button>
-          <button type="button" onclick="recordAnswer(false)" id="btn-direct-incorrect" class="py-3.5 px-4 rounded-2xl border-2 border-rose-500 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-rose-600/20 cursor-pointer transition-all">
-            <span>❌ Record Error</span>
+          <button type="button" onclick="recordAnswer(false)" id="btn-direct-incorrect" class="py-3 px-2 rounded-2xl border-2 border-rose-500 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-sm flex items-center justify-center gap-1 shadow-md shadow-rose-600/25 cursor-pointer transition-all">
+            <span>❌ INCORRECT</span>
+            <span class="text-xs font-normal opacity-90">(Err)</span>
           </button>
         </div>
 
-        <!-- HIDDEN BACKWARDS-COMPATIBLE BUTTONS -->
+        <!-- HIDDEN BACKWARDS COMPATIBILITY BUTTONS -->
         <div class="hidden">
           <button type="button" onclick="selectResult(true)" id="btn-result-correct">Correct</button>
           <button type="button" onclick="selectResult(false)" id="btn-result-incorrect">Incorrect</button>
           <button type="submit" id="score-submit-btn">Submit</button>
         </div>
       </form>
-    </div>
 
-    <!-- 1. MATCH TIMELINE & RECENT QUESTIONS FEED -->
-    <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 mb-6 no-print">
-      <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
-        <div class="flex items-center gap-2">
-          <span class="text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-800 px-2.5 py-0.5 rounded-md border border-slate-200">
-            📋 Questions
+      <!-- ========================================== -->
+      <!-- 4. COLLAPSIBLE QUESTION HISTORY FEED       -->
+      <!-- ========================================== -->
+      <details class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden mt-1 text-xs">
+        <summary class="p-2.5 bg-slate-50 hover:bg-slate-100 font-black text-slate-700 cursor-pointer flex items-center justify-between select-none">
+          <span class="flex items-center gap-1.5">
+            <span>📋</span>
+            <span>Question History (1-20)</span>
           </span>
-          <h3 class="text-sm font-black text-slate-900">
-            Match Timeline
-          </h3>
+          <span class="text-slate-400 font-bold text-[11px]">View / Edit ▼</span>
+        </summary>
+        <div class="p-2.5 space-y-2 border-t border-slate-200" id="scoresheet-mobile-feed">
+          <!-- Rendered dynamically for 20 questions -->
         </div>
-        <span class="text-xs text-slate-500 font-semibold">Tap Edit on any question card to revise</span>
-      </div>
-      <div id="scoresheet-mobile-feed" class="space-y-2.5">
-        <!-- Rendered dynamically via JS for 20 questions -->
-      </div>
-    </div>
+      </details>
 
-    <!-- 2. COLLAPSIBLE OFFICIAL 14-COL TABLE & AUDITOR SUMMARY (TUCKED AWAY TO KEEP MAIN SCREEN CLEAN) -->
-    <details class="mt-4 border border-slate-200 rounded-2xl bg-white overflow-hidden text-xs shadow-sm no-print mb-6">
-      <summary class="p-3.5 bg-slate-50 hover:bg-slate-100 font-black text-slate-700 cursor-pointer flex items-center justify-between transition-colors select-none">
-        <span class="flex items-center gap-2">
-          <span>📊</span>
-          <span>View Full 14-Column Table & Official Breakdown (Auditor View)</span>
-        </span>
-        <span class="text-slate-400 font-bold">Click to view ▼</span>
-      </summary>
-      <div class="p-3 border-t border-slate-200 space-y-4">
-        
-        <!-- VIEW SWITCHER & TABLE ACTIONS TOOLBAR -->
-        <div class="p-2.5 sm:p-3 bg-slate-100 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-black text-slate-700 uppercase tracking-wider">Scoresheet View:</span>
-            <div class="inline-flex bg-white rounded-lg p-0.5 border border-slate-300 shadow-xs text-xs font-bold">
-              <button type="button" onclick="setScoresheetViewMode('feed')" id="view-mode-btn-feed" class="px-2.5 py-1 rounded-md text-xs font-black transition-all bg-brand-600 text-white shadow-xs flex items-center gap-1">
-                <span>📱 Feed</span>
-              </button>
-              <button type="button" onclick="setScoresheetViewMode('table')" id="view-mode-btn-table" class="px-2.5 py-1 rounded-md text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1">
-                <span>📊 Table</span>
-              </button>
+      <!-- ========================================== -->
+      <!-- 5. COLLAPSIBLE AUDITOR 14-COL TABLE        -->
+      <!-- ========================================== -->
+      <details class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden text-xs">
+        <summary class="p-2.5 bg-slate-50 hover:bg-slate-100 font-black text-slate-700 cursor-pointer flex items-center justify-between select-none">
+          <span class="flex items-center gap-1.5">
+            <span>📊</span>
+            <span>Official 14-Col Scoresheet Table (Auditor View)</span>
+          </span>
+          <span class="text-slate-400 font-bold text-[11px]">View Table ▼</span>
+        </summary>
+        <div class="p-2 border-t border-slate-200 space-y-3">
+          
+          <div class="p-2 bg-slate-100 rounded-xl flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">Scoresheet View:</span>
+            <div class="inline-flex bg-white rounded-lg p-0.5 border border-slate-300">
+              <button type="button" onclick="setScoresheetViewMode('feed')" id="view-mode-btn-feed" class="px-2 py-0.5 rounded text-xs font-bold bg-brand-600 text-white">📱 Feed</button>
+              <button type="button" onclick="setScoresheetViewMode('table')" id="view-mode-btn-table" class="px-2 py-0.5 rounded text-xs font-bold text-slate-600">📊 Table</button>
             </div>
+            <span class="hidden" id="scoresheet-view-hint"></span>
           </div>
-          <div class="text-[11px] text-slate-500 font-semibold" id="scoresheet-view-hint">
-            <span>💡 Official scoresheet layout</span>
+
+          <div id="scoresheet-table-container" class="overflow-x-auto touch-scroll no-scrollbar">
+            <table class="w-full text-xs text-left border-collapse min-w-[760px]" id="official-scoresheet-table">
+              <thead id="scoresheet-thead">
+                <tr class="bg-slate-900 text-white font-black text-center text-xs tracking-wider uppercase border-b border-slate-800">
+                  <th colspan="2" class="p-2 border-r border-slate-800 bg-slate-950 sticky-head-q" id="super-header-badge">MEET 1 • M#01</th>
+                  <th colspan="6" class="p-2 border-r border-slate-800 bg-brand-900/90 text-sm font-black" id="table-head-team-a">Team A</th>
+                  <th colspan="6" class="p-2 bg-rose-950/90 text-sm font-black" id="table-head-team-b">Team B</th>
+                </tr>
+                <tr class="bg-slate-100 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider border-b-2 border-slate-300">
+                  <th class="p-2 text-center w-12 border-r border-slate-300 sticky-head-q bg-slate-100">Q #</th>
+                  <th class="p-2 text-center w-14 border-r-2 border-slate-400 sticky-head-pts bg-slate-100">PTS</th>
+                  <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-1">#1</th>
+                  <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-2">#2</th>
+                  <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-3">#3</th>
+                  <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-4">#4</th>
+                  <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-5">#5</th>
+                  <th class="p-2 text-center bg-brand-100/70 text-brand-900 font-black border-r-2 border-slate-400 w-20">TOTAL</th>
+                  <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-1">#1</th>
+                  <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-2">#2</th>
+                  <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-3">#3</th>
+                  <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-4">#4</th>
+                  <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-5">#5</th>
+                  <th class="p-2 text-center bg-rose-100/70 text-rose-900 font-black w-20">TOTAL</th>
+                </tr>
+              </thead>
+              <tbody id="scoresheet-tbody" class="divide-y divide-slate-200 font-medium"></tbody>
+              <tfoot class="border-t-2 border-slate-400 text-xs font-bold divide-y divide-slate-200">
+                <tr class="bg-amber-50/70">
+                  <td colspan="2" class="p-2 font-black uppercase text-amber-900 border-r-2 border-slate-400 sticky-col-q bg-amber-50">BONUSES</td>
+                  <td colspan="5" class="p-2 text-slate-700 border-r border-slate-200" id="summary-home-bonuses">None</td>
+                  <td class="p-2 text-center font-mono-score font-black text-amber-900 bg-amber-100/60 border-r-2 border-slate-400" id="summary-home-bonus-pts">0</td>
+                  <td colspan="5" class="p-2 text-slate-700 border-r border-slate-200" id="summary-opp-bonuses">None</td>
+                  <td class="p-2 text-center font-mono-score font-black text-amber-900 bg-amber-100/60" id="summary-opp-bonus-pts">0</td>
+                </tr>
+                <tr class="bg-slate-50">
+                  <td colspan="2" class="p-2 font-black uppercase text-slate-800 border-r-2 border-slate-400 sticky-col-q bg-slate-50">FOULS</td>
+                  <td colspan="5" class="p-2 text-slate-600 border-r border-slate-200" id="summary-home-fouls">None</td>
+                  <td class="p-2 text-center font-mono-score font-black text-rose-700 bg-slate-100 border-r-2 border-slate-400" id="summary-home-foul-pts">0</td>
+                  <td colspan="5" class="p-2 text-slate-600 border-r border-slate-200" id="summary-opp-fouls">None</td>
+                  <td class="p-2 text-center font-mono-score font-black text-rose-700 bg-slate-100" id="summary-opp-foul-pts">0</td>
+                </tr>
+                <tr class="bg-slate-900 text-white font-black text-sm">
+                  <td colspan="2" class="p-2.5 uppercase tracking-wider text-amber-400 border-r-2 border-slate-700 sticky-col-q bg-slate-900">FINAL</td>
+                  <td colspan="5" class="p-2.5 text-slate-300 border-r border-slate-700" id="summary-home-final-label">Result</td>
+                  <td class="p-2.5 text-center font-mono-score text-xl font-black text-amber-400 bg-brand-950 border-r-2 border-slate-700" id="summary-home-final-pts">0</td>
+                  <td colspan="5" class="p-2.5 text-slate-300 border-r border-slate-700" id="summary-opp-final-label">Result</td>
+                  <td class="p-2.5 text-center font-mono-score text-xl font-black text-rose-300 bg-rose-950" id="summary-opp-final-pts">0</td>
+                </tr>
+                <tr class="bg-slate-50 text-[11px]">
+                  <td colspan="2" class="p-2 font-black uppercase text-slate-700 border-r-2 border-slate-400 sticky-col-q bg-slate-50">TIMEOUTS</td>
+                  <td colspan="6" class="p-2 border-r-2 border-slate-400" id="summary-home-timeouts"></td>
+                  <td colspan="6" class="p-2" id="summary-opp-timeouts"></td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
+
+          <div id="individual-quizzers-panel" class="pt-2">
+            <h4 class="text-xs font-black text-slate-700 mb-2">Quizzers Live Tracker</h4>
+            <div class="grid grid-cols-2 gap-2" id="individual-quizzers-grid"></div>
+          </div>
+
+        </div>
+      </details>
+
+      <div class="print-only">
+        <h2>Official JBQ Scoresheet</h2>
+        <span>MATCH #: <span id="print-match-num">01</span></span>
+      </div>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- 3. TOURNAMENT STANDINGS TAB (PUBLIC VIEW)  -->
+    <!-- ========================================== -->
+    <main id="section-public" class="w-full px-3 py-3 flex-grow hidden">
+      
+      <!-- HERO STANDINGS CARD -->
+      <div class="bg-gradient-to-br from-brand-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4 shadow-md border border-brand-800 mb-3">
+        <div class="flex items-center justify-between mb-2">
+          <span class="inline-flex items-center gap-1 bg-amber-400/20 text-amber-300 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-amber-400/30">
+            🏆 Tournament Leaderboard
+          </span>
+        </div>
+        <h2 id="public-meet-title" class="text-lg sm:text-xl font-black tracking-tight text-white mb-2">
+          Junior Bible Quiz (JBQ)
+        </h2>
+
+        <!-- DIVISION SWITCHER IN STANDINGS -->
+        <div class="flex items-center gap-1.5 mb-3 bg-white/10 p-1 rounded-xl w-fit border border-white/15">
+          <button id="pub-tab-jbq-b" onclick="setActiveDivisionKey('jbq_b')" class="px-2.5 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1">
+            <span>⚡ JBQ B-Level</span>
+          </button>
+          <button id="pub-tab-jbq-c" onclick="setActiveDivisionKey('jbq_c')" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-white/80 hover:text-white flex items-center gap-1">
+            <span>🌟 JBQ C-Level</span>
+          </button>
         </div>
 
-        <!-- 2. SCORESHEET TABLE WRAPPER WITH STICKY COLUMNS -->
-        <div id="scoresheet-table-container" class="overflow-x-auto touch-scroll no-scrollbar">
-          <table class="w-full text-xs text-left border-collapse min-w-[760px]" id="official-scoresheet-table">
-            <thead id="scoresheet-thead">
-              <!-- SUPER HEADER: TEAM A vs TEAM B -->
-              <tr class="bg-slate-900 text-white font-black text-center text-xs tracking-wider uppercase border-b border-slate-800">
-                <th colspan="2" class="p-2.5 border-r border-slate-800 bg-slate-950 sticky-head-q" id="super-header-badge">MEET 1 • M#01</th>
-                <th colspan="6" class="p-2.5 border-r border-slate-800 bg-brand-900/90 text-sm font-black tracking-tight" id="table-head-team-a">
-                  Chicago Indian Church - Team 1
-                </th>
-                <th colspan="6" class="p-2.5 bg-rose-950/90 text-sm font-black tracking-tight" id="table-head-team-b">
-                  Team 3 (TBD)
-                </th>
-              </tr>
-
-              <!-- SUB HEADER: COLUMNS -->
-              <tr class="bg-slate-100 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider border-b-2 border-slate-300">
-                <th class="p-2 text-center w-12 border-r border-slate-300 sticky-head-q bg-slate-100">Q #</th>
-                <th class="p-2 text-center w-14 border-r-2 border-slate-400 sticky-head-pts bg-slate-100">PTS</th>
-
-                <!-- TEAM A: SEATS 1 TO 5 -->
-                <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-1">#1 Sam</th>
-                <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-2">#2 Mia</th>
-                <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-3">#3 Ben</th>
-                <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-4">#4 Jade</th>
-                <th class="p-2 text-center border-r border-slate-200" id="th-seat-a-5">#5 Noah</th>
-                <th class="p-2 text-center bg-brand-100/70 text-brand-900 font-black border-r-2 border-slate-400 w-20">RUNNING<br>TOTAL</th>
-
-                <!-- TEAM B: SEATS 1 TO 5 -->
-                <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-1">#1 Leo</th>
-                <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-2">#2 Ava</th>
-                <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-3">#3 Eli</th>
-                <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-4">#4 Tim</th>
-                <th class="p-2 text-center border-r border-slate-200" id="th-seat-b-5">#5 Han</th>
-                <th class="p-2 text-center bg-rose-100/70 text-rose-900 font-black w-20">RUNNING<br>TOTAL</th>
+        <!-- STANDINGS TABLE -->
+        <div class="bg-white/10 rounded-xl p-3 border border-white/15 overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="text-amber-300 text-[10px] font-black uppercase tracking-wider border-b border-white/20 pb-1.5">
+                <th class="pb-1 text-center w-8">Rank</th>
+                <th class="pb-1">Team / Church</th>
+                <th class="pb-1 text-center">W</th>
+                <th class="pb-1 text-center">L</th>
+                <th class="pb-1 text-right">Pts</th>
               </tr>
             </thead>
-
-            <tbody id="scoresheet-tbody" class="divide-y divide-slate-200 font-medium">
-              <!-- 20 Question Rows Rendered Dynamically -->
-            </tbody>
-
-            <!-- BOTTOM OFFICIAL SUMMARY ROWS -->
-            <tfoot class="border-t-2 border-slate-400 text-xs font-bold divide-y divide-slate-200">
-              <!-- 1. BONUSES ROW -->
-              <tr class="bg-amber-50/70">
-                <td colspan="2" class="p-2.5 font-black uppercase text-amber-900 border-r-2 border-slate-400 sticky-col-q bg-amber-50 shadow-sm">
-                  BONUSES
-                </td>
-                <td colspan="5" class="p-2.5 text-slate-700 border-r border-slate-200" id="summary-home-bonuses">
-                  Sam: Perfect QO (+20)
-                </td>
-                <td class="p-2.5 text-center font-mono-score font-black text-amber-900 bg-amber-100/60 border-r-2 border-slate-400" id="summary-home-bonus-pts">
-                  +20
-                </td>
-                <td colspan="5" class="p-2.5 text-slate-700 border-r border-slate-200" id="summary-opp-bonuses">
-                  None
-                </td>
-                <td class="p-2.5 text-center font-mono-score font-black text-amber-900 bg-amber-100/60" id="summary-opp-bonus-pts">
-                  0
-                </td>
-              </tr>
-
-              <!-- 2. TEAM FOULS ROW -->
-              <tr class="bg-slate-50">
-                <td colspan="2" class="p-2.5 font-black uppercase text-slate-800 border-r-2 border-slate-400 flex items-center justify-between sticky-col-q bg-slate-50 shadow-sm">
-                  <span>TEAM FOULS</span>
-                  <button type="button" onclick="openAddFoulModal()" class="no-print text-[10px] text-brand-600 hover:underline">+ Add</button>
-                </td>
-                <td colspan="5" class="p-2.5 text-slate-600 border-r border-slate-200" id="summary-home-fouls">
-                  None
-                </td>
-                <td class="p-2.5 text-center font-mono-score font-black text-rose-700 bg-slate-100 border-r-2 border-slate-400" id="summary-home-foul-pts">
-                  0
-                </td>
-                <td colspan="5" class="p-2.5 text-slate-600 border-r border-slate-200" id="summary-opp-fouls">
-                  Bench talking (-5)
-                </td>
-                <td class="p-2.5 text-center font-mono-score font-black text-rose-700 bg-slate-100" id="summary-opp-foul-pts">
-                  -5
-                </td>
-              </tr>
-
-              <!-- 3. FINAL SCORE ROW -->
-              <tr class="bg-slate-900 text-white font-black text-sm">
-                <td colspan="2" class="p-3 uppercase tracking-wider text-amber-400 border-r-2 border-slate-700 sticky-col-q bg-slate-900 shadow-sm">
-                  FINAL SCORE
-                </td>
-                <td colspan="5" class="p-3 text-slate-300 border-r border-slate-700" id="summary-home-final-label">
-                  Official Result
-                </td>
-                <td class="p-3 text-center font-mono-score text-xl font-black text-amber-400 bg-brand-950 border-r-2 border-slate-700" id="summary-home-final-pts">
-                  220
-                </td>
-                <td colspan="5" class="p-3 text-slate-300 border-r border-slate-700" id="summary-opp-final-label">
-                  Official Result
-                </td>
-                <td class="p-3 text-center font-mono-score text-xl font-black text-rose-300 bg-rose-950" id="summary-opp-final-pts">
-                  145
-                </td>
-              </tr>
-
-              <!-- 4. TIMEOUTS ROW -->
-              <tr class="bg-slate-50 text-[11px]">
-                <td colspan="2" class="p-2.5 font-black uppercase text-slate-700 border-r-2 border-slate-400 sticky-col-q bg-slate-50 shadow-sm">
-                  TIMEOUTS
-                </td>
-                <td colspan="6" class="p-2.5 border-r-2 border-slate-400" id="summary-home-timeouts"></td>
-                <td colspan="6" class="p-2.5" id="summary-opp-timeouts"></td>
-              </tr>
-            </tfoot>
+            <tbody id="public-standings-tbody" class="divide-y divide-white/10 font-bold"></tbody>
           </table>
         </div>
-
-        <!-- INDIVIDUAL QUIZZERS STATS & ERROR TRACKER CARD -->
-        <div class="bg-white rounded-2xl p-4 border border-slate-200" id="individual-quizzers-panel">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-slate-100 gap-2">
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-black uppercase tracking-wider bg-slate-900 text-amber-400 px-2.5 py-0.5 rounded-md">
-                🎯 Quizzers Live Tracker
-              </span>
-              <h3 class="text-sm font-black text-slate-800">
-                Individual Correct / Incorrect Answers & Lockouts
-              </h3>
-            </div>
-            <div class="text-[11px] text-slate-500 font-semibold flex items-center gap-3">
-              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> 5 Correct = Quiz Out</span>
-              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> 3 Errors = Errored Out</span>
-            </div>
-          </div>
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" id="individual-quizzers-grid">
-            <!-- Rendered dynamically via JS for Team A and Team B -->
-          </div>
-        </div>
-
       </div>
-    </details>
 
-    <!-- PRINT ONLY VERSION OF SCORESHEET TABLE -->
-    <div class="print-only">
-      <div class="p-4 border-b border-black text-center">
-        <h2 class="text-xl font-black uppercase">Official JBQ Scoresheet</h2>
-        <div class="text-xs font-bold mt-1">
-          MATCH #: <span id="print-match-num">01</span>
-        </div>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- ========================================== -->
-  <!-- 3. TEAMS & MATCHES MANAGER (COACHES)       -->
-  <!-- ========================================== -->
-  <main id="section-teams" class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full hidden no-print">
-    
-    <div class="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="text-xs font-black uppercase tracking-wider text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-md border border-brand-200">
-            Roster & Pairing Management
+      <!-- MATCH RESULTS LIST -->
+      <div class="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200 mb-3">
+        <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-100">
+          <h3 class="text-sm font-black text-slate-900">Completed Round Results</h3>
+          <span class="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-100" id="public-matches-badge">
+            Meets List
           </span>
         </div>
-        <h2 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">👥 Teams & Tournament Matches</h2>
-        <p class="text-slate-500 text-xs sm:text-sm">Manage church teams, enter quizzers' names, and pair round robin matches segregated by division.</p>
+        <div id="public-matches-list" class="space-y-2"></div>
       </div>
-      <div class="flex items-center gap-2 flex-wrap">
-        <button onclick="openEditTeamModal()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-black px-3.5 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1">
-          <span>➕ Add Team</span>
-        </button>
-        <button onclick="openAddMatchModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-black px-3.5 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1">
-          <span>➕ Add Match</span>
-        </button>
-        <button onclick="openCreateMeetModal()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-bold px-3 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1" title="Manage Meets (Add / Delete)">
-          <span>📅 Meets</span>
-        </button>
-        <button onclick="clearAllTeams()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2 rounded-xl shadow-xs transition-colors" title="Clear all teams in active division">
-          <span>🗑️ Clear Division Teams</span>
-        </button>
-      </div>
-    </div>
 
-    <!-- JBQ DIVISION SEGREGATION TABS -->
-    <div class="mb-5 bg-slate-100/90 p-1.5 rounded-2xl flex items-center gap-2 border border-slate-200 shadow-inner overflow-x-auto">
-      <button id="teams-tab-jbq-b" onclick="setActiveDivisionKey('jbq_b')" class="flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-xs whitespace-nowrap bg-amber-400 text-brand-950">
-        <span>⚡ JBQ B-Level</span>
-        <span id="teams-count-jbq-b" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-200 text-brand-950">...</span>
-      </button>
-      <button id="teams-tab-jbq-c" onclick="setActiveDivisionKey('jbq_c')" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap text-slate-600 hover:text-slate-900">
-        <span>🌟 JBQ C-Level</span>
-        <span id="teams-count-jbq-c" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-200 text-slate-700">...</span>
-      </button>
-    </div>
-
-    <!-- ACTIVE DIVISION BANNER -->
-    <div id="teams-division-info-banner" class="mb-6 p-4 rounded-2xl bg-white border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-      <div class="flex items-center gap-3">
-        <div id="teams-div-banner-icon" class="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl font-black shrink-0">
-          ⚡
+      <!-- INLINE COACH LOGIN CARD -->
+      <div class="bg-slate-900 text-white rounded-2xl p-4 shadow-md border border-slate-800">
+        <div class="text-center mb-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center text-xl mx-auto mb-2 font-black">
+            🔒
+          </div>
+          <h3 class="text-base font-black text-white">Coach & Official Access</h3>
+          <p class="text-slate-400 text-xs mt-0.5">
+            Sign in to score live rounds with the buzzer tiles.
+          </p>
+          <div class="mt-3">
+            <button type="button" onclick="autoLoginSuperCoach()" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-brand-950 font-black py-2.5 px-3 rounded-xl text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer">
+              <span>⚡ One-Click Open Scoresheet</span>
+              <span>→</span>
+            </button>
+          </div>
         </div>
+
+        <form onsubmit="handleInlineLogin(event)" class="space-y-2.5 pt-2 border-t border-slate-800">
+          <div id="inline-login-error" class="hidden p-2 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-200 text-xs font-bold text-center">
+            Invalid username or passcode.
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Username</label>
+            <input type="text" id="inline-username" placeholder="e.g. coach or supercoach" required class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-semibold">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Passcode</label>
+            <input type="password" id="inline-passcode" placeholder="Enter passcode" required class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-semibold">
+          </div>
+          <button type="submit" class="w-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-brand-950 font-black py-2.5 px-3 rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1">
+            <span>Sign In to Scoresheet</span>
+          </button>
+        </form>
+      </div>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- 4. TEAMS & MATCHES ROSTER TAB              -->
+    <!-- ========================================== -->
+    <main id="section-teams" class="w-full px-3 py-3 flex-grow hidden">
+
+      <!-- TEAMS HEADER & ACTIONS -->
+      <div class="mb-3 flex items-center justify-between gap-2">
         <div>
-          <div class="text-[10px] font-black uppercase tracking-wider text-slate-400" id="teams-div-banner-sub">Active Division</div>
-          <h3 class="text-base font-black text-slate-900" id="teams-div-banner-title">Junior Bible Quiz (JBQ)</h3>
-          <p class="text-xs text-slate-500 mt-0.5" id="teams-div-banner-desc">Configure teams and quizzers for this division</p>
+          <h2 class="text-base font-black text-slate-900">👥 Teams & Matches</h2>
+          <p class="text-slate-500 text-[11px]">Rosters, quizzers, and round robin pairing.</p>
+        </div>
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button onclick="openEditTeamModal()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white font-black px-2.5 py-1.5 rounded-xl shadow-2xs transition-all active:scale-95 flex items-center gap-1">
+            <span>➕ Team</span>
+          </button>
+          <button onclick="openAddMatchModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-brand-950 font-black px-2.5 py-1.5 rounded-xl shadow-2xs transition-all active:scale-95 flex items-center gap-1">
+            <span>➕ Match</span>
+          </button>
         </div>
       </div>
-      <div class="flex items-center gap-2 flex-wrap">
-        <button onclick="openEditTeamModal()" class="text-xs bg-brand-50 hover:bg-brand-100 text-brand-900 border border-brand-200 font-bold px-3 py-1.5 rounded-xl transition-colors">
-          ➕ Add Team to this Division
+
+      <!-- DIVISION TABS IN TEAMS -->
+      <div class="mb-3 bg-slate-200/80 p-1 rounded-2xl flex items-center gap-1.5 border border-slate-300/80 shadow-inner">
+        <button id="teams-tab-jbq-b" onclick="setActiveDivisionKey('jbq_b')" class="flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 bg-amber-400 text-brand-950">
+          <span>⚡ JBQ B</span>
+          <span id="teams-count-jbq-b" class="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-amber-200 text-brand-950">...</span>
+        </button>
+        <button id="teams-tab-jbq-c" onclick="setActiveDivisionKey('jbq_c')" class="flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-slate-600 hover:text-slate-900">
+          <span>🌟 JBQ C</span>
+          <span id="teams-count-jbq-c" class="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-slate-300 text-slate-700">...</span>
         </button>
       </div>
-    </div>
 
-    <!-- 1. THE 4 TEAMS GRID -->
-    <div class="mb-8">
-      <h3 class="text-base font-black text-slate-900 mb-3 flex items-center justify-between">
-        <span id="teams-grid-heading">Participating Teams & Quizzers</span>
-        <span class="text-xs text-slate-400 font-normal">Tap "Edit" on any team to enter announced names</span>
-      </h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="teams-cards-grid">
-        <!-- Rendered via JS -->
-      </div>
-    </div>
-
-    <!-- 2. TOURNAMENT MATCHES LIST -->
-    <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
-      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
-        <div>
-          <h3 class="text-base font-black text-slate-900">Configured Meets & Matches</h3>
-          <p class="text-xs text-slate-500">Pairings between teams for each round robin meet.</p>
+      <!-- ACTIVE DIVISION BANNER -->
+      <div id="teams-division-info-banner" class="mb-3 p-3 rounded-2xl bg-white border border-slate-200 flex items-center justify-between gap-2 shadow-2xs">
+        <div class="flex items-center gap-2.5">
+          <div id="teams-div-banner-icon" class="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-base font-black shrink-0">
+            ⚡
+          </div>
+          <div>
+            <div class="text-[9px] font-black uppercase tracking-wider text-slate-400" id="teams-div-banner-sub">Active Division</div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 leading-tight" id="teams-div-banner-title">Junior Bible Quiz (JBQ)</h3>
+            <p class="text-[10px] text-slate-500" id="teams-div-banner-desc">Rosters & matches for this division</p>
+          </div>
         </div>
-        <button onclick="openAddMatchModal()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded-lg border border-slate-300">
-          + Add Meet
-        </button>
       </div>
 
-      <div class="space-y-3" id="matches-schedule-list">
-        <!-- Rendered via JS -->
+      <!-- PARTICIPATING TEAMS CARDS GRID -->
+      <div class="mb-4">
+        <h3 class="text-xs font-black text-slate-900 mb-2 flex items-center justify-between">
+          <span id="teams-grid-heading">Teams & Quizzers</span>
+          <span class="text-[10px] text-slate-400 font-normal">Tap "Edit" to update roster</span>
+        </h3>
+        <div class="grid grid-cols-1 gap-2.5" id="teams-cards-grid">
+          <!-- Rendered via JS -->
+        </div>
       </div>
-    </div>
 
-    <!-- 3. DATA PERSISTENCE & BACKUP TOOLS -->
-    <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-slate-100 gap-2">
-        <div>
-          <div class="flex items-center gap-2">
-            <h3 class="text-base font-black text-slate-900">💾 Data Persistence & Backup</h3>
-            <span id="storage-type-pill" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-              Checking database...
+      <!-- SCHEDULED MATCHES LIST -->
+      <div class="bg-white rounded-2xl p-3 shadow-2xs border border-slate-200 mb-4">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+          <h3 class="text-xs font-black text-slate-900">Configured Matches</h3>
+          <button onclick="openAddMatchModal()" class="text-[10px] font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-lg border border-brand-200">
+            + Add Match
+          </button>
+        </div>
+        <div class="space-y-2" id="matches-schedule-list"></div>
+      </div>
+
+      <!-- DATA PERSISTENCE & BACKUP -->
+      <div class="bg-white rounded-2xl p-3 shadow-2xs border border-slate-200">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-black text-slate-900">💾 Persistence</span>
+            <span id="storage-type-pill" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              PostgreSQL
             </span>
           </div>
-          <p class="text-xs text-slate-500 mt-0.5">All scores, teams, and match results are permanently stored and persist across server restarts.</p>
+          <div class="flex items-center gap-1">
+            <button onclick="downloadScoresBackup()" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-white font-bold px-2 py-1 rounded-lg">
+              Export JSON
+            </button>
+            <label class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2 py-1 rounded-lg border border-slate-300 cursor-pointer">
+              Restore
+              <input type="file" id="backup-file-input" accept=".json" onchange="handleRestoreBackupFile(event)" class="hidden">
+            </label>
+          </div>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <button onclick="downloadScoresBackup()" class="text-xs bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-xl shadow-xs transition-all flex items-center gap-1.5">
-            <span>💾 Export Backup (JSON)</span>
+        <div class="text-[10px] text-slate-400">
+          All questions and match scores auto-save continuously to cloud database.
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- 5. MORE / SETTINGS / COACHES TAB           -->
+    <!-- ========================================== -->
+    <main id="section-coaches" class="w-full px-3 py-3 flex-grow hidden">
+
+      <!-- SETTINGS HEADER -->
+      <div class="mb-3">
+        <h2 class="text-base font-black text-slate-900">⚙️ Settings & Tournament Tools</h2>
+        <p class="text-slate-500 text-[11px]">Manage meets, coaches, backups, and app settings.</p>
+      </div>
+
+      <!-- TOURNAMENT MEETS CARD -->
+      <div class="bg-white rounded-2xl p-3 shadow-2xs border border-slate-200 mb-3">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+          <h3 class="text-xs font-black text-slate-900">📅 Tournament Meets</h3>
+          <div class="flex items-center gap-1.5">
+            <button onclick="openCreateMeetModal()" class="text-[10px] bg-amber-400 hover:bg-amber-300 text-brand-950 font-black px-2 py-1 rounded-lg shadow-2xs active:scale-95">
+              ➕ New Meet
+            </button>
+            <button onclick="confirmDeleteCurrentMeet()" class="text-[10px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-2 py-1 rounded-lg active:scale-95">
+              🗑️ Delete Meet
+            </button>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500">
+          Meets allow organizing round robins across multiple tournament dates.
+        </p>
+      </div>
+
+      <!-- COACH ACCOUNTS (SUPER COACH PANEL) -->
+      <div class="bg-white rounded-2xl p-3 shadow-2xs border border-slate-200 mb-3">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+          <h3 class="text-xs font-black text-slate-900">🛡️ Coach Accounts</h3>
+          <button onclick="openAddCoachModal()" class="text-[10px] bg-brand-600 hover:bg-brand-700 text-white font-bold px-2 py-1 rounded-lg active:scale-95">
+            ➕ Add Coach
           </button>
-          <label class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl border border-slate-300 cursor-pointer shadow-xs transition-all flex items-center gap-1.5">
-            <span>📥 Restore Backup</span>
-            <input type="file" id="backup-file-input" accept=".json" onchange="handleRestoreBackupFile(event)" class="hidden">
-          </label>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                <th class="pb-1.5">Name</th>
+                <th class="pb-1.5">User</th>
+                <th class="pb-1.5">Role</th>
+                <th class="pb-1.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="coaches-table-tbody" class="divide-y divide-slate-100 font-medium"></tbody>
+          </table>
         </div>
       </div>
-      <div class="text-[11px] text-slate-500 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-        <span>✅ Persistent storage: PostgreSQL Database + Local File System + In-Browser Cache.</span>
-        <span class="text-slate-400">All questions, seats, fouls, and timeouts are automatically saved on every click.</span>
+
+      <!-- JBQ SCORING RULES SUMMARY -->
+      <div class="bg-slate-900 text-white rounded-2xl p-3 shadow-2xs border border-slate-800 mb-3 text-xs">
+        <h3 class="font-black text-amber-400 uppercase tracking-wider text-[11px] mb-1.5">⚡ Official JBQ Scoring Rules</h3>
+        <ul class="space-y-1 text-slate-300 text-[11px]">
+          <li>• <strong>20 Questions:</strong> Official match consists of questions 1 through 20.</li>
+          <li>• <strong>Point Values:</strong> 10, 20, or 30 points.</li>
+          <li>• <strong>Quiz Out:</strong> 6 correct answers = Quiz Out (+10 bonus if 0 errors).</li>
+          <li>• <strong>Errored Out:</strong> 3 errors = Errored Out for regulation.</li>
+          <li>• <strong>Interruption Error:</strong> Half-point penalty + Re-Read rebound for opposite team!</li>
+        </ul>
       </div>
-    </div>
 
-  </main>
-
-  <!-- ========================================== -->
-  <!-- 4. SUPER COACH - MANAGE COACHES            -->
-  <!-- ========================================== -->
-  <main id="section-coaches" class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full hidden no-print">
-    
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="text-xs font-black uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-            Super Coach Panel
-          </span>
-        </div>
-        <h2 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">🛡️ Manage Coaches & Staff</h2>
-        <p class="text-slate-500 text-xs sm:text-sm">Manage login accounts, grant roles, and reset coach passcodes.</p>
-      </div>
-      <button onclick="openAddCoachModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm shadow-sm transition-all flex items-center gap-1.5 self-start sm:self-auto">
-        <span>➕ Add New Coach</span>
-      </button>
-    </div>
-
-    <!-- COACHES TABLE -->
-    <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs sm:text-sm">
-          <thead>
-            <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
-              <th class="pb-3">Coach Name</th>
-              <th class="pb-3">Username</th>
-              <th class="pb-3">Role</th>
-              <th class="pb-3">Passcode</th>
-              <th class="pb-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="coaches-table-tbody" class="divide-y divide-slate-100 font-medium"></tbody>
-        </table>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 no-print mt-auto">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div>
-        <strong>Junior Bible Quiz (JBQ)</strong> • Dedicated to raising up quizzers in God's Word.
-      </div>
-      <div class="text-slate-400 flex items-center gap-3">
-        <span>Chicago Indian Church JBQ Ministry</span>
-      </div>
-    </div>
-  </footer>
-
-  <!-- ========================================== -->
-  <!-- MODALS                                     -->
-  <!-- ========================================== -->
-
-  <!-- 1. EDIT TEAM MODAL (QUICK SETUP TOMORROW MORNING!) -->
-  <div id="edit-team-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-      <div class="flex items-start justify-between pb-3 mb-4 border-b border-slate-100">
+      <!-- ACCOUNT LOGOUT -->
+      <div class="bg-white rounded-2xl p-3 shadow-2xs border border-slate-200 flex items-center justify-between">
         <div>
-          <span class="text-xs font-black text-brand-600 uppercase tracking-wider">Quick Team Setup</span>
-          <h3 class="text-lg font-black text-slate-900 mt-0.5" id="modal-team-title">Configure Team</h3>
+          <div class="text-xs font-black text-slate-800">Current Session</div>
+          <div class="text-[11px] text-slate-400">Signed in to official scoresheet</div>
+        </div>
+        <button onclick="logoutCoach()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black px-3 py-1.5 rounded-xl active:scale-95">
+          Sign Out 🚪
+        </button>
+      </div>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- 6. FIXED NATIVE BOTTOM NAVIGATION BAR      -->
+    <!-- ========================================== -->
+    <nav id="mobile-bottom-nav" class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 shadow-2xl safe-bottom no-print">
+      <div class="flex items-center justify-around max-w-xl mx-auto py-1 px-2">
+        <!-- 1. SCORER TAB -->
+        <button onclick="switchTab('scoresheet')" id="mob-tab-btn-scoresheet" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs font-black transition-all text-amber-400 active:scale-95 cursor-pointer">
+          <span class="text-lg leading-none">⚡</span>
+          <span class="text-[10px] mt-0.5 tracking-tight font-black">Scorer</span>
+        </button>
+        <!-- 2. STANDINGS TAB -->
+        <button onclick="switchTab('questions')" id="mob-tab-btn-standings" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white active:scale-95 cursor-pointer">
+          <span class="text-lg leading-none">🏆</span>
+          <span class="text-[10px] mt-0.5 tracking-tight">Standings</span>
+        </button>
+        <!-- 3. TEAMS TAB -->
+        <button onclick="switchTab('teams')" id="mob-tab-btn-teams" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white active:scale-95 cursor-pointer">
+          <span class="text-lg leading-none">👥</span>
+          <span class="text-[10px] mt-0.5 tracking-tight">Teams</span>
+        </button>
+        <!-- 4. MORE / SETTINGS TAB -->
+        <button onclick="switchTab('coaches')" id="mob-tab-btn-coaches" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white active:scale-95 cursor-pointer">
+          <span class="text-lg leading-none">⚙️</span>
+          <span class="text-[10px] mt-0.5 tracking-tight">More</span>
+        </button>
+      </div>
+    </nav>
+
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODALS (PRESERVED COMPLETE DOM INTERFACES) -->
+  <!-- ========================================== -->
+
+  <!-- 1. EDIT TEAM MODAL -->
+  <div id="edit-team-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-100">
+      <div class="flex items-start justify-between pb-2 mb-3 border-b border-slate-100">
+        <div>
+          <span class="text-xs font-black text-brand-600 uppercase tracking-wider">Team Roster Setup</span>
+          <h3 class="text-base font-black text-slate-900 mt-0.5" id="modal-team-title">Configure Team</h3>
         </div>
         <button onclick="closeEditTeamModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
@@ -948,54 +780,51 @@
       <form onsubmit="handleSaveTeam(event)" class="space-y-3">
         <input type="hidden" id="edit-team-id" value="">
 
-        <!-- DIVISION SELECTOR -->
         <div>
           <label class="block text-xs font-black uppercase text-slate-700 mb-1">
             Division <span class="text-amber-600">*</span>
           </label>
-          <select id="edit-team-division" required class="w-full px-3 py-2 border rounded-xl text-sm font-black bg-white focus:ring-2 focus:ring-brand-500 border-slate-300">
+          <select id="edit-team-division" required class="w-full px-3 py-2 border rounded-xl text-xs font-black bg-white focus:ring-2 focus:ring-brand-500 border-slate-300">
             <option value="jbq_b" selected>⚡ JBQ B-Level (Junior B - Intermediate)</option>
             <option value="jbq_c">🌟 JBQ C-Level (Junior C - Beginner)</option>
           </select>
-          <p class="text-[11px] text-slate-400 mt-1">Teams and matches are segregated strictly by division.</p>
         </div>
 
         <div>
           <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Team Name</label>
-          <input type="text" id="edit-team-name" required placeholder="e.g. Chicago Indian Church - Team 1 or Faith Chapel" class="w-full px-3 py-2 border rounded-xl text-sm font-bold">
+          <input type="text" id="edit-team-name" required placeholder="e.g. Chicago Indian Church - Team 1" class="w-full px-3 py-2 border rounded-xl text-xs font-bold">
         </div>
 
         <div>
           <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Church Name</label>
-          <input type="text" id="edit-team-church" placeholder="e.g. Chicago Indian Church" class="w-full px-3 py-2 border rounded-xl text-sm font-semibold">
+          <input type="text" id="edit-team-church" placeholder="e.g. Chicago Indian Church" class="w-full px-3 py-2 border rounded-xl text-xs font-semibold">
         </div>
 
         <div>
           <label class="block text-xs font-bold uppercase text-slate-700 mb-1">
-            Quizzers' Names <span class="text-slate-400 font-normal">(comma-separated or one per line)</span>
+            Quizzers' Names <span class="text-slate-400 font-normal">(comma-separated)</span>
           </label>
-          <textarea id="edit-team-quizzers" rows="4" placeholder="Enter quizzers, e.g.:&#10;Sam, Mia, Ben, Jade, Noah" class="w-full px-3 py-2 border rounded-xl text-sm font-medium resize-none"></textarea>
-          <p class="text-[11px] text-slate-400 mt-1">Easily paste or type the names announced tomorrow morning!</p>
+          <textarea id="edit-team-quizzers" rows="3" placeholder="Sam, Mia, Ben, Jade, Noah" class="w-full px-3 py-2 border rounded-xl text-xs font-medium resize-none"></textarea>
         </div>
 
         <div class="pt-3 flex justify-between items-center gap-2 border-t border-slate-100">
           <button type="button" id="modal-delete-team-btn" onclick="handleDeleteTeamFromModal()" class="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl hidden transition-colors">🗑️ Delete Team</button>
           <div class="flex items-center gap-2 ml-auto">
-            <button type="button" onclick="closeEditTeamModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
-            <button type="submit" class="px-5 py-2 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-sm">Save Team</button>
+            <button type="button" onclick="closeEditTeamModal()" class="px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+            <button type="submit" class="px-4 py-2 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-xs">Save Team</button>
           </div>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- 2. ADD / CONFIGURE / EDIT MATCH MODAL -->
+  <!-- 2. ADD MATCH MODAL -->
   <div id="add-match-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-      <div class="flex items-start justify-between pb-3 mb-4 border-b border-slate-100">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-100">
+      <div class="flex items-start justify-between pb-2 mb-3 border-b border-slate-100">
         <div>
           <span class="text-xs font-black text-amber-600 uppercase tracking-wider" id="match-modal-badge">Tournament Schedule</span>
-          <h3 class="text-lg font-black text-slate-900 mt-0.5" id="match-modal-title">➕ Add Meet / Match</h3>
+          <h3 class="text-base font-black text-slate-900 mt-0.5" id="match-modal-title">➕ Add Match</h3>
         </div>
         <button onclick="closeAddMatchModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
@@ -1003,7 +832,6 @@
       <form onsubmit="handleSaveMatch(event)" class="space-y-3">
         <input type="hidden" id="match-edit-id" value="">
 
-        <!-- DIVISION SELECTOR IN MATCH MODAL -->
         <div>
           <label class="block text-[11px] font-black uppercase text-slate-700 mb-1">Division</label>
           <select id="match-division-select" onchange="handleMatchModalDivisionChange(this.value)" class="w-full px-3 py-2 border rounded-xl text-xs font-black bg-slate-50 border-slate-300">
@@ -1015,11 +843,11 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Meet #</label>
-            <input type="number" id="match-meet-num" min="1" max="20" value="1" required class="w-full px-3 py-2 border rounded-xl text-sm font-bold text-center">
+            <input type="number" id="match-meet-num" min="1" max="20" value="1" required class="w-full px-3 py-2 border rounded-xl text-xs font-bold text-center">
           </div>
           <div>
             <label class="block text-[11px] font-bold uppercase text-slate-700 mb-1">Match #</label>
-            <input type="text" id="match-number-input" placeholder="e.g. 03" required class="w-full px-3 py-2 border rounded-xl text-sm font-bold font-mono-score text-center">
+            <input type="text" id="match-number-input" placeholder="e.g. 02" required class="w-full px-3 py-2 border rounded-xl text-xs font-bold font-mono-score text-center">
           </div>
         </div>
 
@@ -1035,12 +863,12 @@
         </div>
 
         <div id="match-teams-warning" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium">
-          ⚠️ At least 2 teams are needed in this division to schedule a match. Please add another team first.
+          ⚠️ At least 2 teams are needed in this division to schedule a match.
         </div>
 
         <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
-          <button type="button" onclick="closeAddMatchModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
-          <button type="submit" id="match-modal-submit-btn" class="px-5 py-2 text-xs font-black bg-amber-500 hover:bg-amber-400 text-brand-950 rounded-xl shadow-sm">Save Match</button>
+          <button type="button" onclick="closeAddMatchModal()" class="px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" id="match-modal-submit-btn" class="px-4 py-2 text-xs font-black bg-amber-500 hover:bg-amber-400 text-brand-950 rounded-xl shadow-xs">Save Match</button>
         </div>
       </form>
     </div>
@@ -1048,49 +876,44 @@
 
   <!-- 3. EDIT MATCH INFO & STUDENTS MODAL -->
   <div id="match-info-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-start justify-between pb-3 mb-4 border-b border-slate-100">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-5 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-start justify-between pb-2 mb-3 border-b border-slate-100">
         <div>
           <span class="text-xs font-black text-brand-600 uppercase tracking-wider">Match Details & Students</span>
-          <h3 class="text-lg font-black text-slate-900 mt-0.5">Edit Match Information</h3>
+          <h3 class="text-base font-black text-slate-900 mt-0.5">Edit Match Information</h3>
         </div>
         <button onclick="closeMatchInfoModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
 
-      <form onsubmit="handleSaveMatchInfo(event)" class="space-y-4">
+      <form onsubmit="handleSaveMatchInfo(event)" class="space-y-3">
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Meet #</label>
-            <input type="number" id="info-meet-num" min="1" max="20" required class="w-full px-2 sm:px-3 py-2 border rounded-xl text-sm font-bold text-center">
+            <input type="number" id="info-meet-num" min="1" max="20" required class="w-full px-2 py-2 border rounded-xl text-xs font-bold text-center">
           </div>
           <div>
             <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Match #</label>
-            <input type="text" id="info-match-num" required class="w-full px-2 sm:px-3 py-2 border rounded-xl text-sm font-mono-score font-bold text-center">
+            <input type="text" id="info-match-num" required class="w-full px-2 py-2 border rounded-xl text-xs font-mono-score font-bold text-center">
           </div>
         </div>
 
-        <!-- STUDENTS LISTS -->
         <div class="pt-2 border-t border-slate-100">
           <label class="block text-xs font-black uppercase tracking-wider text-brand-900 mb-1" id="modal-students-home-label">
             Team A Students:
           </label>
-          <p class="text-[11px] text-slate-500 mb-1.5">Enter student names separated by commas (e.g. Noah, Prakash, Jade):</p>
-          <textarea id="modal-students-home-input" rows="2" placeholder="Noah, Prakash, Jade" class="w-full px-3 py-2 border rounded-xl text-xs font-bold text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-500"></textarea>
+          <textarea id="modal-students-home-input" rows="2" placeholder="Noah, Prakash, Jade" class="w-full px-3 py-2 border rounded-xl text-xs font-bold text-slate-800 bg-slate-50"></textarea>
         </div>
 
         <div class="pt-2 border-t border-slate-100">
           <label class="block text-xs font-black uppercase tracking-wider text-rose-900 mb-1" id="modal-students-opp-label">
             Team B Students:
           </label>
-          <p class="text-[11px] text-slate-500 mb-1.5">Enter student names separated by commas (e.g. Leo, Ava, Eli, Timothy, Hannah):</p>
-          <textarea id="modal-students-opp-input" rows="2" placeholder="Leo, Ava, Eli, Timothy, Hannah" class="w-full px-3 py-2 border rounded-xl text-xs font-bold text-slate-800 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-rose-500"></textarea>
+          <textarea id="modal-students-opp-input" rows="2" placeholder="Leo, Ava, Eli, Timothy, Hannah" class="w-full px-3 py-2 border rounded-xl text-xs font-bold text-slate-800 bg-slate-50"></textarea>
         </div>
 
-        <div class="pt-4 flex justify-end gap-2 border-t border-slate-100">
-          <button type="button" onclick="closeMatchInfoModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
-          <button type="submit" class="px-5 py-2 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-sm flex items-center gap-1 cursor-pointer">
-            <span>💾 Save Match & Students</span>
-          </button>
+        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="closeMatchInfoModal()" class="px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-4 py-2 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-xs">Save</button>
         </div>
       </form>
     </div>
@@ -1098,10 +921,10 @@
 
   <!-- 4. ADD TEAM FOUL MODAL -->
   <div id="add-foul-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
-      <div class="flex items-start justify-between pb-3 mb-4 border-b border-slate-100">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-100">
+      <div class="flex items-start justify-between pb-2 mb-3 border-b border-slate-100">
         <div>
-          <span class="text-xs font-black text-rose-600 uppercase tracking-wider">Technical Penalty</span>
+          <span class="text-xs font-black text-rose-600 uppercase tracking-wider">Penalty</span>
           <h3 class="text-base font-black text-slate-900">Record Team Foul</h3>
         </div>
         <button onclick="closeAddFoulModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
@@ -1109,65 +932,65 @@
 
       <form onsubmit="handleSaveFoul(event)" class="space-y-3">
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Which Team / Church?</label>
-          <select id="foul-team-select" class="w-full px-3 py-2 border rounded-xl text-sm font-bold bg-white">
+          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Which Team?</label>
+          <select id="foul-team-select" class="w-full px-3 py-2 border rounded-xl text-xs font-bold bg-white">
             <option value="home" id="foul-team-home-opt">Left Table Team</option>
             <option value="opponent" id="foul-team-opp-opt">Right Table Team</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Foul Reason</label>
-          <input type="text" id="foul-reason-input" placeholder="e.g. Bench talking (-5) or Consultation" required class="w-full px-3 py-2 border rounded-xl text-sm font-semibold">
+          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Reason</label>
+          <input type="text" id="foul-reason-input" placeholder="Bench talking (-5)" required class="w-full px-3 py-2 border rounded-xl text-xs font-semibold">
         </div>
 
         <div>
           <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Penalty Points</label>
-          <select id="foul-penalty-select" class="w-full px-3 py-2 border rounded-xl text-sm font-bold bg-white">
-            <option value="5">-5 Points (Standard Foul)</option>
-            <option value="10">-10 Points (Severe Foul)</option>
+          <select id="foul-penalty-select" class="w-full px-3 py-2 border rounded-xl text-xs font-bold bg-white">
+            <option value="5">-5 Points</option>
+            <option value="10">-10 Points</option>
           </select>
         </div>
 
-        <div class="pt-3 flex justify-end gap-2">
-          <button type="button" onclick="closeAddFoulModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
-          <button type="submit" class="px-5 py-2 text-xs font-black bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-sm">Apply Foul</button>
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeAddFoulModal()" class="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-4 py-1.5 text-xs font-black bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-xs">Apply</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- 5. COACH LOGIN MODAL (HEADER POPUP) -->
+  <!-- 5. COACH LOGIN MODAL -->
   <div id="coach-login-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
-      <div class="text-center mb-4">
-        <div class="w-12 h-12 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center text-2xl mx-auto mb-2 font-black">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-100">
+      <div class="text-center mb-3">
+        <div class="w-10 h-10 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center text-xl mx-auto mb-2 font-black">
           🔒
         </div>
-        <h3 class="text-lg font-black text-slate-900">Coach Authentication</h3>
-        <p class="text-xs text-slate-500 mt-1">Sign in with Coach credentials to score matches.</p>
+        <h3 class="text-base font-black text-slate-900">Coach Authentication</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Sign in to score official matches.</p>
       </div>
 
       <form onsubmit="handleModalCoachLogin(event)" class="space-y-3">
-        <div id="login-error-alert" class="hidden p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold text-center">
+        <div id="login-error-alert" class="hidden p-2 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold text-center">
           Invalid username or passcode.
         </div>
 
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Username</label>
-          <input type="text" id="login-username-input" placeholder="e.g. coach or supercoach" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold">
+          <input type="text" id="login-username-input" placeholder="e.g. coach or supercoach" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold">
         </div>
 
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Passcode</label>
-          <input type="password" id="login-passcode-input" placeholder="Enter passcode" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold">
+          <input type="password" id="login-passcode-input" placeholder="Enter passcode" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold">
         </div>
 
-        <div class="flex items-center gap-2 pt-2">
-          <button type="button" onclick="closeCoachLoginModal()" class="w-1/2 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-bold">
+        <div class="flex items-center gap-2 pt-1">
+          <button type="button" onclick="closeCoachLoginModal()" class="w-1/2 py-2 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-bold">
             Cancel
           </button>
-          <button type="submit" class="w-1/2 bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-xl text-xs font-black shadow-sm transition-all">
+          <button type="submit" class="w-1/2 bg-brand-600 hover:bg-brand-700 text-white py-2 rounded-xl text-xs font-black shadow-xs">
             Sign In
           </button>
         </div>
@@ -1175,134 +998,97 @@
     </div>
   </div>
 
-  <!-- 6. SUPER COACH: ADD COACH MODAL -->
+  <!-- 6. ADD COACH MODAL -->
   <div id="add-coach-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
-      <div class="flex justify-between items-center mb-4">
-        <div>
-          <span class="text-xs font-black text-amber-600 uppercase tracking-wider">Super Coach Panel</span>
-          <h3 class="text-base font-black text-slate-900">➕ Add New Coach</h3>
-        </div>
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-100">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-sm font-black text-slate-900">➕ Add New Coach</h3>
         <button onclick="closeAddCoachModal()" class="text-slate-400 hover:text-slate-600 text-sm">✕</button>
       </div>
 
-      <form onsubmit="handleCreateCoach(event)" class="space-y-3">
+      <form onsubmit="handleCreateCoach(event)" class="space-y-2.5">
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Coach Full Name</label>
-          <input type="text" id="add-coach-name" placeholder="e.g. Pastor David" required class="w-full px-3 py-2 border rounded-xl text-sm font-medium">
+          <label class="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+          <input type="text" id="add-coach-name" placeholder="Pastor David" required class="w-full px-3 py-2 border rounded-xl text-xs font-medium">
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Username</label>
-          <input type="text" id="add-coach-username" placeholder="e.g. pdavid" required class="w-full px-3 py-2 border rounded-xl text-sm font-medium">
+          <input type="text" id="add-coach-username" placeholder="pdavid" required class="w-full px-3 py-2 border rounded-xl text-xs font-medium">
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Login Passcode</label>
-          <input type="text" id="add-coach-passcode" placeholder="e.g. david2026" required class="w-full px-3 py-2 border rounded-xl text-sm font-medium">
+          <input type="text" id="add-coach-passcode" placeholder="david2026" required class="w-full px-3 py-2 border rounded-xl text-xs font-medium">
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Role / Permissions</label>
-          <select id="add-coach-role" class="w-full px-3 py-2 border rounded-xl text-sm bg-white font-medium">
-            <option value="jbq_coach" selected>🎒 JBQ Coach (Junior Bible Quiz)</option>
-            <option value="supercoach">👑 Super Coach (Full Administrator)</option>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Role</label>
+          <select id="add-coach-role" class="w-full px-3 py-2 border rounded-xl text-xs bg-white font-medium">
+            <option value="jbq_coach" selected>🎒 JBQ Coach</option>
+            <option value="supercoach">👑 Super Coach (Admin)</option>
           </select>
         </div>
 
         <div class="pt-2 flex justify-end gap-2">
-          <button type="button" onclick="closeAddCoachModal()" class="px-3 py-2 text-xs font-semibold text-slate-600">Cancel</button>
-          <button type="submit" class="px-4 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm">Save Coach</button>
+          <button type="button" onclick="closeAddCoachModal()" class="px-3 py-1.5 text-xs font-semibold text-slate-600">Cancel</button>
+          <button type="submit" class="px-3.5 py-1.5 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs">Save</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- 7. COACH: MEET MANAGER & CREATOR MODAL -->
+  <!-- 7. CREATE / MANAGE MEETS MODAL -->
   <div id="create-meet-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col">
-      <div class="flex justify-between items-center pb-3 mb-4 border-b border-slate-100">
-        <div>
-          <span class="text-xs font-black text-amber-600 uppercase tracking-wider">Tournament Management</span>
-          <h3 class="text-base font-black text-slate-900 mt-0.5">📅 Meets Manager</h3>
-        </div>
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center pb-2 mb-3 border-b border-slate-100">
+        <h3 class="text-sm font-black text-slate-900">📅 Meets Manager</h3>
         <button onclick="closeCreateMeetModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
       </div>
 
-      <div class="overflow-y-auto space-y-5 flex-1 pr-1">
-        <!-- CREATE NEW MEET SECTION -->
-        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <div class="flex items-center justify-between mb-2.5">
-            <h4 class="text-xs font-black uppercase text-slate-700 tracking-wider">➕ Create New Meet</h4>
-          </div>
-          <form onsubmit="handleCreateMeet(event)" class="space-y-3">
+      <div class="overflow-y-auto space-y-4 flex-1 pr-1">
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <h4 class="text-xs font-black uppercase text-slate-700 tracking-wider mb-2">➕ Create New Meet</h4>
+          <form onsubmit="handleCreateMeet(event)" class="space-y-2.5">
             <input type="hidden" id="new-meet-league" value="jbq">
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Meet Title</label>
-              <input type="text" id="new-meet-title" placeholder="e.g. Meet 2 (Stone Church / Dec 2026)" required class="w-full px-3 py-2 border rounded-xl text-sm font-semibold bg-white border-slate-300">
+              <input type="text" id="new-meet-title" placeholder="Meet 2 (Dec 2026)" required class="w-full px-3 py-2 border rounded-xl text-xs font-semibold bg-white border-slate-300">
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Meet Date</label>
-              <input type="date" id="new-meet-date" class="w-full px-3 py-2 border rounded-xl text-sm font-medium bg-white border-slate-300">
+              <input type="date" id="new-meet-date" class="w-full px-3 py-2 border rounded-xl text-xs font-medium bg-white border-slate-300">
             </div>
-            <div class="flex items-center gap-2 pt-1">
-              <input type="checkbox" id="new-meet-copy-roster" checked class="w-4 h-4 text-amber-500 rounded">
+            <div class="flex items-center gap-2 pt-0.5">
+              <input type="checkbox" id="new-meet-copy-roster" checked class="w-3.5 h-3.5 text-amber-500 rounded">
               <label for="new-meet-copy-roster" class="text-xs font-bold text-slate-700 cursor-pointer">
                 Copy team rosters from current meet
               </label>
             </div>
-
-            <div class="pt-2 flex justify-end">
-              <button type="submit" class="px-4 py-2 text-xs font-black bg-amber-500 hover:bg-amber-400 text-brand-950 rounded-xl shadow-xs transition-colors">
+            <div class="pt-1 flex justify-end">
+              <button type="submit" class="px-3.5 py-1.5 text-xs font-black bg-amber-500 hover:bg-amber-400 text-brand-950 rounded-xl shadow-2xs">
                 ➕ Create Meet
               </button>
             </div>
           </form>
         </div>
 
-        <!-- EXISTING MEETS LIST WITH DELETE BUTTONS -->
         <div>
           <div class="flex items-center justify-between mb-2">
             <h4 class="text-xs font-black uppercase text-slate-700 tracking-wider">
-              📋 Existing Meets in JBQ
+              📋 Existing Meets
             </h4>
-            <span id="meets-count-badge" class="text-[11px] font-bold text-slate-400"></span>
+            <span id="meets-count-badge" class="text-[10px] font-bold text-slate-400"></span>
           </div>
-          <div id="existing-meets-list" class="space-y-2">
-            <!-- Dynamically populated via renderMeetsManagerList() -->
-          </div>
+          <div id="existing-meets-list" class="space-y-1.5"></div>
         </div>
       </div>
 
-      <div class="pt-3 mt-4 flex justify-end border-t border-slate-100">
-        <button type="button" onclick="closeCreateMeetModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+      <div class="pt-2 mt-3 flex justify-end border-t border-slate-100">
+        <button type="button" onclick="closeCreateMeetModal()" class="px-3 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 rounded-xl">
           Close
         </button>
       </div>
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- MOBILE BOTTOM NAVIGATION BAR               -->
-  <!-- ========================================== -->
-  <nav id="mobile-bottom-nav" class="hidden md:hidden fixed bottom-0 left-0 right-0 z-40 bg-brand-950/95 backdrop-blur-md border-t border-brand-800 shadow-2xl py-1.5 px-3 safe-bottom no-print">
-    <div class="flex items-center justify-around max-w-md mx-auto">
-      <button onclick="switchTab('scoresheet')" id="mob-tab-btn-scoresheet" class="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all text-amber-400">
-        <span class="text-base leading-none">📋</span>
-        <span class="text-[10px] mt-0.5 font-extrabold">Scoresheet</span>
-      </button>
-      <button onclick="switchTab('teams')" id="mob-tab-btn-teams" class="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all text-brand-300 hover:text-white">
-        <span class="text-base leading-none">👥</span>
-        <span class="text-[10px] mt-0.5 font-extrabold">Teams</span>
-      </button>
-      <button onclick="switchTab('coaches')" id="mob-tab-btn-coaches" class="hidden flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all text-amber-300 hover:text-amber-100">
-        <span class="text-base leading-none">🛡️</span>
-        <span class="text-[10px] mt-0.5 font-extrabold">Coaches</span>
-      </button>
-      <button onclick="logoutCoach()" class="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-xs font-bold transition-all text-rose-300 hover:text-rose-100">
-        <span class="text-base leading-none">🚪</span>
-        <span class="text-[10px] mt-0.5 font-extrabold">Sign Out</span>
-      </button>
-    </div>
-  </nav>
-
-  <script src="/app.js?v=20261004_3"></script>
+  <script src="/app.js?v=20261004_12"></script>
 </body>
 </html>
