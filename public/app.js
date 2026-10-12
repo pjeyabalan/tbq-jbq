@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkStorageStatus();
   await fetchPlatformContext();
 
+  const explicitLoggedOut = localStorage.getItem('tbq_logged_out_explicit') === '1';
   const savedToken = localStorage.getItem('tbq_coach_token');
   if (savedToken) {
     try {
@@ -48,6 +49,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
       console.warn('Saved auth token invalid');
     }
+  }
+
+  // If user explicitly signed out, respect their choice and display public view
+  if (explicitLoggedOut) {
+    setLoggedOutView();
+    fetchPublicSummary();
+    return;
   }
 
   // Seamless Auto-Login: Ensures coach scoresheet & kid tiles are immediately loaded without locking out the user
@@ -99,6 +107,7 @@ async function autoLoginSuperCoach() {
 function setLoggedInCoach(token, user) {
   state.auth = { token, user };
   localStorage.setItem('tbq_coach_token', token);
+  localStorage.removeItem('tbq_logged_out_explicit');
 
   document.getElementById('auth-login-btn').classList.add('hidden');
   document.getElementById('auth-user-menu').classList.remove('hidden');
@@ -141,6 +150,7 @@ function setLoggedInCoach(token, user) {
 function setLoggedOutView() {
   state.auth = null;
   localStorage.removeItem('tbq_coach_token');
+  localStorage.setItem('tbq_logged_out_explicit', '1');
 
   document.getElementById('auth-login-btn').classList.remove('hidden');
   document.getElementById('auth-user-menu').classList.add('hidden');
@@ -865,6 +875,29 @@ function renderOfficialScoresheet() {
       emptyEl = document.createElement('div');
       emptyEl.id = 'scoresheet-empty-state';
       emptyEl.className = 'bg-white rounded-3xl p-8 sm:p-12 text-center border border-slate-200 shadow-sm max-w-xl mx-auto my-8 space-y-4';
+      container.appendChild(emptyEl);
+    }
+
+    const isSuper = state.auth && state.auth.user && state.auth.user.role === 'supercoach';
+    const coachName = state.auth?.user?.name || state.auth?.user?.username || 'Coach';
+
+    if (!isSuper) {
+      emptyEl.innerHTML = `
+        <div class="text-4xl mb-2">🎒</div>
+        <h3 class="text-lg font-black text-slate-800">No Matches for Your Team Yet</h3>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto">
+          Hello <strong>${escapeHtml(coachName)}</strong>! No matches are currently scheduled for your assigned team(s) in this division.
+        </p>
+        <p class="text-[11px] text-slate-400 max-w-xs mx-auto">
+          If no team is assigned to your account yet, please ask the Super Coach to assign your team in Teams & Matches.
+        </p>
+        <div class="flex items-center justify-center gap-3 pt-2">
+          <button type="button" onclick="switchTab('questions')" class="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-brand-950 font-black text-xs shadow-xs transition-all">
+            🏆 View Tournament Standings
+          </button>
+        </div>
+      `;
+    } else {
       emptyEl.innerHTML = `
         <div class="text-4xl mb-2">📋</div>
         <h3 class="text-lg font-black text-slate-800">No Matches in this Division Yet</h3>
@@ -878,7 +911,6 @@ function renderOfficialScoresheet() {
           </button>
         </div>
       `;
-      container.appendChild(emptyEl);
     }
     emptyEl.classList.remove('hidden');
 
@@ -2731,6 +2763,9 @@ function renderTeamsManagerUI() {
                   Team #${idx + 1} ${isCIC ? '• Our Church' : ''}
                 </span>
                 ${getDivisionBadgeHtml(divKey)}
+                ${t.coachName 
+                  ? `<span class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1">🎒 Coach: ${escapeHtml(t.coachName)}</span>`
+                  : `<span class="bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold">⚪ No Coach</span>`}
               </div>
               <h4 class="text-base font-black text-slate-900 mt-1">${escapeHtml(t.name)}</h4>
               <div class="text-xs text-slate-500 font-medium">${escapeHtml(t.church)}</div>
@@ -2834,8 +2869,35 @@ function selectAndOpenMatch(matchId) {
   switchTab('scoresheet');
 }
 
+// Populate Coach Dropdown inside Edit Team Modal
+async function populateTeamCoachDropdown(selectedCoachId) {
+  const select = document.getElementById('edit-team-coach');
+  if (!select) return;
+
+  if (!state.coachesList || state.coachesList.length === 0) {
+    try {
+      const res = await authFetch('/api/coaches');
+      if (res.ok) {
+        const data = await res.json();
+        state.coachesList = data.coaches || [];
+      }
+    } catch (e) {
+      console.warn('Failed to load coaches list:', e);
+    }
+  }
+
+  const coaches = state.coachesList || [];
+  let opts = '<option value="">-- No Coach (Unassigned) --</option>';
+  coaches.forEach(c => {
+    const isSelected = selectedCoachId && (c.id === selectedCoachId || c.username === selectedCoachId);
+    const rolePill = c.role === 'supercoach' ? ' (Super Coach)' : '';
+    opts += `<option value="${c.id}" ${isSelected ? 'selected' : ''}>${escapeHtml(c.name)} (@${escapeHtml(c.username)})${rolePill}</option>`;
+  });
+  select.innerHTML = opts;
+}
+
 // EDIT TEAM MODAL
-function openEditTeamModal(teamId) {
+async function openEditTeamModal(teamId) {
   const currentDiv = getActiveDivisionKey();
   const teams = (state.tbqData && state.tbqData.meet && state.tbqData.meet.teams) || [];
   const team = teams.find(t => t.id === teamId);
@@ -2849,7 +2911,9 @@ function openEditTeamModal(teamId) {
   document.getElementById('edit-team-name').value = team ? team.name : '';
   document.getElementById('edit-team-church').value = team ? team.church : '';
   document.getElementById('edit-team-quizzers').value = team ? (team.quizzers || []).join(', ') : '';
-  
+
+  await populateTeamCoachDropdown(team ? (team.coachId || team.coachUsername) : '');
+
   const titleEl = document.getElementById('modal-team-title');
   if (titleEl) {
     titleEl.textContent = team ? `Edit ${team.name}` : `➕ Add New Team (${getDivisionDisplayName(currentDiv)})`;
@@ -2951,11 +3015,13 @@ async function handleSaveTeam(event) {
   const name = document.getElementById('edit-team-name').value.trim();
   const church = document.getElementById('edit-team-church').value.trim();
   const quizzersRaw = document.getElementById('edit-team-quizzers').value;
+  const coachSelect = document.getElementById('edit-team-coach');
+  const coachId = coachSelect ? coachSelect.value : '';
 
   try {
     const res = await authFetch('/api/teams/save', {
       method: 'POST',
-      body: JSON.stringify({ teamId, name, church, quizzers: quizzersRaw, division })
+      body: JSON.stringify({ teamId, name, church, quizzers: quizzersRaw, division, coachId })
     });
     const data = await res.json();
     if (!res.ok) {
@@ -3163,13 +3229,16 @@ async function handleDeleteMatch(matchId, matchNumber) {
 // ==========================================
 
 async function fetchCoachesList() {
-  if (!state.auth || state.auth.user.role !== 'supercoach') return;
+  if (!state.auth) return;
 
   try {
     const res = await authFetch('/api/coaches');
     if (!res.ok) return;
     const data = await res.json();
-    renderCoachesTable(data.coaches);
+    state.coachesList = data.coaches || [];
+    if (state.auth.user.role === 'supercoach') {
+      renderCoachesTable(data.coaches);
+    }
   } catch (err) {
     console.error('Error fetching coaches:', err);
   }
@@ -3179,9 +3248,36 @@ function renderCoachesTable(coaches) {
   const tbody = document.getElementById('coaches-table-tbody');
   if (!tbody) return;
 
+  // Collect all teams across divisions to determine assigned teams for each coach
+  const allTeams = [];
+  if (state.tbqData?.meet?.teams) {
+    allTeams.push(...state.tbqData.meet.teams);
+  }
+  if (state.allDivisionTeams) {
+    if (Array.isArray(state.allDivisionTeams.jbq_b)) allTeams.push(...state.allDivisionTeams.jbq_b);
+    if (Array.isArray(state.allDivisionTeams.jbq_c)) allTeams.push(...state.allDivisionTeams.jbq_c);
+  }
+  // Deduplicate teams by ID
+  const uniqueTeamsMap = new Map();
+  allTeams.forEach(t => {
+    if (t && t.id && !uniqueTeamsMap.has(t.id)) uniqueTeamsMap.set(t.id, t);
+  });
+  const uniqueTeams = Array.from(uniqueTeamsMap.values());
+
   let html = '';
   coaches.forEach(c => {
-    const isSelf = c.id === state.auth.user.id;
+    const isSelf = state.auth && state.auth.user && c.id === state.auth.user.id;
+    const assignedTeams = uniqueTeams.filter(t => t.coachId === c.id || t.coachUsername === c.username);
+
+    let assignedHtml = '';
+    if (c.role === 'supercoach') {
+      assignedHtml = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">👑 All Teams (Super Coach)</span>';
+    } else if (assignedTeams.length > 0) {
+      assignedHtml = assignedTeams.map(t => `<span class="inline-block bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold mr-1 mb-1">🎒 ${escapeHtml(t.name)}</span>`).join('');
+    } else {
+      assignedHtml = '<span class="text-xs text-slate-400 italic">No assigned team</span>';
+    }
+
     html += `
       <tr class="hover:bg-slate-50 transition-colors">
         <td class="py-3 font-bold text-slate-800">${escapeHtml(c.name)}</td>
@@ -3195,7 +3291,9 @@ function renderCoachesTable(coaches) {
             ${c.role === 'supercoach' ? '👑 Super Coach' : '🎒 JBQ Coach'}
           </span>
         </td>
-        <td class="py-3 font-mono text-slate-700">${escapeHtml(c.passcode)}</td>
+        <td class="py-3">
+          ${assignedHtml}
+        </td>
         <td class="py-3 text-right">
           ${isSelf 
             ? `<span class="text-xs text-slate-400 italic">Current User</span>` 

@@ -100,11 +100,194 @@
                   "Devbalaji",
                   "Jevin",
                   "Advik"
-                ]
+                ],
+                "coachId": "coach-1790968015318",
+                "coachName": "Dev",
+                "coachUsername": "dev"
               }
             ],
-            "activeMatchId": "",
-            "matches": {}
+            "activeMatchId": "match-1791839526828",
+            "matches": {
+              "match-1791839522950": {
+                "id": "match-1791839522950",
+                "roundNum": 1,
+                "matchNumber": "01",
+                "room": "",
+                "teamAId": "team-1791687780739",
+                "teamBId": "team-1791687410063",
+                "seats": {
+                  "teamA": [
+                    "Devbalaji",
+                    "Jevin",
+                    "Advik"
+                  ],
+                  "teamB": [
+                    "Q1",
+                    "Q2",
+                    "Q3",
+                    "Q4"
+                  ],
+                  "home": [
+                    "Devbalaji",
+                    "Jevin",
+                    "Advik"
+                  ],
+                  "opponent": [
+                    "Q1",
+                    "Q2",
+                    "Q3",
+                    "Q4"
+                  ]
+                },
+                "timeouts": {
+                  "teamA": [
+                    {
+                      "id": 1,
+                      "used": false,
+                      "questionNum": ""
+                    },
+                    {
+                      "id": 2,
+                      "used": false,
+                      "questionNum": ""
+                    }
+                  ],
+                  "teamB": [
+                    {
+                      "id": 1,
+                      "used": false,
+                      "questionNum": ""
+                    },
+                    {
+                      "id": 2,
+                      "used": false,
+                      "questionNum": ""
+                    }
+                  ]
+                },
+                "fouls": {
+                  "teamA": [],
+                  "teamB": []
+                },
+                "questions": [
+                  {
+                    "id": "q-1791839534465-700",
+                    "questionNum": 1,
+                    "pointValue": 10,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "Devbalaji",
+                    "isCorrect": true,
+                    "scoredBy": "Dev",
+                    "timestamp": "2026-10-12T21:12:14.465Z"
+                  }
+                ],
+                "studentsA": [
+                  "Devbalaji",
+                  "Jevin",
+                  "Advik"
+                ],
+                "studentsB": [
+                  "Q1",
+                  "Q2",
+                  "Q3",
+                  "Q4"
+                ],
+                "status": "In Progress"
+              },
+              "match-1791839526828": {
+                "id": "match-1791839526828",
+                "roundNum": 1,
+                "matchNumber": "02",
+                "room": "",
+                "teamAId": "team-1791687619321",
+                "teamBId": "team-1791687651616",
+                "seats": {
+                  "teamA": [
+                    "Q1",
+                    "Q2",
+                    "Q3",
+                    "Q4"
+                  ],
+                  "teamB": [
+                    "Q1",
+                    "Q2",
+                    "Q3",
+                    "Q4"
+                  ],
+                  "home": [
+                    "Q1",
+                    "Q2",
+                    "Q3",
+                    "Q4"
+                  ],
+                  "opponent": [
+                    "Q1",
+                    "Q2",
+                    "Q3",
+                    "Q4"
+                  ]
+                },
+                "timeouts": {
+                  "teamA": [
+                    {
+                      "id": 1,
+                      "used": false,
+                      "questionNum": ""
+                    },
+                    {
+                      "id": 2,
+                      "used": false,
+                      "questionNum": ""
+                    }
+                  ],
+                  "teamB": [
+                    {
+                      "id": 1,
+                      "used": false,
+                      "questionNum": ""
+                    },
+                    {
+                      "id": 2,
+                      "used": false,
+                      "questionNum": ""
+                    }
+                  ]
+                },
+                "fouls": {
+                  "teamA": [],
+                  "teamB": []
+                },
+                "questions": [
+                  {
+                    "id": "q-1791839542230-445",
+                    "questionNum": 1,
+                    "pointValue": 10,
+                    "isInterruption": false,
+                    "isRebound": false,
+                    "team": "teamA",
+                    "quizzer": "Q1",
+                    "isCorrect": true,
+                    "scoredBy": "Head Coach",
+                    "timestamp": "2026-10-12T21:12:22.231Z"
+                  }
+                ],
+                "studentsA": [
+                  "Q1",
+                  "Q2",
+                  "Q3",
+                  "Q4"
+                ],
+                "studentsB": [
+                  "Q1",
+                  "Q2",
+                  "Q3",
+                  "Q4"
+                ],
+                "status": "In Progress"
+              }
+            }
           },
           "c_level": {
             "name": "C-Level",

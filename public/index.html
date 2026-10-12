@@ -699,6 +699,7 @@
                 <th class="pb-1.5">Name</th>
                 <th class="pb-1.5">User</th>
                 <th class="pb-1.5">Role</th>
+                <th class="pb-1.5">Assigned Team(s)</th>
                 <th class="pb-1.5 text-right">Action</th>
               </tr>
             </thead>
@@ -806,6 +807,16 @@
             Quizzers' Names <span class="text-slate-400 font-normal">(comma-separated)</span>
           </label>
           <textarea id="edit-team-quizzers" rows="3" placeholder="Sam, Mia, Ben, Jade, Noah" class="w-full px-3 py-2 border rounded-xl text-xs font-medium resize-none"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-700 mb-1">
+            🎒 Assigned Coach <span class="text-slate-400 font-normal">(Optional)</span>
+          </label>
+          <select id="edit-team-coach" class="w-full px-3 py-2 border rounded-xl text-xs font-bold bg-white focus:ring-2 focus:ring-brand-500 border-slate-300">
+            <option value="">-- No Coach (Unassigned) --</option>
+          </select>
+          <p class="text-[10px] text-slate-400 mt-0.5">Assigned coaches will only see and score matches for this team.</p>
         </div>
 
         <div class="pt-3 flex justify-between items-center gap-2 border-t border-slate-100">

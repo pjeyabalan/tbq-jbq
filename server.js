@@ -298,8 +298,8 @@ app.get('/api/auth/me', authenticateCoach, (req, res) => {
   res.json({ success: true, user: req.user });
 });
 
-// Super Coach: Get all coaches
-app.get('/api/coaches', authenticateCoach, requireSuperCoach, (req, res) => {
+// Get all coaches (Safe list for all authenticated coaches to populate team dropdowns)
+app.get('/api/coaches', authenticateCoach, (req, res) => {
   const safeList = coaches.map(c => ({
     id: c.id,
     name: c.name,
@@ -572,6 +572,30 @@ function getDivisionsSummary() {
 function getTeamById(teamId, dataset) {
   if (!dataset || !dataset.teams) return null;
   return dataset.teams.find(t => t.id === teamId) || null;
+}
+
+// Helper: Get set of team IDs assigned to this coach (null for supercoach = unrestricted)
+function getCoachTeamIds(user, dataset) {
+  if (!user || user.role === 'supercoach') {
+    return null; // Super Coach has full access to all teams
+  }
+  const assigned = new Set();
+  const teams = (dataset && dataset.teams) || [];
+  teams.forEach(t => {
+    if (t.coachId && (t.coachId === user.id || t.coachUsername === user.username)) {
+      assigned.add(t.id);
+    }
+  });
+  return assigned;
+}
+
+// Helper: Check if coach is authorized to view or score a specific match
+function isCoachAuthorizedForMatch(user, match, dataset) {
+  if (!user || user.role === 'supercoach') return true;
+  if (!match) return false;
+  const coachTeamIds = getCoachTeamIds(user, dataset);
+  if (!coachTeamIds || coachTeamIds.size === 0) return false;
+  return coachTeamIds.has(match.teamAId) || coachTeamIds.has(match.teamBId);
 }
 
 // ==========================================
@@ -1276,14 +1300,33 @@ app.get('/api/teams/by-division', authenticateCoach, (req, res) => {
 app.get('/api/tbq', authenticateCoach, (req, res) => {
   const ctx = getPlatformContext(req);
   const dataset = ctx.dataset;
+  const isSuper = !req.user || req.user.role === 'supercoach';
+  const coachTeamIds = getCoachTeamIds(req.user, dataset);
 
-  const matchId = req.query.matchId || dataset.activeMatchId;
-  if (matchId && dataset.matches[matchId]) {
-    dataset.activeMatchId = matchId;
+  // Filter matches so non-supercoach coaches ONLY see matches for their assigned team(s)
+  const allMatchKeys = Object.keys(dataset.matches);
+  const authorizedMatchKeys = allMatchKeys.filter(k => {
+    const m = dataset.matches[k];
+    return isSuper || isCoachAuthorizedForMatch(req.user, m, dataset);
+  });
+
+  // Resolve activeMatchId
+  let effectiveActiveMatchId = null;
+  const requestedMatchId = req.query.matchId;
+
+  if (requestedMatchId && dataset.matches[requestedMatchId] && (isSuper || authorizedMatchKeys.includes(requestedMatchId))) {
+    effectiveActiveMatchId = requestedMatchId;
+    if (isSuper) dataset.activeMatchId = requestedMatchId;
+  } else if (dataset.activeMatchId && dataset.matches[dataset.activeMatchId] && (isSuper || authorizedMatchKeys.includes(dataset.activeMatchId))) {
+    effectiveActiveMatchId = dataset.activeMatchId;
+  } else if (authorizedMatchKeys.length > 0) {
+    effectiveActiveMatchId = authorizedMatchKeys[0];
+    if (isSuper) dataset.activeMatchId = effectiveActiveMatchId;
   }
-  const activeMatch = calculateMatchStats(dataset.activeMatchId, dataset, ctx.isJBQ);
 
-  const matchesList = Object.keys(dataset.matches).map(k => {
+  const activeMatch = effectiveActiveMatchId ? calculateMatchStats(effectiveActiveMatchId, dataset, ctx.isJBQ) : null;
+
+  const matchesList = authorizedMatchKeys.map(k => {
     const m = dataset.matches[k];
     const stats = calculateMatchStats(k, dataset, ctx.isJBQ);
     const tA = getTeamById(m.teamAId, dataset);
@@ -1318,11 +1361,12 @@ app.get('/api/tbq', authenticateCoach, (req, res) => {
       title: ctx.meet.title,
       teams: dataset.teams
     },
-    activeMatchId: dataset.activeMatchId,
+    activeMatchId: effectiveActiveMatchId,
     matchesList,
     meetsList,
     activeRound: activeMatch,
-    divisionsSummary: getDivisionsSummary()
+    divisionsSummary: getDivisionsSummary(),
+    userAssignedTeams: coachTeamIds ? Array.from(coachTeamIds) : null
   });
 });
 
@@ -1331,6 +1375,10 @@ app.post('/api/matches/switch', authenticateCoach, (req, res) => {
   const ctx = getPlatformContext(req);
   const { matchId } = req.body;
   if (matchId && ctx.dataset.matches[matchId]) {
+    const targetMatch = ctx.dataset.matches[matchId];
+    if (!isCoachAuthorizedForMatch(req.user, targetMatch, ctx.dataset)) {
+      return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
+    }
     ctx.dataset.activeMatchId = matchId;
     saveScoresData();
   }
@@ -1340,7 +1388,7 @@ app.post('/api/matches/switch', authenticateCoach, (req, res) => {
 // POST Save / Add / Update a Team
 app.post('/api/teams/save', authenticateCoach, (req, res) => {
   const ctx = getPlatformContext(req);
-  const { teamId, name, church, quizzers } = req.body;
+  const { teamId, name, church, quizzers, coachId } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Team name is required.' });
@@ -1377,6 +1425,24 @@ app.post('/api/teams/save', authenticateCoach, (req, res) => {
     if (church) targetTeam.church = church.trim();
   }
 
+  // Associate coach if selected
+  if (coachId && coachId !== 'none' && coachId !== 'unassigned') {
+    const assignedCoach = coaches.find(c => c.id === coachId || c.username === coachId);
+    if (assignedCoach) {
+      targetTeam.coachId = assignedCoach.id;
+      targetTeam.coachName = assignedCoach.name;
+      targetTeam.coachUsername = assignedCoach.username;
+    } else {
+      delete targetTeam.coachId;
+      delete targetTeam.coachName;
+      delete targetTeam.coachUsername;
+    }
+  } else if (coachId === '' || coachId === 'none' || coachId === 'unassigned') {
+    delete targetTeam.coachId;
+    delete targetTeam.coachName;
+    delete targetTeam.coachUsername;
+  }
+
   if (Array.isArray(quizzers)) {
     targetTeam.quizzers = quizzers.map(q => String(q).trim()).filter(Boolean);
   } else if (typeof quizzers === 'string') {
@@ -1384,7 +1450,7 @@ app.post('/api/teams/save', authenticateCoach, (req, res) => {
   }
 
   saveScoresData();
-  console.log(`[TEAM] Coach ${req.user.name} saved team: ${targetTeam.name} (${targetTeam.quizzers.length} quizzers) in ${ctx.league.toUpperCase()} ${ctx.division || ''}`);
+  console.log(`[TEAM] Coach ${req.user.name} saved team: ${targetTeam.name} (${targetTeam.quizzers.length} quizzers, coach: ${targetTeam.coachName || 'unassigned'}) in ${ctx.league.toUpperCase()} ${ctx.division || ''}`);
   res.json({
     success: true,
     team: targetTeam,
@@ -1527,6 +1593,9 @@ app.post('/api/tbq/match-info', authenticateCoach, (req, res) => {
   const match = ctx.dataset.matches[mId];
 
   if (!match) return res.status(404).json({ error: 'Match not found.' });
+  if (!isCoachAuthorizedForMatch(req.user, match, ctx.dataset)) {
+    return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
+  }
 
   if (roundNum !== undefined) match.roundNum = parseInt(roundNum) || 1;
   if (matchNumber !== undefined) match.matchNumber = String(matchNumber).trim();
@@ -1574,6 +1643,9 @@ app.post('/api/tbq/save-sheet', authenticateCoach, (req, res) => {
   const match = ctx.dataset.matches[mId];
 
   if (!match) return res.status(404).json({ error: 'Match not found.' });
+  if (!isCoachAuthorizedForMatch(req.user, match, ctx.dataset)) {
+    return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
+  }
 
   const rawA = inStudentsA || seatsHome;
   if (Array.isArray(rawA)) {
@@ -1603,6 +1675,9 @@ app.post('/api/tbq/score', authenticateCoach, (req, res) => {
   const match = ctx.dataset.matches[mId];
 
   if (!match) return res.status(404).json({ error: 'Match not found.' });
+  if (!isCoachAuthorizedForMatch(req.user, match, ctx.dataset)) {
+    return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
+  }
 
   const currentStats = calculateMatchStats(mId, ctx.dataset, ctx.isJBQ);
   if (currentStats.isCompleted) {
@@ -1700,6 +1775,9 @@ app.post('/api/tbq/timeout', authenticateCoach, (req, res) => {
   const match = ctx.dataset.matches[mId];
 
   if (!match) return res.status(404).json({ error: 'Match not found.' });
+  if (!isCoachAuthorizedForMatch(req.user, match, ctx.dataset)) {
+    return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
+  }
 
   const isTeamA = team === 'teamA' || team === 'home';
   const key = isTeamA ? 'teamA' : 'teamB';
@@ -1723,6 +1801,9 @@ app.post('/api/tbq/foul', authenticateCoach, (req, res) => {
   const match = ctx.dataset.matches[mId];
 
   if (!match) return res.status(404).json({ error: 'Match not found.' });
+  if (!isCoachAuthorizedForMatch(req.user, match, ctx.dataset)) {
+    return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
+  }
 
   const isTeamA = team === 'teamA' || team === 'home';
   const key = isTeamA ? 'teamA' : 'teamB';
@@ -1756,18 +1837,24 @@ const handleUndoQuestion = (req, res) => {
     match = ctx.dataset.matches[Object.keys(ctx.dataset.matches)[0]];
   }
 
-  if (match && match.questions && match.questions.length > 0) {
-    const removed = match.questions.pop();
-    if (removed && match.skippedRebounds) {
-      match.skippedRebounds = match.skippedRebounds.filter(q => q !== removed.questionNum);
+  if (match) {
+    if (!isCoachAuthorizedForMatch(req.user, match, ctx.dataset)) {
+      return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
     }
-    // Reopen match if it was completed
-    delete match.isCompleted;
-    if (match.status === 'Completed') {
-      match.status = 'In Progress';
+
+    if (match.questions && match.questions.length > 0) {
+      const removed = match.questions.pop();
+      if (removed && match.skippedRebounds) {
+        match.skippedRebounds = match.skippedRebounds.filter(q => q !== removed.questionNum);
+      }
+      // Reopen match if it was completed
+      delete match.isCompleted;
+      if (match.status === 'Completed') {
+        match.status = 'In Progress';
+      }
+      saveScoresData();
+      return res.json({ success: true, removed, activeRound: calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ) });
     }
-    saveScoresData();
-    return res.json({ success: true, removed, activeRound: calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ) });
   }
 
   res.status(400).json({ error: 'No questions to undo in this match.' });
@@ -1782,6 +1869,9 @@ app.post('/api/tbq/finish-match', authenticateCoach, (req, res) => {
   const mId = matchId || ctx.dataset.activeMatchId;
   const match = ctx.dataset.matches[mId];
   if (!match) return res.status(404).json({ error: 'Match not found.' });
+  if (!isCoachAuthorizedForMatch(req.user, match, ctx.dataset)) {
+    return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
+  }
 
   match.status = 'Completed';
   match.isCompleted = true;
@@ -1796,6 +1886,9 @@ app.post('/api/tbq/reopen-match', authenticateCoach, (req, res) => {
   const mId = matchId || ctx.dataset.activeMatchId;
   const match = ctx.dataset.matches[mId];
   if (!match) return res.status(404).json({ error: 'Match not found.' });
+  if (!isCoachAuthorizedForMatch(req.user, match, ctx.dataset)) {
+    return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
+  }
 
   delete match.isCompleted;
   match.status = (match.questions || []).length > 0 ? 'In Progress' : 'Scheduled';
@@ -1811,6 +1904,9 @@ app.post('/api/tbq/skip-rebound', authenticateCoach, (req, res) => {
   let match = ctx.dataset.matches[mId];
   if (!match && ctx.dataset.activeMatchId) match = ctx.dataset.matches[ctx.dataset.activeMatchId];
   if (!match) return res.status(404).json({ error: 'Match not found.' });
+  if (!isCoachAuthorizedForMatch(req.user, match, ctx.dataset)) {
+    return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
+  }
 
   const q = parseInt(questionNum);
   if (!match.skippedRebounds) match.skippedRebounds = [];
@@ -1834,6 +1930,10 @@ app.post('/api/tbq/reset-round', authenticateCoach, (req, res) => {
   }
 
   if (match) {
+    if (!isCoachAuthorizedForMatch(req.user, match, ctx.dataset)) {
+      return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
+    }
+
     match.questions = [];
     match.skippedRebounds = [];
     match.timeouts = {
