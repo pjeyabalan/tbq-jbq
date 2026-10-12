@@ -13,6 +13,7 @@ const state = {
   publicData: null,
   tbqData: null,
   activeMatchId: null,
+  currentSheetId: null,
   mobileScorerTeam: 'teamA',
   scoresheetViewMode: (typeof window !== 'undefined' && window.innerWidth < 768) ? 'feed' : 'table',
   scoreInput: {
@@ -779,16 +780,24 @@ function renderPublicSummaryUI() {
 
 
 
-async function fetchTbqData(matchId) {
+async function fetchTbqData(matchId, sheetId) {
   if (!state.auth) return;
 
-  const url = matchId ? `/api/tbq?matchId=${matchId}` : '/api/tbq';
+  const effectiveSheetId = sheetId || state.currentSheetId || '';
+  const params = new URLSearchParams();
+  if (matchId) params.set('matchId', matchId);
+  if (effectiveSheetId) params.set('sheetId', effectiveSheetId);
+
+  const url = params.toString() ? `/api/tbq?${params.toString()}` : '/api/tbq';
   try {
     const res = await authFetch(url);
     if (!res.ok) throw new Error();
     const data = await res.json();
     state.tbqData = data;
     state.activeMatchId = data.activeMatchId;
+    if (data.activeRound && data.activeRound.sheetId) {
+      state.currentSheetId = data.activeRound.sheetId;
+    }
     try {
       localStorage.setItem('tbq_backup_scores', JSON.stringify(data));
     } catch (e) {}
@@ -801,13 +810,19 @@ async function fetchTbqData(matchId) {
   }
 }
 
+function handleCoachSheetChange(sheetId) {
+  state.currentSheetId = sheetId;
+  fetchTbqData(state.activeMatchId, sheetId);
+}
+
 async function skipRebound(qNum) {
   try {
     const res = await authFetch('/api/tbq/skip-rebound', {
       method: 'POST',
       body: JSON.stringify({
         matchId: state.activeMatchId,
-        questionNum: qNum
+        questionNum: qNum,
+        sheetId: state.currentSheetId
       })
     });
     const data = await res.json();
@@ -1010,6 +1025,34 @@ function renderOfficialScoresheet() {
 
   document.getElementById('home-bonus-badge').textContent = foulA > 0 ? `Reg: ${regA} | Bon: +${activeRound.teamA.bonusPoints || 0} | Foul: -${foulA}` : `Reg: ${regA} | Bon: +${activeRound.teamA.bonusPoints || 0}`;
   document.getElementById('opp-bonus-badge').textContent = foulB > 0 ? `Reg: ${regB} | Bon: +${activeRound.teamB.bonusPoints || 0} | Foul: -${foulB}` : `Reg: ${regB} | Bon: +${activeRound.teamB.bonusPoints || 0}`;
+
+  // 3b. Coach Sheet Selector Dropdown & Badge
+  const sheetSelect = document.getElementById('coach-sheet-select');
+  const sheetBadge = document.getElementById('coach-sheet-badge');
+  if (sheetSelect && activeRound.availableSheets) {
+    const curSheetId = activeRound.sheetId || 'default';
+    state.currentSheetId = curSheetId;
+    let opts = '';
+    activeRound.availableSheets.forEach(s => {
+      const isSel = s.id === curSheetId;
+      opts += `<option value="${s.id}" ${isSel ? 'selected' : ''}>${escapeHtml(s.label)}</option>`;
+    });
+    sheetSelect.innerHTML = opts;
+
+    if (sheetBadge) {
+      const isMySheet = state.auth?.user && (curSheetId === state.auth.user.id || curSheetId === state.auth.user.username);
+      if (isMySheet) {
+        sheetBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap';
+        sheetBadge.textContent = '🟢 My Sheet';
+      } else if (curSheetId === 'default') {
+        sheetBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 whitespace-nowrap';
+        sheetBadge.textContent = '⭐ Official Master';
+      } else {
+        sheetBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300 whitespace-nowrap';
+        sheetBadge.textContent = `👀 ${activeRound.sheetCoachName || 'Coach'}`;
+      }
+    }
+  }
 
   // 4. Quick Buzzer Box UI / Match Completion
   const isMatchDone = !!activeRound.isCompleted;
@@ -1353,7 +1396,7 @@ async function finishCurrentMatch() {
   try {
     const res = await authFetch('/api/tbq/finish-match', {
       method: 'POST',
-      body: JSON.stringify({ matchId: state.activeMatchId })
+      body: JSON.stringify({ matchId: state.activeMatchId, sheetId: state.currentSheetId })
     });
     const data = await res.json();
     if (!res.ok) {
@@ -1373,7 +1416,7 @@ async function reopenCurrentMatch() {
   try {
     const res = await authFetch('/api/tbq/reopen-match', {
       method: 'POST',
-      body: JSON.stringify({ matchId: state.activeMatchId })
+      body: JSON.stringify({ matchId: state.activeMatchId, sheetId: state.currentSheetId })
     });
     const data = await res.json();
     if (!res.ok) {
@@ -2359,7 +2402,8 @@ async function toggleTimeout(team, timeoutId, used) {
         team,
         timeoutId,
         used,
-        questionNum: currentQ
+        questionNum: currentQ,
+        sheetId: state.currentSheetId
       })
     });
     const data = await res.json();
@@ -2415,7 +2459,8 @@ async function submitQuestionScore(event) {
         isRebound,
         team: state.scoreInput.team,
         quizzer: answeredQuizzer,
-        isCorrect: state.scoreInput.isCorrect
+        isCorrect: state.scoreInput.isCorrect,
+        sheetId: state.currentSheetId
       })
     });
 
@@ -2468,7 +2513,7 @@ async function undoLastQuestion() {
   try {
     const res = await authFetch('/api/tbq/undo', {
       method: 'POST',
-      body: JSON.stringify({ matchId: state.activeMatchId })
+      body: JSON.stringify({ matchId: state.activeMatchId, sheetId: state.currentSheetId })
     });
     const result = await res.json();
     if (!res.ok) {
@@ -2497,7 +2542,7 @@ async function coachResetRound() {
   try {
     const res = await authFetch('/api/tbq/reset-round', {
       method: 'POST',
-      body: JSON.stringify({ matchId: mId })
+      body: JSON.stringify({ matchId: mId, sheetId: state.currentSheetId })
     });
     const result = await res.json();
     if (!res.ok) {
@@ -2620,7 +2665,8 @@ async function handleManualSaveSheet() {
       body: JSON.stringify({
         matchId: mId,
         studentsA,
-        studentsB
+        studentsB,
+        sheetId: state.currentSheetId
       })
     });
 
@@ -2684,7 +2730,8 @@ async function handleSaveFoul(event) {
         team,
         action: 'add',
         reason,
-        penalty
+        penalty,
+        sheetId: state.currentSheetId
       })
     });
     const data = await res.json();
@@ -2763,9 +2810,15 @@ function renderTeamsManagerUI() {
                   Team #${idx + 1} ${isCIC ? '• Our Church' : ''}
                 </span>
                 ${getDivisionBadgeHtml(divKey)}
-                ${t.coachName 
-                  ? `<span class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1">🎒 Coach: ${escapeHtml(t.coachName)}</span>`
-                  : `<span class="bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold">⚪ No Coach</span>`}
+                ${(() => {
+                  const coachPills = [];
+                  if (t.coachName) coachPills.push(`Coach: ${escapeHtml(t.coachName)}`);
+                  if (t.coach2Name) coachPills.push(`Co-Coach: ${escapeHtml(t.coach2Name)}`);
+                  if (coachPills.length === 0) {
+                    return `<span class="bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold">⚪ No Coach</span>`;
+                  }
+                  return `<span class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1">🎒 ${coachPills.join(' • ')}</span>`;
+                })()}
               </div>
               <h4 class="text-base font-black text-slate-900 mt-1">${escapeHtml(t.name)}</h4>
               <div class="text-xs text-slate-500 font-medium">${escapeHtml(t.church)}</div>
@@ -2869,10 +2922,11 @@ function selectAndOpenMatch(matchId) {
   switchTab('scoresheet');
 }
 
-// Populate Coach Dropdown inside Edit Team Modal
-async function populateTeamCoachDropdown(selectedCoachId) {
-  const select = document.getElementById('edit-team-coach');
-  if (!select) return;
+// Populate Coach Dropdowns inside Edit Team Modal
+async function populateTeamCoachDropdown(selectedCoach1Id, selectedCoach2Id) {
+  const select1 = document.getElementById('edit-team-coach');
+  const select2 = document.getElementById('edit-team-coach2');
+  if (!select1 && !select2) return;
 
   if (!state.coachesList || state.coachesList.length === 0) {
     try {
@@ -2887,13 +2941,26 @@ async function populateTeamCoachDropdown(selectedCoachId) {
   }
 
   const coaches = state.coachesList || [];
-  let opts = '<option value="">-- No Coach (Unassigned) --</option>';
-  coaches.forEach(c => {
-    const isSelected = selectedCoachId && (c.id === selectedCoachId || c.username === selectedCoachId);
-    const rolePill = c.role === 'supercoach' ? ' (Super Coach)' : '';
-    opts += `<option value="${c.id}" ${isSelected ? 'selected' : ''}>${escapeHtml(c.name)} (@${escapeHtml(c.username)})${rolePill}</option>`;
-  });
-  select.innerHTML = opts;
+
+  if (select1) {
+    let opts1 = '<option value="">-- No Coach (Unassigned) --</option>';
+    coaches.forEach(c => {
+      const isSelected = selectedCoach1Id && (c.id === selectedCoach1Id || c.username === selectedCoach1Id);
+      const rolePill = c.role === 'supercoach' ? ' (Super Coach)' : '';
+      opts1 += `<option value="${c.id}" ${isSelected ? 'selected' : ''}>${escapeHtml(c.name)} (@${escapeHtml(c.username)})${rolePill}</option>`;
+    });
+    select1.innerHTML = opts1;
+  }
+
+  if (select2) {
+    let opts2 = '<option value="">-- No 2nd Coach (Unassigned) --</option>';
+    coaches.forEach(c => {
+      const isSelected = selectedCoach2Id && (c.id === selectedCoach2Id || c.username === selectedCoach2Id);
+      const rolePill = c.role === 'supercoach' ? ' (Super Coach)' : '';
+      opts2 += `<option value="${c.id}" ${isSelected ? 'selected' : ''}>${escapeHtml(c.name)} (@${escapeHtml(c.username)})${rolePill}</option>`;
+    });
+    select2.innerHTML = opts2;
+  }
 }
 
 // EDIT TEAM MODAL
@@ -2912,7 +2979,9 @@ async function openEditTeamModal(teamId) {
   document.getElementById('edit-team-church').value = team ? team.church : '';
   document.getElementById('edit-team-quizzers').value = team ? (team.quizzers || []).join(', ') : '';
 
-  await populateTeamCoachDropdown(team ? (team.coachId || team.coachUsername) : '');
+  const c1 = team ? (team.coachId || team.coachUsername || '') : '';
+  const c2 = team ? (team.coach2Id || team.coach2Username || '') : '';
+  await populateTeamCoachDropdown(c1, c2);
 
   const titleEl = document.getElementById('modal-team-title');
   if (titleEl) {
@@ -3016,12 +3085,14 @@ async function handleSaveTeam(event) {
   const church = document.getElementById('edit-team-church').value.trim();
   const quizzersRaw = document.getElementById('edit-team-quizzers').value;
   const coachSelect = document.getElementById('edit-team-coach');
+  const coach2Select = document.getElementById('edit-team-coach2');
   const coachId = coachSelect ? coachSelect.value : '';
+  const coach2Id = coach2Select ? coach2Select.value : '';
 
   try {
     const res = await authFetch('/api/teams/save', {
       method: 'POST',
-      body: JSON.stringify({ teamId, name, church, quizzers: quizzersRaw, division, coachId })
+      body: JSON.stringify({ teamId, name, church, quizzers: quizzersRaw, division, coachId, coach2Id })
     });
     const data = await res.json();
     if (!res.ok) {
@@ -3267,13 +3338,21 @@ function renderCoachesTable(coaches) {
   let html = '';
   coaches.forEach(c => {
     const isSelf = state.auth && state.auth.user && c.id === state.auth.user.id;
-    const assignedTeams = uniqueTeams.filter(t => t.coachId === c.id || t.coachUsername === c.username);
+    const assignedTeams = uniqueTeams.filter(t => 
+      t.coachId === c.id || t.coachUsername === c.username ||
+      t.coach2Id === c.id || t.coach2Username === c.username ||
+      (Array.isArray(t.coaches) && t.coaches.some(co => co && (co.id === c.id || co.username === c.username)))
+    );
 
     let assignedHtml = '';
     if (c.role === 'supercoach') {
       assignedHtml = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">👑 All Teams (Super Coach)</span>';
     } else if (assignedTeams.length > 0) {
-      assignedHtml = assignedTeams.map(t => `<span class="inline-block bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold mr-1 mb-1">🎒 ${escapeHtml(t.name)}</span>`).join('');
+      assignedHtml = assignedTeams.map(t => {
+        const isAssistant = (t.coach2Id === c.id || t.coach2Username === c.username);
+        const tag = isAssistant ? '(Co-Coach)' : '(Primary)';
+        return `<span class="inline-block bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold mr-1 mb-1">🎒 ${escapeHtml(t.name)} ${tag}</span>`;
+      }).join('');
     } else {
       assignedHtml = '<span class="text-xs text-slate-400 italic">No assigned team</span>';
     }

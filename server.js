@@ -582,7 +582,10 @@ function getCoachTeamIds(user, dataset) {
   const assigned = new Set();
   const teams = (dataset && dataset.teams) || [];
   teams.forEach(t => {
-    if (t.coachId && (t.coachId === user.id || t.coachUsername === user.username)) {
+    const isPrimary = (t.coachId && (t.coachId === user.id || t.coachUsername === user.username));
+    const isAssistant = (t.coach2Id && (t.coach2Id === user.id || t.coach2Username === user.username));
+    const isInList = Array.isArray(t.coaches) && t.coaches.some(c => c && (c.id === user.id || c.username === user.username));
+    if (isPrimary || isAssistant || isInList) {
       assigned.add(t.id);
     }
   });
@@ -598,11 +601,162 @@ function isCoachAuthorizedForMatch(user, match, dataset) {
   return coachTeamIds.has(match.teamAId) || coachTeamIds.has(match.teamBId);
 }
 
+// Ensure match.sheets is initialized with 'default' and pre-seeded for assigned coaches
+function ensureMatchSheets(match, dataset) {
+  if (!match) return;
+  if (!match.sheets || typeof match.sheets !== 'object') {
+    match.sheets = {};
+  }
+  if (!match.sheets['default']) {
+    match.sheets['default'] = {
+      id: 'default',
+      label: '⭐ Official Master Sheet',
+      coachId: 'default',
+      coachName: 'Official Scorekeeper',
+      questions: match.questions || [],
+      studentsA: match.studentsA || [],
+      studentsB: match.studentsB || [],
+      timeouts: match.timeouts || {
+        teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
+        teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
+      },
+      fouls: match.fouls || { teamA: [], teamB: [] },
+      skippedRebounds: match.skippedRebounds || [],
+      isCompleted: !!match.isCompleted,
+      status: match.status || 'Scheduled'
+    };
+  }
+
+  // Pre-seed sheets for assigned coaches if teams exist
+  if (dataset) {
+    const tA = getTeamById(match.teamAId, dataset);
+    const tB = getTeamById(match.teamBId, dataset);
+    [tA, tB].forEach(team => {
+      if (!team) return;
+      if (team.coachId && !match.sheets[team.coachId]) {
+        match.sheets[team.coachId] = {
+          id: team.coachId,
+          label: `🎒 ${team.coachName || 'Coach'}'s Sheet`,
+          coachId: team.coachId,
+          coachName: team.coachName || 'Coach',
+          questions: [],
+          studentsA: [...(match.studentsA || [])],
+          studentsB: [...(match.studentsB || [])],
+          timeouts: {
+            teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
+            teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
+          },
+          fouls: { teamA: [], teamB: [] },
+          skippedRebounds: [],
+          isCompleted: false,
+          status: 'Scheduled'
+        };
+      }
+      if (team.coach2Id && !match.sheets[team.coach2Id]) {
+        match.sheets[team.coach2Id] = {
+          id: team.coach2Id,
+          label: `🎒 ${team.coach2Name || 'Co-Coach'}'s Sheet`,
+          coachId: team.coach2Id,
+          coachName: team.coach2Name || 'Co-Coach',
+          questions: [],
+          studentsA: [...(match.studentsA || [])],
+          studentsB: [...(match.studentsB || [])],
+          timeouts: {
+            teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
+            teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
+          },
+          fouls: { teamA: [], teamB: [] },
+          skippedRebounds: [],
+          isCompleted: false,
+          status: 'Scheduled'
+        };
+      }
+    });
+  }
+}
+
+function getMatchSheet(match, sheetId, fallbackCoachName) {
+  if (!match) return null;
+  ensureMatchSheets(match);
+  const sId = (sheetId || 'default').trim();
+  if (match.sheets[sId]) return match.sheets[sId];
+
+  // Check if an existing sheet matches by coachUsername or coachId
+  const foundKey = Object.keys(match.sheets).find(k => {
+    const s = match.sheets[k];
+    return s && (s.id === sId || s.coachId === sId);
+  });
+  if (foundKey) return match.sheets[foundKey];
+
+  match.sheets[sId] = {
+    id: sId,
+    label: fallbackCoachName ? `🎒 ${fallbackCoachName}'s Sheet` : `🎒 Coach Sheet (${sId})`,
+    coachId: sId,
+    coachName: fallbackCoachName || sId,
+    questions: [],
+    studentsA: [...(match.studentsA || [])],
+    studentsB: [...(match.studentsB || [])],
+    timeouts: {
+      teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
+      teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
+    },
+    fouls: { teamA: [], teamB: [] },
+    skippedRebounds: [],
+    isCompleted: false,
+    status: 'Scheduled'
+  };
+  return match.sheets[sId];
+}
+
+function getAvailableSheetsList(match, dataset) {
+  ensureMatchSheets(match, dataset);
+  const list = [];
+  list.push({
+    id: 'default',
+    label: '⭐ Official Master Sheet',
+    coachName: 'Official Scorekeeper',
+    isOfficial: true
+  });
+  Object.keys(match.sheets || {}).forEach(k => {
+    if (k === 'default') return;
+    const s = match.sheets[k];
+    list.push({
+      id: s.id,
+      label: s.label || `🎒 ${s.coachName}'s Sheet`,
+      coachName: s.coachName || 'Coach',
+      isOfficial: false
+    });
+  });
+  return list;
+}
+
+function resolveTargetSheetId(req, match, dataset) {
+  const reqSheet = (req.query?.sheetId || req.body?.sheetId || '').trim();
+  const user = req.user;
+  const isSuper = !user || user.role === 'supercoach';
+
+  if (reqSheet) {
+    if (isSuper) return reqSheet;
+    if (reqSheet === 'default' || (user && (reqSheet === user.id || reqSheet === user.username))) {
+      return reqSheet;
+    }
+    if (match && isCoachAuthorizedForMatch(user, match, dataset)) {
+      return reqSheet;
+    }
+  }
+
+  // Regular coach defaults to their own private sheet
+  if (!isSuper && user && user.id) {
+    return user.id;
+  }
+  return 'default';
+}
+
 // ==========================================
 // 3. STATS & SCORING CALCULATION ENGINE
 // ==========================================
 
-function calculateMatchStats(matchId, datasetParam, isJBQParam) {
+function calculateMatchStats(matchId, datasetParam, isJBQParam, targetSheetId) {
   let dataset = datasetParam;
   let isJBQ = isJBQParam;
   if (!dataset) {
@@ -624,6 +778,11 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
     }
   }
 
+  // Ensure sheets exist on match
+  ensureMatchSheets(match, dataset);
+  const sheetKey = targetSheetId || 'default';
+  const activeSheet = getMatchSheet(match, sheetKey) || match.sheets['default'];
+
   const teamAObj = getTeamById(match.teamAId, dataset) || { name: "Team 1", church: "Church 1", quizzers: [] };
   const teamBObj = getTeamById(match.teamBId, dataset) || { name: "Team 2", church: "Church 2", quizzers: [] };
 
@@ -632,20 +791,20 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
     .map(s => String(s || '').trim())
     .filter(s => s && !s.toLowerCase().startsWith('seat #'));
 
-  let studentsA = filterRealStudents(match.studentsA || match.seats?.teamA);
+  let studentsA = filterRealStudents(activeSheet.studentsA || match.studentsA || match.seats?.teamA);
   if (studentsA.length === 0) studentsA = filterRealStudents(teamAObj.quizzers);
   if (studentsA.length === 0) studentsA = ["Student 1"];
 
-  let studentsB = filterRealStudents(match.studentsB || match.seats?.teamB);
+  let studentsB = filterRealStudents(activeSheet.studentsB || match.studentsB || match.seats?.teamB);
   if (studentsB.length === 0) studentsB = filterRealStudents(teamBObj.quizzers);
   if (studentsB.length === 0) studentsB = ["Student 1"];
 
-  // Defensively sanitize match.questions:
+  // Defensively sanitize activeSheet.questions:
   // 1. Only questions 1 to 20
   // 2. At most 2 attempts per questionNum (1st attempt + rebound)
   const sanitizedQuestions = [];
   const attemptCountsByQ = {};
-  (match.questions || []).forEach(q => {
+  (activeSheet.questions || []).forEach(q => {
     const qNum = parseInt(q.questionNum);
     if (isNaN(qNum) || qNum < 1 || qNum > 20) return;
     attemptCountsByQ[qNum] = (attemptCountsByQ[qNum] || 0) + 1;
@@ -653,10 +812,13 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
       sanitizedQuestions.push(q);
     }
   });
-  match.questions = sanitizedQuestions;
+  activeSheet.questions = sanitizedQuestions;
+  if (activeSheet.id === 'default') {
+    match.questions = sanitizedQuestions;
+  }
 
-  // Ensure any student who answered in this match is in the list
-  (match.questions || []).forEach(q => {
+  // Ensure any student who answered in this sheet is in the list
+  (activeSheet.questions || []).forEach(q => {
     if (q.quizzer && typeof q.quizzer === 'string') {
       const qz = q.quizzer.trim();
       if (qz && !qz.toLowerCase().startsWith('seat #')) {
@@ -669,18 +831,25 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
     }
   });
 
-  match.studentsA = studentsA;
-  match.studentsB = studentsB;
-  match.seats = { teamA: studentsA, teamB: studentsB, home: studentsA, opponent: studentsB };
+  activeSheet.studentsA = studentsA;
+  activeSheet.studentsB = studentsB;
+  if (activeSheet.id === 'default') {
+    match.studentsA = studentsA;
+    match.studentsB = studentsB;
+    match.seats = { teamA: studentsA, teamB: studentsB, home: studentsA, opponent: studentsB };
+  }
 
-  if (!match.timeouts) {
-    match.timeouts = {
+  if (!activeSheet.timeouts) {
+    activeSheet.timeouts = {
       teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
       teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
     };
   }
-  if (!match.fouls) {
-    match.fouls = { teamA: [], teamB: [] };
+  if (!activeSheet.fouls) {
+    activeSheet.fouls = { teamA: [], teamB: [] };
+  }
+  if (!activeSheet.skippedRebounds) {
+    activeSheet.skippedRebounds = [];
   }
 
   const qoThreshold = isJBQ ? 6 : 5;
@@ -748,7 +917,7 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
     else if (qNum <= 17) pts = 20;
     else pts = 30;
 
-    const qList = (match.questions || []).filter(q => q.questionNum === qNum);
+    const qList = (activeSheet.questions || []).filter(q => q.questionNum === qNum);
     const teamACells = Array(studentsA.length).fill("");
     const teamBCells = Array(studentsB.length).fill("");
     let note = "";
@@ -849,8 +1018,8 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
     }
   });
 
-  const teamAFoulPts = (match.fouls?.teamA || []).reduce((sum, f) => sum + (f.penalty || 5), 0);
-  const teamBFoulPts = (match.fouls?.teamB || []).reduce((sum, f) => sum + (f.penalty || 5), 0);
+  const teamAFoulPts = (activeSheet.fouls?.teamA || []).reduce((sum, f) => sum + (f.penalty || 5), 0);
+  const teamBFoulPts = (activeSheet.fouls?.teamB || []).reduce((sum, f) => sum + (f.penalty || 5), 0);
 
   const finalScoreA = teamARunning + teamABonusPts - teamAFoulPts;
   const finalScoreB = teamBRunning + teamBBonusPts - teamBFoulPts;
@@ -876,8 +1045,8 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
   let completedQuestionsCount = 0;
 
   for (let q = 1; q <= 20; q++) {
-    const qList = (match.questions || []).filter(item => item.questionNum === q);
-    const isSkipped = (match.skippedRebounds || []).includes(q);
+    const qList = (activeSheet.questions || []).filter(item => item.questionNum === q);
+    const isSkipped = (activeSheet.skippedRebounds || []).includes(q);
 
     if (qList.length === 0) {
       pendingQuestionNum = q;
@@ -907,32 +1076,42 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
 
   // Match is completed if all 20 questions are resolved without pending rebound, or explicitly marked
   const all20Finished = completedQuestionsCount >= 20 && !isReboundPending;
-  const isCompleted = match.status === 'Completed' || !!match.isCompleted || all20Finished;
+  const isCompleted = activeSheet.status === 'Completed' || !!activeSheet.isCompleted || all20Finished;
 
-  let matchStatus = 'Scheduled';
+  let sheetStatus = 'Scheduled';
   if (isCompleted) {
-    matchStatus = 'Completed';
-    match.status = 'Completed';
-    match.isCompleted = true;
-  } else if ((match.questions || []).length > 0) {
-    matchStatus = 'In Progress';
-    match.status = 'In Progress';
+    sheetStatus = 'Completed';
+    activeSheet.status = 'Completed';
+    activeSheet.isCompleted = true;
+  } else if ((activeSheet.questions || []).length > 0) {
+    sheetStatus = 'In Progress';
+    activeSheet.status = 'In Progress';
   } else {
-    match.status = 'Scheduled';
-    match.status = 'Scheduled';
+    sheetStatus = 'Scheduled';
+    activeSheet.status = 'Scheduled';
+  }
+
+  if (activeSheet.id === 'default') {
+    match.status = sheetStatus;
+    match.isCompleted = isCompleted;
   }
 
   return {
     id: match.id,
     roundNum: match.roundNum || 1,
     matchNumber: match.matchNumber || "01",
-    status: matchStatus,
+    sheetId: activeSheet.id,
+    sheetLabel: activeSheet.label || (activeSheet.id === 'default' ? '⭐ Official Master Sheet' : `🎒 ${activeSheet.coachName}'s Sheet`),
+    sheetCoachId: activeSheet.coachId,
+    sheetCoachName: activeSheet.coachName,
+    availableSheets: getAvailableSheetsList(match, dataset),
+    status: sheetStatus,
     isCompleted,
     completedQuestionsCount,
     room: "",
     quizmaster: match.quizmaster || "Quizmaster",
     scorekeeper: match.scorekeeper || "Scorekeeper",
-    totalQuestions: (match.questions || []).length,
+    totalQuestions: (activeSheet.questions || []).length,
     pendingQuestionNum: isCompleted ? 20 : Math.min(20, pendingQuestionNum),
     reboundStatus: {
       isPending: isCompleted ? false : isReboundPending,
@@ -942,8 +1121,8 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
       penalty: reboundPenalty,
       pointValue: reboundPointValue
     },
-    skippedRebounds: match.skippedRebounds || [],
-    questions: match.questions || [],
+    skippedRebounds: activeSheet.skippedRebounds || [],
+    questions: activeSheet.questions || [],
     studentsA,
     studentsB,
     seats: {
@@ -953,10 +1132,10 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
       teamB: studentsB
     },
     timeouts: {
-      home: match.timeouts?.teamA || [],
-      opponent: match.timeouts?.teamB || [],
-      teamA: match.timeouts?.teamA || [],
-      teamB: match.timeouts?.teamB || []
+      home: activeSheet.timeouts?.teamA || [],
+      opponent: activeSheet.timeouts?.teamB || [],
+      teamA: activeSheet.timeouts?.teamA || [],
+      teamB: activeSheet.timeouts?.teamB || []
     },
     qoThreshold,
     qoBonusPts,
@@ -966,8 +1145,8 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
       church: teamAObj.church,
       students: studentsA,
       seats: studentsA,
-      timeouts: match.timeouts?.teamA || [],
-      fouls: match.fouls?.teamA || [],
+      timeouts: activeSheet.timeouts?.teamA || [],
+      fouls: activeSheet.fouls?.teamA || [],
       foulPenaltyPoints: teamAFoulPts,
       bonuses: teamABonuses,
       bonusPoints: teamABonusPts,
@@ -983,8 +1162,8 @@ function calculateMatchStats(matchId, datasetParam, isJBQParam) {
       church: teamBObj.church,
       students: studentsB,
       seats: studentsB,
-      timeouts: match.timeouts?.teamB || [],
-      fouls: match.fouls?.teamB || [],
+      timeouts: activeSheet.timeouts?.teamB || [],
+      fouls: activeSheet.fouls?.teamB || [],
       foulPenaltyPoints: teamBFoulPts,
       bonuses: teamBBonuses,
       bonusPoints: teamBBonusPts,
@@ -1324,11 +1503,14 @@ app.get('/api/tbq', authenticateCoach, (req, res) => {
     if (isSuper) dataset.activeMatchId = effectiveActiveMatchId;
   }
 
-  const activeMatch = effectiveActiveMatchId ? calculateMatchStats(effectiveActiveMatchId, dataset, ctx.isJBQ) : null;
+  const activeMatchObj = effectiveActiveMatchId ? dataset.matches[effectiveActiveMatchId] : null;
+  const targetSheetId = resolveTargetSheetId(req, activeMatchObj, dataset);
+  const activeMatch = effectiveActiveMatchId ? calculateMatchStats(effectiveActiveMatchId, dataset, ctx.isJBQ, targetSheetId) : null;
 
   const matchesList = authorizedMatchKeys.map(k => {
     const m = dataset.matches[k];
-    const stats = calculateMatchStats(k, dataset, ctx.isJBQ);
+    const mSheet = resolveTargetSheetId(req, m, dataset);
+    const stats = calculateMatchStats(k, dataset, ctx.isJBQ, mSheet);
     const tA = getTeamById(m.teamAId, dataset);
     const tB = getTeamById(m.teamBId, dataset);
     return {
@@ -1382,13 +1564,15 @@ app.post('/api/matches/switch', authenticateCoach, (req, res) => {
     ctx.dataset.activeMatchId = matchId;
     saveScoresData();
   }
-  res.json({ success: true, activeRound: calculateMatchStats(ctx.dataset.activeMatchId, ctx.dataset, ctx.isJBQ) });
+  const curMatch = ctx.dataset.matches[ctx.dataset.activeMatchId];
+  const targetSheetId = resolveTargetSheetId(req, curMatch, ctx.dataset);
+  res.json({ success: true, activeRound: calculateMatchStats(ctx.dataset.activeMatchId, ctx.dataset, ctx.isJBQ, targetSheetId) });
 });
 
 // POST Save / Add / Update a Team
 app.post('/api/teams/save', authenticateCoach, (req, res) => {
   const ctx = getPlatformContext(req);
-  const { teamId, name, church, quizzers, coachId } = req.body;
+  const { teamId, name, church, quizzers, coachId, coach2Id } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Team name is required.' });
@@ -1425,7 +1609,7 @@ app.post('/api/teams/save', authenticateCoach, (req, res) => {
     if (church) targetTeam.church = church.trim();
   }
 
-  // Associate coach if selected
+  // Associate Primary Coach
   if (coachId && coachId !== 'none' && coachId !== 'unassigned') {
     const assignedCoach = coaches.find(c => c.id === coachId || c.username === coachId);
     if (assignedCoach) {
@@ -1443,6 +1627,34 @@ app.post('/api/teams/save', authenticateCoach, (req, res) => {
     delete targetTeam.coachUsername;
   }
 
+  // Associate Assistant / 2nd Coach
+  if (coach2Id && coach2Id !== 'none' && coach2Id !== 'unassigned') {
+    const assignedCoach2 = coaches.find(c => c.id === coach2Id || c.username === coach2Id);
+    if (assignedCoach2) {
+      targetTeam.coach2Id = assignedCoach2.id;
+      targetTeam.coach2Name = assignedCoach2.name;
+      targetTeam.coach2Username = assignedCoach2.username;
+    } else {
+      delete targetTeam.coach2Id;
+      delete targetTeam.coach2Name;
+      delete targetTeam.coach2Username;
+    }
+  } else if (coach2Id === '' || coach2Id === 'none' || coach2Id === 'unassigned') {
+    delete targetTeam.coach2Id;
+    delete targetTeam.coach2Name;
+    delete targetTeam.coach2Username;
+  }
+
+  // Unified coaches list for multi-coach support
+  const coachesArr = [];
+  if (targetTeam.coachId) {
+    coachesArr.push({ id: targetTeam.coachId, name: targetTeam.coachName, username: targetTeam.coachUsername, role: 'primary' });
+  }
+  if (targetTeam.coach2Id && targetTeam.coach2Id !== targetTeam.coachId) {
+    coachesArr.push({ id: targetTeam.coach2Id, name: targetTeam.coach2Name, username: targetTeam.coach2Username, role: 'assistant' });
+  }
+  targetTeam.coaches = coachesArr;
+
   if (Array.isArray(quizzers)) {
     targetTeam.quizzers = quizzers.map(q => String(q).trim()).filter(Boolean);
   } else if (typeof quizzers === 'string') {
@@ -1450,7 +1662,8 @@ app.post('/api/teams/save', authenticateCoach, (req, res) => {
   }
 
   saveScoresData();
-  console.log(`[TEAM] Coach ${req.user.name} saved team: ${targetTeam.name} (${targetTeam.quizzers.length} quizzers, coach: ${targetTeam.coachName || 'unassigned'}) in ${ctx.league.toUpperCase()} ${ctx.division || ''}`);
+  const coachLabel = coachesArr.map(c => c.name).join(' & ') || 'unassigned';
+  console.log(`[TEAM] Coach ${req.user.name} saved team: ${targetTeam.name} (${targetTeam.quizzers.length} quizzers, coaches: ${coachLabel}) in ${ctx.league.toUpperCase()} ${ctx.division || ''}`);
   res.json({
     success: true,
     team: targetTeam,
@@ -1647,24 +1860,35 @@ app.post('/api/tbq/save-sheet', authenticateCoach, (req, res) => {
     return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
   }
 
+  const targetSheetId = resolveTargetSheetId(req, match, ctx.dataset);
+  const activeSheet = getMatchSheet(match, targetSheetId);
+
   const rawA = inStudentsA || seatsHome;
   if (Array.isArray(rawA)) {
-    match.studentsA = rawA.map(s => String(s || '').trim()).filter(s => s && !s.toLowerCase().startsWith('seat #'));
-    match.seats = match.seats || {};
-    match.seats.teamA = match.studentsA;
-    match.seats.home = match.studentsA;
+    const cleanA = rawA.map(s => String(s || '').trim()).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+    activeSheet.studentsA = cleanA;
+    if (targetSheetId === 'default') {
+      match.studentsA = cleanA;
+      match.seats = match.seats || {};
+      match.seats.teamA = cleanA;
+      match.seats.home = cleanA;
+    }
   }
   const rawB = inStudentsB || seatsOpp;
   if (Array.isArray(rawB)) {
-    match.studentsB = rawB.map(s => String(s || '').trim()).filter(s => s && !s.toLowerCase().startsWith('seat #'));
-    match.seats = match.seats || {};
-    match.seats.teamB = match.studentsB;
-    match.seats.opponent = match.studentsB;
+    const cleanB = rawB.map(s => String(s || '').trim()).filter(s => s && !s.toLowerCase().startsWith('seat #'));
+    activeSheet.studentsB = cleanB;
+    if (targetSheetId === 'default') {
+      match.studentsB = cleanB;
+      match.seats = match.seats || {};
+      match.seats.teamB = cleanB;
+      match.seats.opponent = cleanB;
+    }
   }
 
   saveScoresData();
-  console.log(`[SCORESHEET] Scoresheet saved for match ${mId}`);
-  res.json({ success: true, message: 'Scoresheet saved successfully.', activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ) });
+  console.log(`[SCORESHEET] Scoresheet saved for match ${mId} (Sheet: ${targetSheetId})`);
+  res.json({ success: true, message: 'Scoresheet saved successfully.', activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ, targetSheetId) });
 });
 
 // POST Record Question Score (COACH ONLY)
@@ -1679,7 +1903,10 @@ app.post('/api/tbq/score', authenticateCoach, (req, res) => {
     return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
   }
 
-  const currentStats = calculateMatchStats(mId, ctx.dataset, ctx.isJBQ);
+  const targetSheetId = resolveTargetSheetId(req, match, ctx.dataset);
+  const activeSheet = getMatchSheet(match, targetSheetId);
+  const currentStats = calculateMatchStats(mId, ctx.dataset, ctx.isJBQ, targetSheetId);
+
   if (currentStats.isCompleted) {
     return res.status(400).json({
       error: `Match #${match.matchNumber} is already completed (all 20 questions scored). Tap "Undo Last" if you need to adjust Question #20.`
@@ -1697,9 +1924,9 @@ app.post('/api/tbq/score', authenticateCoach, (req, res) => {
     });
   }
 
-  // Prevent multiple answers for already resolved questions
-  const existingAttempts = (match.questions || []).filter(item => item.questionNum === qNum);
-  const isSkipped = (match.skippedRebounds || []).includes(qNum);
+  // Prevent multiple answers for already resolved questions in activeSheet
+  const existingAttempts = (activeSheet.questions || []).filter(item => item.questionNum === qNum);
+  const isSkipped = (activeSheet.skippedRebounds || []).includes(qNum);
   const isReboundOpportunity = currentStats.reboundStatus?.isPending && currentStats.pendingQuestionNum === qNum;
 
   if (existingAttempts.length >= 2 || (existingAttempts.length === 1 && !isReboundOpportunity && !isSkipped && (existingAttempts[0].isCorrect || !existingAttempts[0].isInterruption))) {
@@ -1736,10 +1963,16 @@ app.post('/api/tbq/score', authenticateCoach, (req, res) => {
     ? String(quizzer).trim() 
     : (defaultList[0] || 'Student 1');
 
-  // If student is not yet in the match's student list, add them
-  const targetStudents = isTeamA ? match.studentsA : match.studentsB;
+  // If student is not yet in the sheet's student list, add them
+  const targetStudents = isTeamA ? activeSheet.studentsA : activeSheet.studentsB;
   if (targetStudents && !targetStudents.some(s => s.toLowerCase() === resolvedName.toLowerCase())) {
     targetStudents.push(resolvedName);
+  }
+  if (targetSheetId === 'default') {
+    const mTarget = isTeamA ? match.studentsA : match.studentsB;
+    if (mTarget && !mTarget.some(s => s.toLowerCase() === resolvedName.toLowerCase())) {
+      mTarget.push(resolvedName);
+    }
   }
 
   const newQuestion = {
@@ -1755,15 +1988,23 @@ app.post('/api/tbq/score', authenticateCoach, (req, res) => {
     timestamp: new Date().toISOString()
   };
 
-  match.questions.push(newQuestion);
-  const updatedStats = calculateMatchStats(mId, ctx.dataset, ctx.isJBQ);
+  activeSheet.questions.push(newQuestion);
+  if (targetSheetId === 'default') {
+    match.questions = activeSheet.questions;
+  }
+
+  const updatedStats = calculateMatchStats(mId, ctx.dataset, ctx.isJBQ, targetSheetId);
   if (updatedStats.isCompleted) {
-    match.status = 'Completed';
-    match.isCompleted = true;
+    activeSheet.status = 'Completed';
+    activeSheet.isCompleted = true;
+    if (targetSheetId === 'default') {
+      match.status = 'Completed';
+      match.isCompleted = true;
+    }
   }
   saveScoresData();
 
-  console.log(`[SCORE] Match #${match.matchNumber} Q#${newQuestion.questionNum}: ${newQuestion.quizzer} (${newQuestion.team}) [${newQuestion.isCorrect ? 'CORRECT' : 'INCORRECT'}] ${newQuestion.pointValue}pts${updatedStats.isCompleted ? ' [MATCH COMPLETED]' : ''}`);
+  console.log(`[SCORE] Match #${match.matchNumber} (Sheet: ${targetSheetId}) Q#${newQuestion.questionNum}: ${newQuestion.quizzer} (${newQuestion.team}) [${newQuestion.isCorrect ? 'CORRECT' : 'INCORRECT'}] ${newQuestion.pointValue}pts${updatedStats.isCompleted ? ' [MATCH COMPLETED]' : ''}`);
   res.json({ success: true, activeRound: updatedStats });
 });
 
@@ -1779,18 +2020,24 @@ app.post('/api/tbq/timeout', authenticateCoach, (req, res) => {
     return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
   }
 
+  const targetSheetId = resolveTargetSheetId(req, match, ctx.dataset);
+  const activeSheet = getMatchSheet(match, targetSheetId);
+
   const isTeamA = team === 'teamA' || team === 'home';
   const key = isTeamA ? 'teamA' : 'teamB';
-  if (!match.timeouts[key]) match.timeouts[key] = [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ];
+  if (!activeSheet.timeouts[key]) activeSheet.timeouts[key] = [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ];
 
-  const t = match.timeouts[key].find(item => item.id === parseInt(timeoutId));
+  const t = activeSheet.timeouts[key].find(item => item.id === parseInt(timeoutId));
   if (t) {
     t.used = !!used;
-    t.questionNum = used ? (questionNum || `Q${match.questions.length || 1}`) : "";
+    t.questionNum = used ? (questionNum || `Q${activeSheet.questions.length || 1}`) : "";
+  }
+  if (targetSheetId === 'default') {
+    match.timeouts = activeSheet.timeouts;
   }
 
   saveScoresData();
-  res.json({ success: true, activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ) });
+  res.json({ success: true, activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ, targetSheetId) });
 });
 
 // POST Add or Delete Team Foul
@@ -1805,12 +2052,15 @@ app.post('/api/tbq/foul', authenticateCoach, (req, res) => {
     return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
   }
 
+  const targetSheetId = resolveTargetSheetId(req, match, ctx.dataset);
+  const activeSheet = getMatchSheet(match, targetSheetId);
+
   const isTeamA = team === 'teamA' || team === 'home';
   const key = isTeamA ? 'teamA' : 'teamB';
-  if (!match.fouls[key]) match.fouls[key] = [];
+  if (!activeSheet.fouls[key]) activeSheet.fouls[key] = [];
 
   if (action === 'delete') {
-    match.fouls[key] = match.fouls[key].filter(f => f.id !== foulId);
+    activeSheet.fouls[key] = activeSheet.fouls[key].filter(f => f.id !== foulId);
   } else {
     const newFoul = {
       id: `foul-${Date.now()}`,
@@ -1819,11 +2069,14 @@ app.post('/api/tbq/foul', authenticateCoach, (req, res) => {
       timestamp: new Date().toISOString(),
       calledBy: req.user.name
     };
-    match.fouls[key].push(newFoul);
+    activeSheet.fouls[key].push(newFoul);
+  }
+  if (targetSheetId === 'default') {
+    match.fouls = activeSheet.fouls;
   }
 
   saveScoresData();
-  res.json({ success: true, activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ) });
+  res.json({ success: true, activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ, targetSheetId) });
 });
 
 // POST Undo Question (supports both /api/tbq/undo and /api/tbq/undo-question)
@@ -1842,22 +2095,32 @@ const handleUndoQuestion = (req, res) => {
       return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
     }
 
-    if (match.questions && match.questions.length > 0) {
-      const removed = match.questions.pop();
-      if (removed && match.skippedRebounds) {
-        match.skippedRebounds = match.skippedRebounds.filter(q => q !== removed.questionNum);
+    const targetSheetId = resolveTargetSheetId(req, match, ctx.dataset);
+    const activeSheet = getMatchSheet(match, targetSheetId);
+
+    if (activeSheet.questions && activeSheet.questions.length > 0) {
+      const removed = activeSheet.questions.pop();
+      if (removed && activeSheet.skippedRebounds) {
+        activeSheet.skippedRebounds = activeSheet.skippedRebounds.filter(q => q !== removed.questionNum);
       }
-      // Reopen match if it was completed
-      delete match.isCompleted;
-      if (match.status === 'Completed') {
-        match.status = 'In Progress';
+      delete activeSheet.isCompleted;
+      if (activeSheet.status === 'Completed') {
+        activeSheet.status = 'In Progress';
+      }
+      if (targetSheetId === 'default') {
+        match.questions = activeSheet.questions;
+        match.skippedRebounds = activeSheet.skippedRebounds;
+        delete match.isCompleted;
+        if (match.status === 'Completed') {
+          match.status = 'In Progress';
+        }
       }
       saveScoresData();
-      return res.json({ success: true, removed, activeRound: calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ) });
+      return res.json({ success: true, removed, activeRound: calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ, targetSheetId) });
     }
   }
 
-  res.status(400).json({ error: 'No questions to undo in this match.' });
+  res.status(400).json({ error: 'No questions to undo in this sheet.' });
 };
 app.post('/api/tbq/undo', authenticateCoach, handleUndoQuestion);
 app.post('/api/tbq/undo-question', authenticateCoach, handleUndoQuestion);
@@ -1873,10 +2136,17 @@ app.post('/api/tbq/finish-match', authenticateCoach, (req, res) => {
     return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
   }
 
-  match.status = 'Completed';
-  match.isCompleted = true;
+  const targetSheetId = resolveTargetSheetId(req, match, ctx.dataset);
+  const activeSheet = getMatchSheet(match, targetSheetId);
+
+  activeSheet.status = 'Completed';
+  activeSheet.isCompleted = true;
+  if (targetSheetId === 'default') {
+    match.status = 'Completed';
+    match.isCompleted = true;
+  }
   saveScoresData();
-  res.json({ success: true, activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ) });
+  res.json({ success: true, activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ, targetSheetId) });
 });
 
 // POST Reopen a Completed Match
@@ -1890,10 +2160,17 @@ app.post('/api/tbq/reopen-match', authenticateCoach, (req, res) => {
     return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
   }
 
-  delete match.isCompleted;
-  match.status = (match.questions || []).length > 0 ? 'In Progress' : 'Scheduled';
+  const targetSheetId = resolveTargetSheetId(req, match, ctx.dataset);
+  const activeSheet = getMatchSheet(match, targetSheetId);
+
+  delete activeSheet.isCompleted;
+  activeSheet.status = (activeSheet.questions || []).length > 0 ? 'In Progress' : 'Scheduled';
+  if (targetSheetId === 'default') {
+    delete match.isCompleted;
+    match.status = (match.questions || []).length > 0 ? 'In Progress' : 'Scheduled';
+  }
   saveScoresData();
-  res.json({ success: true, activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ) });
+  res.json({ success: true, activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ, targetSheetId) });
 });
 
 // POST Skip Rebound for a Question
@@ -1908,13 +2185,22 @@ app.post('/api/tbq/skip-rebound', authenticateCoach, (req, res) => {
     return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
   }
 
+  const targetSheetId = resolveTargetSheetId(req, match, ctx.dataset);
+  const activeSheet = getMatchSheet(match, targetSheetId);
+
   const q = parseInt(questionNum);
-  if (!match.skippedRebounds) match.skippedRebounds = [];
-  if (!match.skippedRebounds.includes(q)) {
-    match.skippedRebounds.push(q);
+  if (!activeSheet.skippedRebounds) activeSheet.skippedRebounds = [];
+  if (!isNaN(q) && !activeSheet.skippedRebounds.includes(q)) {
+    activeSheet.skippedRebounds.push(q);
+  }
+  if (targetSheetId === 'default') {
+    if (!match.skippedRebounds) match.skippedRebounds = [];
+    if (!isNaN(q) && !match.skippedRebounds.includes(q)) {
+      match.skippedRebounds.push(q);
+    }
   }
   saveScoresData();
-  const activeRound = calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ);
+  const activeRound = calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ, targetSheetId);
   res.json({ success: true, activeRound });
 });
 
@@ -1934,18 +2220,67 @@ app.post('/api/tbq/reset-round', authenticateCoach, (req, res) => {
       return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
     }
 
-    match.questions = [];
-    match.skippedRebounds = [];
-    match.timeouts = {
+    const targetSheetId = resolveTargetSheetId(req, match, ctx.dataset);
+    const activeSheet = getMatchSheet(match, targetSheetId);
+
+    activeSheet.questions = [];
+    activeSheet.skippedRebounds = [];
+    activeSheet.timeouts = {
       teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
       teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
     };
-    match.fouls = { teamA: [], teamB: [] };
+    activeSheet.fouls = { teamA: [], teamB: [] };
+    delete activeSheet.isCompleted;
+    activeSheet.status = 'Scheduled';
+
+    if (targetSheetId === 'default') {
+      match.questions = [];
+      match.skippedRebounds = [];
+      match.timeouts = {
+        teamA: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ],
+        teamB: [ { id: 1, used: false, questionNum: "" }, { id: 2, used: false, questionNum: "" } ]
+      };
+      match.fouls = { teamA: [], teamB: [] };
+      delete match.isCompleted;
+      match.status = 'Scheduled';
+    }
     saveScoresData();
+    const activeStats = calculateMatchStats(match.id, ctx.dataset, ctx.isJBQ, targetSheetId);
+    return res.json({ success: true, activeRound: activeStats });
   }
 
-  const activeStats = calculateMatchStats(match ? match.id : mId, ctx.dataset, ctx.isJBQ);
-  res.json({ success: true, activeRound: activeStats });
+  res.status(404).json({ error: 'Match not found.' });
+});
+
+// POST Copy Official Master Sheet into Coach's Private Sheet
+app.post('/api/tbq/copy-from-official', authenticateCoach, (req, res) => {
+  const ctx = getPlatformContext(req);
+  const { matchId } = req.body;
+  const mId = matchId || ctx.dataset.activeMatchId;
+  const match = ctx.dataset.matches[mId];
+  if (!match) return res.status(404).json({ error: 'Match not found.' });
+  if (!isCoachAuthorizedForMatch(req.user, match, ctx.dataset)) {
+    return res.status(403).json({ error: 'Unauthorized: You are not assigned to either team in this match.' });
+  }
+
+  const targetSheetId = resolveTargetSheetId(req, match, ctx.dataset);
+  if (targetSheetId === 'default') {
+    return res.status(400).json({ error: 'Cannot clone official sheet onto itself.' });
+  }
+
+  ensureMatchSheets(match, ctx.dataset);
+  const masterSheet = match.sheets['default'];
+  const activeSheet = getMatchSheet(match, targetSheetId);
+
+  activeSheet.questions = JSON.parse(JSON.stringify(masterSheet.questions || []));
+  activeSheet.timeouts = JSON.parse(JSON.stringify(masterSheet.timeouts || { teamA: [], teamB: [] }));
+  activeSheet.fouls = JSON.parse(JSON.stringify(masterSheet.fouls || { teamA: [], teamB: [] }));
+  activeSheet.skippedRebounds = JSON.parse(JSON.stringify(masterSheet.skippedRebounds || []));
+  activeSheet.status = masterSheet.status;
+  activeSheet.isCompleted = masterSheet.isCompleted;
+
+  saveScoresData();
+  res.json({ success: true, message: 'Copied official master sheet.', activeRound: calculateMatchStats(mId, ctx.dataset, ctx.isJBQ, targetSheetId) });
 });
 
 // POST Update Meet Title / Overall Settings
