@@ -821,8 +821,8 @@ function renderPublicSummaryUI() {
               M#${m.matchNumber}
             </div>
             <div>
-              <div class="text-xs font-extrabold uppercase text-slate-500 tracking-wider">
-                Meet ${m.meetNum || m.roundNum}
+              <div class="text-xs font-black uppercase text-slate-800 tracking-wider">
+                Match #${m.matchNumber}
               </div>
               <div class="text-sm sm:text-base font-bold text-slate-800 mt-0.5">
                 <span>${escapeHtml(m.teamAName)}</span>
@@ -1122,7 +1122,7 @@ function renderOfficialScoresheet() {
   document.getElementById('meta-match-num').textContent = activeRound.matchNumber || "01";
   document.getElementById('print-match-num').textContent = activeRound.matchNumber || "01";
   const superBadge = document.getElementById('super-header-badge');
-  if (superBadge) superBadge.textContent = `MEET ${activeRound.meetNum || activeRound.roundNum} • M#${activeRound.matchNumber}`;
+  if (superBadge) superBadge.textContent = `Match #${activeRound.matchNumber || "01"}`;
 
   // 3. Teams Scoreboard Strip
   document.getElementById('scoresheet-home-name').textContent = activeRound.teamA.name;
@@ -1311,7 +1311,7 @@ function renderOfficialScoresheet() {
 
     thead.innerHTML = `
       <tr class="bg-slate-900 text-white font-black text-center text-xs tracking-wider uppercase border-b border-slate-800">
-        <th colspan="2" class="p-2.5 border-r border-slate-800 bg-slate-950 sticky-head-q" id="super-header-badge">MEET ${activeRound.meetNum || activeRound.roundNum} • M#${activeRound.matchNumber}</th>
+        <th colspan="2" class="p-2.5 border-r border-slate-800 bg-slate-950 sticky-head-q" id="super-header-badge">Match #${activeRound.matchNumber || "01"}</th>
         <th colspan="${studentsA.length + 1}" class="p-2.5 border-r border-slate-800 bg-brand-900/90 text-sm font-black tracking-tight" id="table-head-team-a">
           ${escapeHtml(activeRound.teamA.name)}
         </th>
@@ -3167,8 +3167,8 @@ function renderTeamsManagerUI() {
           </div>
           <div>
             <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="text-xs font-extrabold text-slate-500 uppercase">
-                Meet ${m.meetNum || m.roundNum}
+              <span class="text-xs font-black text-slate-800 uppercase tracking-wider">
+                Match #${m.matchNumber}
               </span>
               ${getDivisionBadgeHtml(divKey)}
             </div>
@@ -3194,7 +3194,7 @@ function renderTeamsManagerUI() {
       </div>
     `;
   });
-  matchesListEl.innerHTML = mHtml || `<p class="text-xs text-slate-400 py-3 text-center">No matches configured in ${getDivisionDisplayName(divKey)}. Tap "+ Add Meet / Match" above.</p>`;
+  matchesListEl.innerHTML = mHtml || `<p class="text-xs text-slate-400 py-3 text-center">No matches configured in ${getDivisionDisplayName(divKey)}. Tap "+ Add Match" above.</p>`;
   checkStorageStatus();
 }
 
@@ -3460,8 +3460,6 @@ async function openAddMatchModal() {
   const meetNumMatch = meetTitle.match(/\d+/);
   const activeMeetNum = activeMeet?.meetNum || (meetNumMatch ? parseInt(meetNumMatch[0]) : 1);
 
-  const meetNameEl = document.getElementById('match-modal-meet-name');
-  if (meetNameEl) meetNameEl.textContent = meetTitle;
   const meetInput = document.getElementById('match-meet-num');
   if (meetInput) meetInput.value = activeMeetNum;
 
@@ -3489,11 +3487,6 @@ function openEditMatchModal(matchId) {
   if (titleEl) titleEl.textContent = `✏️ Edit Match #${m.matchNumber} (${getDivisionDisplayName(currentDiv)})`;
   const submitBtn = document.getElementById('match-modal-submit-btn');
   if (submitBtn) submitBtn.textContent = 'Update Match';
-
-  const meets = state.tbqData?.meetsList || (state.platformContext?.jbq?.meets) || [];
-  const activeMeet = meets.find(item => item.id === (m.meetId || state.currentMeetId)) || state.tbqData?.meet;
-  const meetNameEl = document.getElementById('match-modal-meet-name');
-  if (meetNameEl) meetNameEl.textContent = activeMeet?.title || `Meet ${m.meetNum || m.roundNum || 1}`;
 
   document.getElementById('match-meet-num').value = m.meetNum || m.roundNum || 1;
   document.getElementById('match-number-input').value = m.matchNumber || '';
