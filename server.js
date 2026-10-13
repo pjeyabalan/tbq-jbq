@@ -282,12 +282,14 @@ app.post('/api/auth/login', (req, res) => {
     id: matched.id,
     name: matched.name,
     username: matched.username,
-    role: matched.role || (matched.username === 'supercoach' ? 'supercoach' : 'jbq_coach')
+    role: matched.role || (matched.username === 'supercoach' ? 'supercoach' : 'jbq_coach'),
+    assignedDivisions: getCoachAssignedDivisions(matched),
+    lockedDivision: getCoachLockedDivision(matched)
   };
   activeSessions.set(token, userSafe);
   saveSessions();
 
-  console.log(`[AUTH] Coach logged in: ${matched.name} (${matched.username}) [${userSafe.role}]`);
+  console.log(`[AUTH] Coach logged in: ${matched.name} (${matched.username}) [${userSafe.role}] Locked: ${userSafe.lockedDivision || 'none'}`);
 
   res.json({
     success: true,
@@ -309,7 +311,16 @@ app.post('/api/auth/logout', (req, res) => {
 
 // Verify Current User
 app.get('/api/auth/me', authenticateCoach, (req, res) => {
-  res.json({ success: true, user: req.user });
+  const assignedDivisions = getCoachAssignedDivisions(req.user);
+  const lockedDivision = getCoachLockedDivision(req.user);
+  res.json({
+    success: true,
+    user: {
+      ...req.user,
+      assignedDivisions,
+      lockedDivision
+    }
+  });
 });
 
 // Get all coaches (Safe list for all authenticated coaches to populate team dropdowns)
@@ -498,13 +509,57 @@ function saveScoresData() {
   }
 }
 
+// Helper: Get array of divisions this coach is assigned to (e.g. ['c_level'] or ['b_level'] or ['b_level', 'c_level'])
+function getCoachAssignedDivisions(user, meet) {
+  if (!user || user.role === 'supercoach') {
+    return ['b_level', 'c_level'];
+  }
+  const meetsToScan = meet ? [meet] : Object.values(platformData.jbq?.meets || {});
+  const assignedDivs = new Set();
+  
+  meetsToScan.forEach(m => {
+    ['b_level', 'c_level'].forEach(divKey => {
+      const div = m.divisions && m.divisions[divKey];
+      if (div && Array.isArray(div.teams)) {
+        const hasTeam = div.teams.some(t => {
+          const isPrimary = (t.coachId && (t.coachId === user.id || t.coachUsername === user.username));
+          const isAssistant = (t.coach2Id && (t.coach2Id === user.id || t.coach2Username === user.username));
+          const isInList = Array.isArray(t.coaches) && t.coaches.some(c => c && (c.id === user.id || c.username === user.username));
+          return isPrimary || isAssistant || isInList;
+        });
+        if (hasTeam) {
+          assignedDivs.add(divKey);
+        }
+      }
+    });
+  });
+
+  return Array.from(assignedDivs);
+}
+
+// Helper: If coach is assigned strictly to ONE division (e.g. C-level only or B-level only), return it
+function getCoachLockedDivision(user, meet) {
+  if (!user || user.role === 'supercoach') return null;
+  const divs = getCoachAssignedDivisions(user, meet);
+  if (divs.length === 1) return divs[0];
+  return null;
+}
+
 // Context Resolver: Resolves current league, meet, division, and active dataset
 function getPlatformContext(req) {
   const divParam = (req.headers['x-quiz-division'] || req.query?.division || req.body?.division || '').toString().toLowerCase();
   const leagueParam = (req.headers['x-quiz-league'] || req.query?.league || req.body?.league || '').toString().toLowerCase();
 
   const league = 'jbq';
-  const division = (divParam === 'c_level' || divParam === 'jbq_c' || divParam === 'jbq-c') ? 'c_level' : 'b_level';
+  let division = (divParam === 'c_level' || divParam === 'jbq_c' || divParam === 'jbq-c') ? 'c_level' : 'b_level';
+
+  // If coach is locked to a specific division (e.g. C-level coach or B-level coach), enforce it strictly!
+  if (req && req.user && req.user.role !== 'supercoach') {
+    const lockedDiv = getCoachLockedDivision(req.user);
+    if (lockedDiv) {
+      division = lockedDiv;
+    }
+  }
 
   const leagueData = platformData.jbq;
   let meetId = req.headers['x-quiz-meet'] || req.query?.meetId || req.body?.meetId || leagueData.activeMeetId;

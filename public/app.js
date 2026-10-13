@@ -111,6 +111,11 @@ function setLoggedInCoach(token, user) {
   localStorage.setItem('tbq_coach_token', token);
   localStorage.removeItem('tbq_logged_out_explicit');
 
+  const locked = getCoachLockedDivision();
+  if (locked) {
+    state.currentDivision = locked;
+  }
+
   document.getElementById('auth-login-btn').classList.add('hidden');
   document.getElementById('auth-user-menu').classList.remove('hidden');
   document.getElementById('coach-nav-tabs').classList.remove('hidden');
@@ -294,7 +299,19 @@ async function fetchPlatformContext() {
   }
 }
 
+function getCoachLockedDivision() {
+  if (!state.auth || !state.auth.user) return null;
+  if (state.auth.user.role === 'supercoach') return null;
+  if (state.auth.user.lockedDivision) return state.auth.user.lockedDivision;
+  if (Array.isArray(state.auth.user.assignedDivisions) && state.auth.user.assignedDivisions.length === 1) {
+    return state.auth.user.assignedDivisions[0];
+  }
+  return null;
+}
+
 function getActiveDivisionKey() {
+  const locked = getCoachLockedDivision();
+  if (locked) return locked === 'c_level' ? 'jbq_c' : 'jbq_b';
   return state.currentDivision === 'c_level' ? 'jbq_c' : 'jbq_b';
 }
 
@@ -324,7 +341,10 @@ async function fetchTeamsByDivision() {
 
 async function setActiveDivisionKey(divKey) {
   state.currentLeague = 'jbq';
-  if (divKey === 'jbq_c' || divKey === 'c_level') {
+  const locked = getCoachLockedDivision();
+  if (locked) {
+    state.currentDivision = locked;
+  } else if (divKey === 'jbq_c' || divKey === 'c_level') {
     state.currentDivision = 'c_level';
   } else {
     state.currentDivision = 'b_level';
@@ -380,13 +400,36 @@ function renderPlatformHeader() {
   const btnJbqB = document.getElementById('btn-nav-jbq-b');
   const btnJbqC = document.getElementById('btn-nav-jbq-c');
 
-  const activeBtnClass = 'px-2.5 sm:px-3 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1';
-  const inactiveBtnClass = 'px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1';
+  const lockedDiv = getCoachLockedDivision();
 
-  if (btnJbqB) btnJbqB.className = divKey === 'jbq_b' ? activeBtnClass : inactiveBtnClass;
-  if (btnJbqC) btnJbqC.className = divKey === 'jbq_c' ? activeBtnClass : inactiveBtnClass;
-  if (btnJbqB) btnJbqB.classList.remove('hidden');
-  if (btnJbqC) btnJbqC.classList.remove('hidden');
+  if (lockedDiv === 'c_level') {
+    // Assigned to C-level: CANNOT switch to B at all!
+    if (btnJbqB) btnJbqB.classList.add('hidden');
+    if (btnJbqC) {
+      btnJbqC.classList.remove('hidden');
+      btnJbqC.className = 'px-3 py-1 rounded-lg text-xs font-black bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1 cursor-default';
+    }
+  } else if (lockedDiv === 'b_level') {
+    // Assigned to B-level: CANNOT switch to C at all!
+    if (btnJbqC) btnJbqC.classList.add('hidden');
+    if (btnJbqB) {
+      btnJbqB.classList.remove('hidden');
+      btnJbqB.className = 'px-3 py-1 rounded-lg text-xs font-black bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1 cursor-default';
+    }
+  } else {
+    // Super Coach or unassigned / public view: both are visible
+    const activeBtnClass = 'px-2.5 sm:px-3 py-1 rounded-lg text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1 cursor-pointer';
+    const inactiveBtnClass = 'px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all text-brand-200 hover:text-white flex items-center gap-1 cursor-pointer';
+
+    if (btnJbqB) {
+      btnJbqB.classList.remove('hidden');
+      btnJbqB.className = divKey === 'jbq_b' ? activeBtnClass : inactiveBtnClass;
+    }
+    if (btnJbqC) {
+      btnJbqC.classList.remove('hidden');
+      btnJbqC.className = divKey === 'jbq_c' ? activeBtnClass : inactiveBtnClass;
+    }
+  }
 
   // 3. Meet Dropdown
   const meetSelect = document.getElementById('global-meet-select');
@@ -449,6 +492,11 @@ function handleMeetChange(meetId) {
 }
 
 function handleDivisionSwitch(divKey) {
+  const locked = getCoachLockedDivision();
+  if (locked) {
+    setActiveDivisionKey(locked === 'c_level' ? 'jbq_c' : 'jbq_b');
+    return;
+  }
   setActiveDivisionKey(divKey === 'c_level' ? 'jbq_c' : 'jbq_b');
 }
 
@@ -696,12 +744,29 @@ function renderPublicSummaryUI() {
   const currentDiv = getActiveDivisionKey();
   const pubJbqB = document.getElementById('pub-tab-jbq-b');
   const pubJbqC = document.getElementById('pub-tab-jbq-c');
+  const lockedDiv = getCoachLockedDivision();
 
-  const pubActive = 'px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1.5 whitespace-nowrap';
-  const pubInactive = 'px-3 py-1.5 rounded-xl text-xs font-bold transition-all text-white/80 hover:text-white flex items-center gap-1.5 whitespace-nowrap';
+  if (lockedDiv === 'c_level') {
+    if (pubJbqB) pubJbqB.classList.add('hidden');
+    if (pubJbqC) {
+      pubJbqC.classList.remove('hidden');
+      pubJbqC.className = 'px-3 py-1.5 rounded-xl text-xs font-black bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1.5 whitespace-nowrap cursor-default';
+    }
+  } else if (lockedDiv === 'b_level') {
+    if (pubJbqC) pubJbqC.classList.add('hidden');
+    if (pubJbqB) {
+      pubJbqB.classList.remove('hidden');
+      pubJbqB.className = 'px-3 py-1.5 rounded-xl text-xs font-black bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1.5 whitespace-nowrap cursor-default';
+    }
+  } else {
+    if (pubJbqB) pubJbqB.classList.remove('hidden');
+    if (pubJbqC) pubJbqC.classList.remove('hidden');
+    const pubActive = 'px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-amber-400 text-brand-950 shadow-xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer';
+    const pubInactive = 'px-3 py-1.5 rounded-xl text-xs font-bold transition-all text-white/80 hover:text-white flex items-center gap-1.5 whitespace-nowrap cursor-pointer';
 
-  if (pubJbqB) pubJbqB.className = currentDiv === 'jbq_b' ? pubActive : pubInactive;
-  if (pubJbqC) pubJbqC.className = currentDiv === 'jbq_c' ? pubActive : pubInactive;
+    if (pubJbqB) pubJbqB.className = currentDiv === 'jbq_b' ? pubActive : pubInactive;
+    if (pubJbqC) pubJbqC.className = currentDiv === 'jbq_c' ? pubActive : pubInactive;
+  }
 
   // 1. Render 4-Team Standings Table
   const tbody = document.getElementById('public-standings-tbody');
@@ -3058,11 +3123,29 @@ function renderTeamsManagerUI() {
   if (countJbqB) countJbqB.textContent = `${divs.jbq_b?.teamsCount || 0} Teams • ${divs.jbq_b?.matchesCount || 0} M`;
   if (countJbqC) countJbqC.textContent = `${divs.jbq_c?.teamsCount || 0} Teams • ${divs.jbq_c?.matchesCount || 0} M`;
 
-  const activeTabClass = 'flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-xs whitespace-nowrap bg-amber-400 text-brand-950';
-  const inactiveTabClass = 'flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap text-slate-600 hover:text-slate-900 bg-transparent';
+  const lockedDiv = getCoachLockedDivision();
 
-  if (tabJbqB) tabJbqB.className = divKey === 'jbq_b' ? activeTabClass : inactiveTabClass;
-  if (tabJbqC) tabJbqC.className = divKey === 'jbq_c' ? activeTabClass : inactiveTabClass;
+  if (lockedDiv === 'c_level') {
+    if (tabJbqB) tabJbqB.classList.add('hidden');
+    if (tabJbqC) {
+      tabJbqC.classList.remove('hidden');
+      tabJbqC.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-xs whitespace-nowrap bg-amber-400 text-brand-950 cursor-default';
+    }
+  } else if (lockedDiv === 'b_level') {
+    if (tabJbqC) tabJbqC.classList.add('hidden');
+    if (tabJbqB) {
+      tabJbqB.classList.remove('hidden');
+      tabJbqB.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-xs whitespace-nowrap bg-amber-400 text-brand-950 cursor-default';
+    }
+  } else {
+    if (tabJbqB) tabJbqB.classList.remove('hidden');
+    if (tabJbqC) tabJbqC.classList.remove('hidden');
+    const activeTabClass = 'flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-xs whitespace-nowrap bg-amber-400 text-brand-950 cursor-pointer';
+    const inactiveTabClass = 'flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap text-slate-600 hover:text-slate-900 bg-transparent cursor-pointer';
+
+    if (tabJbqB) tabJbqB.className = divKey === 'jbq_b' ? activeTabClass : inactiveTabClass;
+    if (tabJbqC) tabJbqC.className = divKey === 'jbq_c' ? activeTabClass : inactiveTabClass;
+  }
 
   // Resolve teams & matches for the current division
   const isMatchingTbqData = state.tbqData && state.tbqData.division === state.currentDivision;
@@ -3262,9 +3345,16 @@ async function openEditTeamModal(teamId) {
   const teams = (state.tbqData && state.tbqData.meet && state.tbqData.meet.teams) || [];
   const team = teams.find(t => t.id === teamId);
 
+  const locked = getCoachLockedDivision();
   const divSelect = document.getElementById('edit-team-division');
   if (divSelect) {
-    divSelect.value = currentDiv;
+    if (locked) {
+      divSelect.value = locked === 'c_level' ? 'jbq_c' : 'jbq_b';
+      divSelect.disabled = true;
+    } else {
+      divSelect.disabled = false;
+      divSelect.value = currentDiv;
+    }
   }
 
   document.getElementById('edit-team-id').value = team ? team.id : '';
@@ -3451,8 +3541,17 @@ function handleMatchModalDivisionChange(divKey) {
 // ADD & EDIT MATCH MODAL
 async function openAddMatchModal() {
   const currentDiv = getActiveDivisionKey();
+  const locked = getCoachLockedDivision();
   const divSelect = document.getElementById('match-division-select');
-  if (divSelect) divSelect.value = currentDiv;
+  if (divSelect) {
+    if (locked) {
+      divSelect.value = locked === 'c_level' ? 'jbq_c' : 'jbq_b';
+      divSelect.disabled = true;
+    } else {
+      divSelect.disabled = false;
+      divSelect.value = currentDiv;
+    }
+  }
 
   await fetchTeamsByDivision();
   populateMatchModalTeams(currentDiv);
@@ -3483,8 +3582,17 @@ async function openAddMatchModal() {
 
 function openEditMatchModal(matchId) {
   const currentDiv = getActiveDivisionKey();
+  const locked = getCoachLockedDivision();
   const divSelect = document.getElementById('match-division-select');
-  if (divSelect) divSelect.value = currentDiv;
+  if (divSelect) {
+    if (locked) {
+      divSelect.value = locked === 'c_level' ? 'jbq_c' : 'jbq_b';
+      divSelect.disabled = true;
+    } else {
+      divSelect.disabled = false;
+      divSelect.value = currentDiv;
+    }
+  }
 
   const matches = (state.tbqData && state.tbqData.matchesList) || [];
   const m = matches.find(item => item.id === matchId);
