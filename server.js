@@ -1350,7 +1350,9 @@ function calculateTournamentStandings(datasetParam, isJBQParam) {
   const allMatchKeys = Object.keys(dataset.matches || {});
   allMatchKeys.forEach(mKey => {
     const stats = calculateMatchStats(mKey, dataset, isJBQ);
-    if (stats && stats.totalQuestions > 0) {
+    // Standings points, wins, and losses only reflect when the match is officially finished
+    const isOfficiallyCompleted = !!(stats && stats.isCompleted && (!stats.audit || !stats.audit.hasDiscrepancy));
+    if (stats && isOfficiallyCompleted) {
       const tA = standingsMap[stats.teamA.id];
       const tB = standingsMap[stats.teamB.id];
 
@@ -1564,6 +1566,7 @@ app.get('/api/tbq/public-summary', (req, res) => {
   allMatchKeys.forEach(mKey => {
     const stats = calculateMatchStats(mKey, ctx.dataset, ctx.isJBQ);
     const hasQuestions = stats.totalQuestions > 0;
+    const isOfficiallyCompleted = !!(stats.isCompleted && (!stats.audit || !stats.audit.hasDiscrepancy));
     matchesSummaries.push({
       id: stats.id,
       matchNumber: stats.matchNumber,
@@ -1571,11 +1574,11 @@ app.get('/api/tbq/public-summary', (req, res) => {
       room: "",
       teamAName: stats.teamA.name,
       teamBName: stats.teamB.name,
-      teamAScore: stats.teamA.finalScore,
-      teamBScore: stats.teamB.finalScore,
-      winner: stats.isCompleted ? stats.winner : (hasQuestions ? 'in_progress' : 'upcoming'),
-      winnerTeam: stats.winnerTeam,
-      isCompleted: stats.isCompleted,
+      teamAScore: isOfficiallyCompleted ? stats.teamA.finalScore : 0,
+      teamBScore: isOfficiallyCompleted ? stats.teamB.finalScore : 0,
+      winner: isOfficiallyCompleted ? stats.winner : (hasQuestions ? 'in_progress' : 'upcoming'),
+      winnerTeam: isOfficiallyCompleted ? stats.winnerTeam : null,
+      isCompleted: isOfficiallyCompleted,
       status: stats.status,
       totalQuestions: stats.totalQuestions,
       completedQuestionsCount: stats.completedQuestionsCount,

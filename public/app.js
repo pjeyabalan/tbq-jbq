@@ -735,14 +735,20 @@ function renderPublicSummaryUI() {
 
   matches.forEach(m => {
     let resultBadge = '';
-    if (m.winner === 'teamA') {
-      resultBadge = `<span class="bg-emerald-100 text-emerald-800 font-black px-2.5 py-1 rounded-full text-xs border border-emerald-300">🏆 ${escapeHtml(m.teamAName)} WON</span>`;
-    } else if (m.winner === 'teamB') {
-      resultBadge = `<span class="bg-rose-100 text-rose-800 font-black px-2.5 py-1 rounded-full text-xs border border-rose-300">🏆 ${escapeHtml(m.teamBName)} WON</span>`;
-    } else if (m.winner === 'tie' && m.totalQuestions > 0) {
-      resultBadge = `<span class="bg-amber-100 text-amber-800 font-black px-2.5 py-1 rounded-full text-xs border border-amber-300">⚖️ TIED MATCH</span>`;
+    if (m.isCompleted) {
+      if (m.winner === 'teamA') {
+        resultBadge = `<span class="bg-emerald-100 text-emerald-800 font-black px-2.5 py-1 rounded-full text-xs border border-emerald-300">🏆 ${escapeHtml(m.teamAName)} WON</span>`;
+      } else if (m.winner === 'teamB') {
+        resultBadge = `<span class="bg-rose-100 text-rose-800 font-black px-2.5 py-1 rounded-full text-xs border border-rose-300">🏆 ${escapeHtml(m.teamBName)} WON</span>`;
+      } else if (m.winner === 'tie' && m.totalQuestions > 0) {
+        resultBadge = `<span class="bg-amber-100 text-amber-800 font-black px-2.5 py-1 rounded-full text-xs border border-amber-300">⚖️ TIED MATCH</span>`;
+      } else {
+        resultBadge = `<span class="bg-slate-100 text-slate-700 font-black px-2.5 py-1 rounded-full text-xs border border-slate-300">🏁 COMPLETED</span>`;
+      }
+    } else if (m.totalQuestions > 0) {
+      resultBadge = `<span class="bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-full text-xs border border-amber-200">⏳ In Progress (${m.completedQuestionsCount || m.totalQuestions}/20 Qs)</span>`;
     } else {
-      resultBadge = `<span class="bg-slate-100 text-slate-600 font-bold px-2.5 py-1 rounded-full text-xs border border-slate-200">⏳ ${m.status}</span>`;
+      resultBadge = `<span class="bg-slate-100 text-slate-600 font-bold px-2.5 py-1 rounded-full text-xs border border-slate-200">⏳ Scheduled</span>`;
     }
 
     const isSuperCoach = state.auth && state.auth.user && state.auth.user.role === 'supercoach';
@@ -754,15 +760,15 @@ function renderPublicSummaryUI() {
         // Blindly use the single active coach's sheet
         auditNoticeHtml = `
           <div class="mt-2 text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
-            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Scored by Coach ${escapeHtml(audit.officialCoachName || 'Coach')}</span>
+            <span class="inline-block w-2 h-2 rounded-full ${m.isCompleted ? 'bg-emerald-500' : 'bg-amber-400'}"></span>
+            <span>Scored by Coach ${escapeHtml(audit.officialCoachName || 'Coach')}${m.isCompleted ? ' (Official Final)' : ' (In Progress)'}</span>
           </div>
         `;
       } else if (audit.status === 'aligned') {
         auditNoticeHtml = `
           <div class="mt-2 text-[11px] font-bold text-emerald-700 bg-emerald-50/80 px-2 py-1 rounded-lg border border-emerald-200/60 flex items-center gap-1.5">
             <span>✅</span>
-            <span>Both Coaches Agree (${(audit.scoredSheets || []).map(s => escapeHtml(s.coachName)).join(' & ')})</span>
+            <span>Both Coaches Agree (${(audit.scoredSheets || []).map(s => escapeHtml(s.coachName)).join(' & ')})${m.isCompleted ? ' • Official Final' : ''}</span>
           </div>
         `;
       } else if (audit.status === 'resolved') {
@@ -833,11 +839,17 @@ function renderPublicSummaryUI() {
           </div>
 
           <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t border-slate-200/50 sm:border-t-0">
-            <div class="font-mono-score font-black text-base sm:text-lg text-slate-900">
-              <span class="${m.teamAScore > m.teamBScore ? 'text-brand-700' : 'text-slate-700'}">${m.teamAScore}</span>
-              <span class="text-slate-300 mx-1">-</span>
-              <span class="${m.teamBScore > m.teamAScore ? 'text-rose-600' : 'text-slate-700'}">${m.teamBScore}</span>
-            </div>
+            ${m.isCompleted ? `
+              <div class="font-mono-score font-black text-base sm:text-lg text-slate-900">
+                <span class="${m.teamAScore > m.teamBScore ? 'text-brand-700' : 'text-slate-700'}">${m.teamAScore}</span>
+                <span class="text-slate-300 mx-1">-</span>
+                <span class="${m.teamBScore > m.teamAScore ? 'text-rose-600' : 'text-slate-700'}">${m.teamBScore}</span>
+              </div>
+            ` : `
+              <div class="font-mono-score text-xs font-black ${m.totalQuestions > 0 ? 'text-amber-800 bg-amber-50 border border-amber-200' : 'text-slate-400 bg-slate-100 border border-slate-200'} px-2.5 py-1 rounded-xl whitespace-nowrap">
+                ${m.totalQuestions > 0 ? '⚡ Scoring Live' : '— - —'}
+              </div>
+            `}
             <div>
               ${resultBadge}
             </div>
