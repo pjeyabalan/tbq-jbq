@@ -101,22 +101,6 @@ function getDefaultCoaches() {
       passcode: "super2026",
       role: "supercoach", // Full admin for JBQ
       createdAt: new Date().toISOString()
-    },
-    {
-      id: "coach-jbq",
-      name: "JBQ Coach",
-      username: "coach",
-      passcode: "coach2026",
-      role: "jbq_coach", // Dedicated JBQ Coach
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: "coach-jbq-2",
-      name: "JBQ Coach",
-      username: "jbqcoach",
-      passcode: "jbq2026",
-      role: "jbq_coach",
-      createdAt: new Date().toISOString()
     }
   ];
 }
@@ -157,36 +141,28 @@ function ensureStandardCoaches() {
     changed = true;
   }
 
-  // Ensure default coach account exists
-  const defaultCoach = coaches.find(c => c.username === 'coach');
-  if (!defaultCoach) {
-    coaches.push({
-      id: "coach-default",
-      name: "JBQ Coach",
-      username: "coach",
-      passcode: "coach2026",
-      role: "jbq_coach",
+  // Ensure supercoach account exists if list is empty
+  if (!coaches.some(c => c.username === 'supercoach')) {
+    coaches.unshift({
+      id: "coach-super",
+      name: "Head Coach (Admin)",
+      username: "supercoach",
+      passcode: "super2026",
+      role: "supercoach",
       createdAt: new Date().toISOString()
     });
     changed = true;
   }
 
-  // Ensure jbqcoach exists
-  const jbqUser = coaches.find(c => c.username === 'jbqcoach');
-  if (!jbqUser) {
-    coaches.push({
-      id: "coach-jbq",
-      name: "JBQ Coach",
-      username: "jbqcoach",
-      passcode: "jbq2026",
-      role: "jbq_coach",
-      createdAt: new Date().toISOString()
-    });
+  // Auto-purge any legacy auto-seeded 'coach' or 'jbqcoach' dummy accounts so they never resurrect
+  const beforeLen = coaches.length;
+  coaches = coaches.filter(c => c.username !== 'coach' && c.username !== 'jbqcoach');
+  if (coaches.length !== beforeLen) {
     changed = true;
   }
 
   if (changed) {
-    saveCoachesLocal();
+    saveCoaches();
   }
 }
 
@@ -391,11 +367,44 @@ app.post('/api/coaches/delete', authenticateCoach, requireSuperCoach, (req, res)
 
   // Invalidate any active session for that coach
   for (const [token, user] of activeSessions.entries()) {
-    if (user.id === coachId) activeSessions.delete(token);
+    if (user.id === coachId || user.username === removed.username) activeSessions.delete(token);
   }
   saveSessions();
 
-  console.log(`[SUPERCOACH] Deleted coach: ${removed.name}`);
+  // Also unassign this coach from any teams where they were assigned
+  let scoresChanged = false;
+  const jbqMeets = Object.values(platformData.jbq?.meets || {});
+  jbqMeets.forEach(m => {
+    ['b_level', 'c_level'].forEach(divKey => {
+      const div = m.divisions && m.divisions[divKey];
+      if (div && Array.isArray(div.teams)) {
+        div.teams.forEach(t => {
+          if (t.coachId === coachId || t.coachUsername === removed.username) {
+            delete t.coachId;
+            delete t.coachName;
+            delete t.coachUsername;
+            scoresChanged = true;
+          }
+          if (t.coach2Id === coachId || t.coach2Username === removed.username) {
+            delete t.coach2Id;
+            delete t.coach2Name;
+            delete t.coach2Username;
+            scoresChanged = true;
+          }
+          if (Array.isArray(t.coaches)) {
+            const prevL = t.coaches.length;
+            t.coaches = t.coaches.filter(c => c && c.id !== coachId && c.username !== removed.username);
+            if (t.coaches.length !== prevL) scoresChanged = true;
+          }
+        });
+      }
+    });
+  });
+  if (scoresChanged) {
+    saveScoresData();
+  }
+
+  console.log(`[SUPERCOACH] Deleted coach: ${removed.name} (${removed.username})`);
   res.json({ success: true, removed });
 });
 
@@ -2687,6 +2696,35 @@ async function initStorage() {
           platformData = loadedScores;
           platformData.activeLeague = 'jbq';
           if (platformData.tbq) delete platformData.tbq;
+
+          // Auto-purge any legacy dummy coach assignments on teams in DB
+          let teamsCleaned = false;
+          Object.values(platformData.jbq?.meets || {}).forEach(m => {
+            ['b_level', 'c_level'].forEach(divKey => {
+              const div = m.divisions && m.divisions[divKey];
+              if (div && Array.isArray(div.teams)) {
+                div.teams.forEach(t => {
+                  if (t.coachUsername === 'coach' || t.coachUsername === 'jbqcoach') {
+                    delete t.coachId; delete t.coachName; delete t.coachUsername;
+                    teamsCleaned = true;
+                  }
+                  if (t.coach2Username === 'coach' || t.coach2Username === 'jbqcoach') {
+                    delete t.coach2Id; delete t.coach2Name; delete t.coach2Username;
+                    teamsCleaned = true;
+                  }
+                  if (Array.isArray(t.coaches)) {
+                    const prevL = t.coaches.length;
+                    t.coaches = t.coaches.filter(c => c && c.username !== 'coach' && c.username !== 'jbqcoach');
+                    if (t.coaches.length !== prevL) teamsCleaned = true;
+                  }
+                });
+              }
+            });
+          });
+          if (teamsCleaned) {
+            saveScoresData();
+            console.log('[PG] Purged legacy dummy coach assignments from teams in database.');
+          }
           console.log('[PG] Restored all JBQ meets, divisions, teams & matches directly from database.');
         } else {
           console.log('[PG] Initializing default platform data in database.');
@@ -2743,7 +2781,6 @@ initStorage().then(() => {
     console.log(`Junior Bible Quiz (JBQ) Platform running on port ${PORT}`);
     console.log(`Storage engine: ${dbPool ? 'PostgreSQL (Persistent)' : 'Local JSON'}`);
     console.log(`Super Coach: supercoach / super2026`);
-    console.log(`JBQ Coach:   jbqcoach / jbq2026`);
     console.log(`=================================================`);
   });
 }).catch((err) => {
