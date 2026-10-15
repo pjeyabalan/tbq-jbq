@@ -11,13 +11,34 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use((req, res, next) => {
-  if (req.path.endsWith('.js') || req.path === '/' || req.path.endsWith('.html') || req.path.endsWith('.css')) {
+  if (
+    req.path.endsWith('.js') || 
+    req.path === '/' || 
+    req.path === '/login' ||
+    req.path === '/scores' ||
+    req.path === '/scoresheet' ||
+    req.path === '/scorer' ||
+    req.path.endsWith('.html') || 
+    req.path.endsWith('.css')
+  ) {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
   }
   next();
 });
+
+// Dedicated HTML Page Routes
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+app.get(['/scores', '/dashboard', '/standings'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+app.get(['/scoresheet', '/scorer'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.use(express.static(path.join(__dirname, 'public'), { etag: false }));
 
 const DATA_DIR = path.join(__dirname, 'data');

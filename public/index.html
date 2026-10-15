@@ -144,12 +144,16 @@
           </div>
 
           <!-- LOGIN BUTTON (IF SIGNED OUT) -->
-          <button id="auth-login-btn" onclick="openCoachLoginModal()" class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-2.5 py-1 rounded-xl transition-all shadow-xs flex items-center gap-1 active:scale-95">
-            <span>🔒 Login</span>
-          </button>
+          <a href="/login" id="auth-login-btn" class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-2.5 py-1 rounded-xl transition-all shadow-xs flex items-center gap-1 active:scale-95 no-underline">
+            <span>🔒 Coach Login</span>
+          </a>
 
-          <!-- QUICK SETTINGS BUTTON (IF SIGNED IN) -->
+          <!-- QUICK SETTINGS & SCORESHEET SHORTCUT (IF SIGNED IN) -->
           <div id="auth-user-menu" class="hidden flex items-center gap-1">
+            <button id="nav-toggle-scoresheet-btn" onclick="toggleScoresheetOrScores()" class="text-xs bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-2 py-1 rounded-xl transition-all shadow-xs flex items-center gap-1 active:scale-95">
+              <span id="nav-toggle-scoresheet-icon">⚡</span>
+              <span id="nav-toggle-scoresheet-text">Scorer</span>
+            </button>
             <button onclick="switchTab('coaches')" title="Settings & Tools" class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 p-1.5 rounded-xl transition-colors font-bold flex items-center justify-center active:scale-95">
               ⚙️
             </button>
@@ -583,40 +587,21 @@
         <div id="public-matches-list" class="space-y-2"></div>
       </div>
 
-      <!-- INLINE COACH LOGIN CARD -->
-      <div class="bg-slate-900 text-white rounded-2xl p-4 shadow-md border border-slate-800">
-        <div class="text-center mb-3">
-          <div class="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center text-xl mx-auto mb-2 font-black">
-            🔒
-          </div>
-          <h3 class="text-base font-black text-white">Coach & Official Access</h3>
-          <p class="text-slate-400 text-xs mt-0.5">
-            Sign in to score live rounds with the buzzer tiles.
-          </p>
-          <div class="mt-3">
-            <button type="button" onclick="autoLoginSuperCoach()" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-brand-950 font-black py-2.5 px-3 rounded-xl text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer">
-              <span>⚡ One-Click Open Scoresheet</span>
-              <span>→</span>
-            </button>
-          </div>
+      <!-- COACH / OFFICIAL ACCESS BANNER -->
+      <div class="bg-slate-900 text-white rounded-2xl p-4 shadow-md border border-slate-800 text-center">
+        <div class="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center text-xl mx-auto mb-2 font-black shadow-xs">
+          🔒
         </div>
-
-        <form onsubmit="handleInlineLogin(event)" class="space-y-2.5 pt-2 border-t border-slate-800">
-          <div id="inline-login-error" class="hidden p-2 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-200 text-xs font-bold text-center">
-            Invalid username or passcode.
-          </div>
-          <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Username</label>
-            <input type="text" id="inline-username" placeholder="e.g. coach or supercoach" required class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-semibold">
-          </div>
-          <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Passcode</label>
-            <input type="password" id="inline-passcode" placeholder="Enter passcode" required class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-semibold">
-          </div>
-          <button type="submit" class="w-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-brand-950 font-black py-2.5 px-3 rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1">
-            <span>Sign In to Scoresheet</span>
-          </button>
-        </form>
+        <h3 class="text-sm font-black text-white">Coach & Official Access</h3>
+        <p class="text-slate-400 text-xs mt-1">
+          Are you scoring a match or managing teams? Sign in to access live buzzer tiles.
+        </p>
+        <div class="mt-3">
+          <a href="/login" class="inline-flex items-center justify-center gap-1.5 w-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black py-2.5 px-3 rounded-xl text-xs shadow-md transition-all no-underline cursor-pointer">
+            <span>🔑 Go to Coach Login</span>
+            <span>→</span>
+          </a>
+        </div>
       </div>
 
     </main>
@@ -801,7 +786,7 @@
     <nav id="mobile-bottom-nav" class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 shadow-2xl safe-bottom no-print">
       <div class="flex items-center justify-around max-w-xl mx-auto py-1 px-2">
         <!-- 1. SCORER TAB -->
-        <button onclick="switchTab('scoresheet')" id="mob-tab-btn-scoresheet" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs font-black transition-all text-amber-400 active:scale-95 cursor-pointer">
+        <button onclick="handleScorerTabClick()" id="mob-tab-btn-scoresheet" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs font-black transition-all text-amber-400 active:scale-95 cursor-pointer">
           <span class="text-lg leading-none">⚡</span>
           <span class="text-[10px] mt-0.5 tracking-tight font-black">Scorer</span>
         </button>

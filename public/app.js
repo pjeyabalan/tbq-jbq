@@ -36,8 +36,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkStorageStatus();
   await fetchPlatformContext();
 
-  const explicitLoggedOut = localStorage.getItem('tbq_logged_out_explicit') === '1';
   const savedToken = localStorage.getItem('tbq_coach_token');
+  let loggedInUser = null;
+
   if (savedToken) {
     try {
       const res = await fetch('/api/auth/me', {
@@ -45,68 +46,61 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       if (res.ok) {
         const data = await res.json();
-        setLoggedInCoach(savedToken, data.user);
-        return;
+        loggedInUser = data.user;
+      } else {
+        localStorage.removeItem('tbq_coach_token');
       }
     } catch (e) {
-      console.warn('Saved auth token invalid');
+      console.warn('Saved auth token check failed:', e);
     }
   }
 
-  // If user explicitly signed out, respect their choice and display public view
-  if (explicitLoggedOut) {
-    setLoggedOutView();
-    fetchPublicSummary();
+  const path = window.location.pathname.toLowerCase();
+
+  // Route: /scoresheet or /scorer (Official Coach Scoring Workspace)
+  if (path === '/scoresheet' || path === '/scorer') {
+    if (loggedInUser) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab');
+      const targetTab = (tabParam && ['scoresheet', 'teams', 'coaches', 'standings', 'questions'].includes(tabParam))
+        ? (tabParam === 'standings' ? 'questions' : tabParam)
+        : 'scoresheet';
+      setLoggedInCoach(savedToken, loggedInUser, targetTab);
+    } else {
+      // Unauthenticated visitor trying to access scoresheet -> redirect to /login
+      window.location.replace('/login');
+    }
     return;
   }
 
-  // Seamless Auto-Login: Ensures coach scoresheet & kid tiles are immediately loaded without locking out the user
-  try {
-    const autoRes = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'supercoach', passcode: 'super2026' })
-    });
-    if (autoRes.ok) {
-      const autoData = await autoRes.json();
-      setLoggedInCoach(autoData.token, autoData.user);
-      return;
-    }
-  } catch (err) {
-    console.warn('Auto-login fallback error:', err);
+  // Route: / or /scores or /dashboard or /standings (Public Scores & Standings Display)
+  if (loggedInUser) {
+    // Authenticated coach viewing public scoreboard
+    setLoggedInCoach(savedToken, loggedInUser, 'questions');
+  } else {
+    // Public visitor
+    setLoggedOutView();
+    fetchPublicSummary();
   }
-
-  // Fallback: Directly enter logged-in state so scoresheet is active
-  setLoggedInCoach('auto-super-token', {
-    id: 'coach-super',
-    name: 'Super Coach',
-    username: 'supercoach',
-    role: 'supercoach'
-  });
 });
 
-async function autoLoginSuperCoach() {
-  try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'supercoach', passcode: 'super2026' })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setLoggedInCoach(data.token, data.user);
-      return;
+// Popstate handler for browser back/forward buttons
+window.addEventListener('popstate', () => {
+  const p = window.location.pathname.toLowerCase();
+  if (p === '/scoresheet' || p === '/scorer') {
+    if (!state.auth) {
+      window.location.replace('/login');
+    } else {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab');
+      switchTab(tabParam || 'scoresheet');
     }
-  } catch (e) {}
-  setLoggedInCoach('auto-super-token', {
-    id: 'coach-super',
-    name: 'Super Coach',
-    username: 'supercoach',
-    role: 'supercoach'
-  });
-}
+  } else if (p === '/scores' || p === '/' || p === '/dashboard' || p === '/standings') {
+    switchTab('questions');
+  }
+});
 
-function setLoggedInCoach(token, user) {
+function setLoggedInCoach(token, user, initialTab = 'scoresheet') {
   state.auth = { token, user };
   localStorage.setItem('tbq_coach_token', token);
   localStorage.removeItem('tbq_logged_out_explicit');
@@ -116,9 +110,12 @@ function setLoggedInCoach(token, user) {
     state.currentDivision = locked;
   }
 
-  document.getElementById('auth-login-btn').classList.add('hidden');
-  document.getElementById('auth-user-menu').classList.remove('hidden');
-  document.getElementById('coach-nav-tabs').classList.remove('hidden');
+  const loginBtn = document.getElementById('auth-login-btn');
+  if (loginBtn) loginBtn.classList.add('hidden');
+  const userMenu = document.getElementById('auth-user-menu');
+  if (userMenu) userMenu.classList.remove('hidden');
+  const coachTabs = document.getElementById('coach-nav-tabs');
+  if (coachTabs) coachTabs.classList.remove('hidden');
 
   // Mobile bottom navigation bar
   const mobNav = document.getElementById('mobile-bottom-nav');
@@ -128,30 +125,30 @@ function setLoggedInCoach(token, user) {
   if (nameEl) nameEl.textContent = user.name || user.username;
 
   const roleBadge = document.getElementById('user-role-badge');
-  roleBadge.classList.remove('hidden');
-  if (user.role === 'supercoach') {
-    roleBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-amber-400 text-brand-950 border-amber-300';
-    roleBadge.textContent = '👑 Super Coach';
-  } else {
-    roleBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-purple-500/20 text-purple-200 border-purple-400/30';
-    roleBadge.textContent = '🎒 JBQ Coach';
+  if (roleBadge) {
+    roleBadge.classList.remove('hidden');
+    if (user.role === 'supercoach') {
+      roleBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-amber-400 text-brand-950 border-amber-300';
+      roleBadge.textContent = '👑 Super Coach';
+    } else {
+      roleBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full border bg-purple-500/20 text-purple-200 border-purple-400/30';
+      roleBadge.textContent = '🎒 JBQ Coach';
+    }
   }
   state.currentLeague = 'jbq';
 
   const coachesTabBtn = document.getElementById('tab-btn-coaches');
   const mobCoachesBtn = document.getElementById('mob-tab-btn-coaches');
-  if (user.role === 'supercoach') {
-    if (coachesTabBtn) coachesTabBtn.classList.remove('hidden');
-    if (mobCoachesBtn) mobCoachesBtn.classList.remove('hidden');
-  } else {
-    if (coachesTabBtn) coachesTabBtn.classList.remove('hidden');
-    if (mobCoachesBtn) mobCoachesBtn.classList.remove('hidden');
-  }
+  if (coachesTabBtn) coachesTabBtn.classList.remove('hidden');
+  if (mobCoachesBtn) mobCoachesBtn.classList.remove('hidden');
 
   renderPlatformHeader();
-  document.getElementById('section-public').classList.add('hidden');
-  switchTab('scoresheet');
-  fetchTbqData();
+  switchTab(initialTab);
+  if (initialTab === 'scoresheet') {
+    fetchTbqData();
+  } else if (initialTab === 'questions' || initialTab === 'standings') {
+    fetchPublicSummary();
+  }
 }
 
 function setLoggedOutView() {
@@ -159,11 +156,14 @@ function setLoggedOutView() {
   localStorage.removeItem('tbq_coach_token');
   localStorage.setItem('tbq_logged_out_explicit', '1');
 
-  document.getElementById('auth-login-btn').classList.remove('hidden');
-  document.getElementById('auth-user-menu').classList.add('hidden');
+  const loginBtn = document.getElementById('auth-login-btn');
+  if (loginBtn) loginBtn.classList.remove('hidden');
+  const userMenu = document.getElementById('auth-user-menu');
+  if (userMenu) userMenu.classList.add('hidden');
   const coachNavTabs = document.getElementById('coach-nav-tabs');
   if (coachNavTabs) coachNavTabs.classList.add('hidden');
-  document.getElementById('user-role-badge').classList.add('hidden');
+  const roleBadge = document.getElementById('user-role-badge');
+  if (roleBadge) roleBadge.classList.add('hidden');
 
   const mobNav = document.getElementById('mobile-bottom-nav');
   if (mobNav) mobNav.classList.remove('hidden');
@@ -183,40 +183,48 @@ function logoutCoach() {
       headers: { 'Authorization': `Bearer ${state.auth.token}` }
     }).catch(() => {});
   }
-  setLoggedOutView();
-  fetchPublicSummary();
+  state.auth = null;
+  localStorage.removeItem('tbq_coach_token');
+  localStorage.setItem('tbq_logged_out_explicit', '1');
+  window.location.replace('/login');
 }
 
 function handleLogoClick() {
-  if (!state.auth) fetchPublicSummary();
-  else switchTab('scoresheet');
+  if (!state.auth) {
+    switchTab('questions');
+    fetchPublicSummary();
+  } else {
+    switchTab('scoresheet');
+  }
 }
 
-// Inline Login Handler
-async function handleInlineLogin(event) {
-  event.preventDefault();
-  const username = document.getElementById('inline-username').value.trim();
-  const passcode = document.getElementById('inline-passcode').value.trim();
-  const errorEl = document.getElementById('inline-login-error');
-  errorEl.classList.add('hidden');
-
-  try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, passcode })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      errorEl.textContent = data.error || 'Invalid credentials.';
-      errorEl.classList.remove('hidden');
-      return;
-    }
-    setLoggedInCoach(data.token, data.user);
-  } catch (err) {
-    errorEl.textContent = 'Network error while signing in.';
-    errorEl.classList.remove('hidden');
+function handleScorerTabClick() {
+  if (state.auth) {
+    switchTab('scoresheet');
+  } else {
+    window.location.href = '/login';
   }
+}
+
+function toggleScoresheetOrScores() {
+  if (!state.auth) {
+    window.location.href = '/login';
+    return;
+  }
+  if (state.currentTab === 'scoresheet') {
+    switchTab('questions');
+  } else {
+    switchTab('scoresheet');
+  }
+}
+
+function openCoachLoginModal() {
+  window.location.href = '/login';
+}
+
+function closeCoachLoginModal() {
+  const modal = document.getElementById('coach-login-modal');
+  if (modal) modal.classList.add('hidden');
 }
 
 // Modal Login
@@ -670,6 +678,12 @@ async function handleCreateMeet(event) {
 
 // Tab Switching
 function switchTab(tab) {
+  // If attempting to access coach-only areas without active session, redirect to /login
+  if ((tab === 'scoresheet' || tab === 'teams' || tab === 'coaches') && !state.auth) {
+    window.location.href = '/login';
+    return;
+  }
+
   state.currentTab = tab;
 
   const isQuestions = tab === 'questions' || tab === 'standings';
@@ -677,6 +691,33 @@ function switchTab(tab) {
   document.getElementById('section-scoresheet').classList.toggle('hidden', tab !== 'scoresheet');
   document.getElementById('section-teams').classList.toggle('hidden', tab !== 'teams');
   document.getElementById('section-coaches').classList.toggle('hidden', tab !== 'coaches');
+
+  // Update top header button if present
+  const toggleIcon = document.getElementById('nav-toggle-scoresheet-icon');
+  const toggleText = document.getElementById('nav-toggle-scoresheet-text');
+  if (toggleIcon && toggleText) {
+    if (tab === 'scoresheet') {
+      toggleIcon.textContent = '🏆';
+      toggleText.textContent = 'Scores';
+    } else {
+      toggleIcon.textContent = '⚡';
+      toggleText.textContent = 'Scorer';
+    }
+  }
+
+  // Sync URL history cleanly
+  try {
+    const currentPath = window.location.pathname.toLowerCase();
+    if (tab === 'scoresheet' && currentPath !== '/scoresheet') {
+      window.history.pushState({ tab: 'scoresheet' }, '', '/scoresheet');
+    } else if (isQuestions && currentPath !== '/scores' && currentPath !== '/') {
+      window.history.pushState({ tab: 'questions' }, '', '/scores');
+    } else if (tab === 'teams') {
+      window.history.pushState({ tab: 'teams' }, '', '/scoresheet?tab=teams');
+    } else if (tab === 'coaches') {
+      window.history.pushState({ tab: 'coaches' }, '', '/scoresheet?tab=coaches');
+    }
+  } catch (e) {}
 
   const activeClass = 'bg-brand-600 text-white shadow-sm';
   const inactiveClass = 'text-brand-200 hover:text-white hover:bg-brand-800/60';
