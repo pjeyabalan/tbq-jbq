@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (loggedInUser) {
       const urlParams = new URLSearchParams(window.location.search);
       const tabParam = urlParams.get('tab');
-      const targetTab = (tabParam && ['scoresheet', 'teams', 'coaches', 'standings', 'questions'].includes(tabParam))
+      const targetTab = (tabParam && ['scoresheet', 'teams', 'coaches', 'standings', 'questions', 'quizzers'].includes(tabParam))
         ? (tabParam === 'standings' ? 'questions' : tabParam)
         : 'scoresheet';
       setLoggedInCoach(savedToken, loggedInUser, targetTab);
@@ -171,6 +171,8 @@ function setLoggedOutView() {
   document.getElementById('section-scoresheet').classList.add('hidden');
   document.getElementById('section-teams').classList.add('hidden');
   document.getElementById('section-coaches').classList.add('hidden');
+  const secQuizzers = document.getElementById('section-quizzers');
+  if (secQuizzers) secQuizzers.classList.add('hidden');
   document.getElementById('section-public').classList.remove('hidden');
 
   renderPlatformHeader();
@@ -679,7 +681,7 @@ async function handleCreateMeet(event) {
 // Tab Switching
 function switchTab(tab) {
   // If attempting to access coach-only areas without active session, redirect to /login
-  if ((tab === 'scoresheet' || tab === 'teams' || tab === 'coaches') && !state.auth) {
+  if ((tab === 'scoresheet' || tab === 'teams' || tab === 'coaches' || tab === 'quizzers') && !state.auth) {
     window.location.href = '/login';
     return;
   }
@@ -691,6 +693,8 @@ function switchTab(tab) {
   document.getElementById('section-scoresheet').classList.toggle('hidden', tab !== 'scoresheet');
   document.getElementById('section-teams').classList.toggle('hidden', tab !== 'teams');
   document.getElementById('section-coaches').classList.toggle('hidden', tab !== 'coaches');
+  const secQuizzers = document.getElementById('section-quizzers');
+  if (secQuizzers) secQuizzers.classList.toggle('hidden', tab !== 'quizzers');
 
   // Update top header button if present
   const toggleIcon = document.getElementById('nav-toggle-scoresheet-icon');
@@ -716,6 +720,8 @@ function switchTab(tab) {
       window.history.pushState({ tab: 'teams' }, '', '/scoresheet?tab=teams');
     } else if (tab === 'coaches') {
       window.history.pushState({ tab: 'coaches' }, '', '/scoresheet?tab=coaches');
+    } else if (tab === 'quizzers') {
+      window.history.pushState({ tab: 'quizzers' }, '', '/scoresheet?tab=quizzers');
     }
   } catch (e) {}
 
@@ -723,29 +729,34 @@ function switchTab(tab) {
   const inactiveClass = 'text-brand-200 hover:text-white hover:bg-brand-800/60';
 
   const tabScoresheet = document.getElementById('tab-btn-scoresheet');
+  const tabQuizzers = document.getElementById('tab-btn-quizzers');
   const tabTeams = document.getElementById('tab-btn-teams');
   const tabCoaches = document.getElementById('tab-btn-coaches');
 
   if (tabScoresheet) tabScoresheet.className = `px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'scoresheet' ? activeClass : inactiveClass}`;
+  if (tabQuizzers) tabQuizzers.className = `px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'quizzers' ? activeClass : inactiveClass}`;
   if (tabTeams) tabTeams.className = `px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'teams' ? activeClass : inactiveClass}`;
   if (tabCoaches) tabCoaches.className = `px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'coaches' ? 'bg-amber-500 text-brand-950 shadow-sm' : 'text-amber-300 hover:text-amber-100 hover:bg-brand-800/60'}`;
 
   // Sync mobile bottom navigation
   const mobScoresheet = document.getElementById('mob-tab-btn-scoresheet');
   const mobStandings = document.getElementById('mob-tab-btn-standings');
+  const mobQuizzers = document.getElementById('mob-tab-btn-quizzers');
   const mobTeams = document.getElementById('mob-tab-btn-teams');
   const mobCoaches = document.getElementById('mob-tab-btn-coaches');
 
   const mobActive = 'text-amber-400 font-black';
   const mobInactive = 'text-slate-400 font-bold hover:text-white';
 
-  if (mobScoresheet) mobScoresheet.className = `flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs transition-all cursor-pointer ${tab === 'scoresheet' ? mobActive : mobInactive}`;
-  if (mobStandings) mobStandings.className = `flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs transition-all cursor-pointer ${isQuestions ? mobActive : mobInactive}`;
-  if (mobTeams) mobTeams.className = `flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs transition-all cursor-pointer ${tab === 'teams' ? mobActive : mobInactive}`;
-  if (mobCoaches) mobCoaches.className = `flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs transition-all cursor-pointer ${tab === 'coaches' ? mobActive : mobInactive}`;
+  if (mobScoresheet) mobScoresheet.className = `flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs transition-all cursor-pointer ${tab === 'scoresheet' ? mobActive : mobInactive}`;
+  if (mobStandings) mobStandings.className = `flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs transition-all cursor-pointer ${isQuestions ? mobActive : mobInactive}`;
+  if (mobQuizzers) mobQuizzers.className = `flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs transition-all cursor-pointer ${tab === 'quizzers' ? mobActive : mobInactive}`;
+  if (mobTeams) mobTeams.className = `flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs transition-all cursor-pointer ${tab === 'teams' ? mobActive : mobInactive}`;
+  if (mobCoaches) mobCoaches.className = `flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs transition-all cursor-pointer ${tab === 'coaches' ? mobActive : mobInactive}`;
 
   if (isQuestions) fetchPublicSummary();
   if (tab === 'scoresheet') fetchTbqData(state.activeMatchId);
+  if (tab === 'quizzers') fetchQuizzersStats();
   if (tab === 'teams') {
     renderTeamsManagerUI();
     fetchTbqData();
@@ -4023,11 +4034,278 @@ function showMatchToast(message, type = 'info') {
   }, 7000);
 }
 
+// ==========================================
+// 8. QUIZZERS SCORE TRACKER (STUDENTS VIEW)
+// ==========================================
+
+async function fetchQuizzersStats() {
+  if (!state.auth) return;
+  try {
+    const res = await authFetch('/api/tbq/quizzers-stats');
+    if (!res.ok) {
+      if (res.status === 401) {
+        logoutCoach();
+      }
+      return;
+    }
+    const data = await res.json();
+    state.quizzersData = data;
+    renderQuizzersUI();
+  } catch (err) {
+    console.error('Error fetching quizzers stats:', err);
+  }
+}
+
+function handleQuizzersFilterChange() {
+  renderQuizzersUI();
+}
+
+function clearQuizzersSearch() {
+  const searchInput = document.getElementById('quizzers-search-input');
+  if (searchInput) searchInput.value = '';
+  renderQuizzersUI();
+}
+
+function toggleQuizzerMatchDetails(idx) {
+  const el = document.getElementById(`quizzer-matches-${idx}`);
+  const btn = document.getElementById(`quizzer-toggle-btn-${idx}`);
+  if (!el) return;
+  const isHidden = el.classList.contains('hidden');
+  el.classList.toggle('hidden', !isHidden);
+  if (btn) {
+    btn.textContent = isHidden ? '▲ Hide Match Details' : '▼ View Match Details';
+  }
+}
+
+function renderQuizzersUI() {
+  if (!state.quizzersData) return;
+  const data = state.quizzersData;
+  const isSuper = !!data.isSuper;
+
+  // 1. Role context & title
+  const titleEl = document.getElementById('quizzers-view-title');
+  const subtitleEl = document.getElementById('quizzers-view-subtitle');
+  const badgeEl = document.getElementById('quizzers-role-badge');
+
+  if (isSuper) {
+    if (titleEl) titleEl.textContent = '🌟 All Quizzers Leaderboard';
+    if (subtitleEl) subtitleEl.textContent = `All churches & teams • ${data.divisionName || 'B-Level'}`;
+    if (badgeEl) {
+      badgeEl.className = 'text-[9px] font-black px-2 py-0.5 rounded-full border bg-amber-400 text-slate-950 border-amber-300';
+      badgeEl.textContent = '👑 Super Coach View';
+    }
+  } else {
+    if (titleEl) titleEl.textContent = '🌟 My Team Quizzers';
+    if (subtitleEl) subtitleEl.textContent = `Tracking scores for your team's students alone • ${data.divisionName || 'B-Level'}`;
+    if (badgeEl) {
+      badgeEl.className = 'text-[9px] font-black px-2 py-0.5 rounded-full border bg-purple-500/20 text-purple-200 border-purple-400/30';
+      badgeEl.textContent = `🎒 ${data.coach?.name || 'Coach'}'s Team`;
+    }
+  }
+
+  // 2. Populate team filter dropdown (preserve current selection if valid)
+  const teamFilterEl = document.getElementById('quizzers-team-filter');
+  if (teamFilterEl) {
+    const prevVal = teamFilterEl.value;
+    const teams = data.teams || [];
+    let optsHtml = '<option value="all">All Teams</option>';
+    teams.forEach(t => {
+      optsHtml += `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`;
+    });
+    teamFilterEl.innerHTML = optsHtml;
+    if (prevVal && (prevVal === 'all' || teams.some(t => t.id === prevVal))) {
+      teamFilterEl.value = prevVal;
+    }
+  }
+
+  // 3. Search and Sort states
+  const searchInput = document.getElementById('quizzers-search-input');
+  const searchVal = (searchInput ? searchInput.value : '').trim().toLowerCase();
+  const clearBtn = document.getElementById('quizzers-search-clear');
+  if (clearBtn) clearBtn.classList.toggle('hidden', !searchVal);
+
+  const selectedTeam = teamFilterEl ? teamFilterEl.value : 'all';
+  const sortSelect = document.getElementById('quizzers-sort-select');
+  const sortVal = sortSelect ? sortSelect.value : 'points';
+
+  // 4. Filter quizzers
+  let filtered = (data.quizzers || []).filter(q => {
+    if (searchVal && !q.name.toLowerCase().includes(searchVal) && !(q.teamName || '').toLowerCase().includes(searchVal)) {
+      return false;
+    }
+    if (selectedTeam !== 'all' && q.teamId !== selectedTeam) {
+      return false;
+    }
+    return true;
+  });
+
+  // 5. Sort quizzers
+  if (sortVal === 'points') {
+    filtered.sort((a, b) => b.totalPoints - a.totalPoints || b.correct - a.correct || a.errors - b.errors);
+  } else if (sortVal === 'correct') {
+    filtered.sort((a, b) => b.correct - a.correct || b.totalPoints - a.totalPoints);
+  } else if (sortVal === 'accuracy') {
+    filtered.sort((a, b) => b.accuracy - a.accuracy || b.totalPoints - a.totalPoints);
+  } else if (sortVal === 'name') {
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  // 6. Summary Stats Chips
+  const totalKids = filtered.length;
+  const totalPts = filtered.reduce((sum, q) => sum + (q.totalPoints || 0), 0);
+  const totalCorrect = filtered.reduce((sum, q) => sum + (q.correct || 0), 0);
+  const totalQOs = filtered.reduce((sum, q) => sum + (q.quizOuts || 0), 0);
+
+  const statKids = document.getElementById('quizzers-stat-kids');
+  const statPoints = document.getElementById('quizzers-stat-points');
+  const statCorrect = document.getElementById('quizzers-stat-correct');
+  const statQos = document.getElementById('quizzers-stat-qos');
+
+  if (statKids) statKids.textContent = totalKids;
+  if (statPoints) statPoints.textContent = totalPts;
+  if (statCorrect) statCorrect.textContent = totalCorrect;
+  if (statQos) statQos.textContent = totalQOs;
+
+  // 7. Render Cards List
+  const listContainer = document.getElementById('quizzers-cards-list');
+  const emptyState = document.getElementById('quizzers-empty-state');
+  const emptyTitle = document.getElementById('quizzers-empty-title');
+  const emptyDesc = document.getElementById('quizzers-empty-desc');
+
+  if (filtered.length === 0) {
+    if (listContainer) listContainer.innerHTML = '';
+    if (emptyState) {
+      emptyState.classList.remove('hidden');
+      if (!isSuper && (!data.teams || data.teams.length === 0)) {
+        if (emptyTitle) emptyTitle.textContent = 'No Teams Assigned to Your Account';
+        if (emptyDesc) emptyDesc.textContent = 'Ask your tournament coordinator (Super Coach) to assign your team to your coach account in the Teams tab.';
+      } else if (searchVal) {
+        if (emptyTitle) emptyTitle.textContent = 'No Matching Quizzers';
+        if (emptyDesc) emptyDesc.textContent = `No quizzers found matching "${escapeHtml(searchVal)}".`;
+      } else {
+        if (emptyTitle) emptyTitle.textContent = 'No Quizzers in this Division';
+        if (emptyDesc) emptyDesc.textContent = 'No quizzers have been added to teams yet in this division.';
+      }
+    }
+    return;
+  }
+
+  if (emptyState) emptyState.classList.add('hidden');
+
+  let cardsHtml = '';
+  filtered.forEach((q, idx) => {
+    // Rank medal / badge
+    let rankBadge = '';
+    if (q.rank === 1) {
+      rankBadge = '<span class="w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-xs">🥇</span>';
+    } else if (q.rank === 2) {
+      rankBadge = '<span class="w-6 h-6 rounded-full bg-slate-300 text-slate-950 font-black text-xs flex items-center justify-center shadow-xs">🥈</span>';
+    } else if (q.rank === 3) {
+      rankBadge = '<span class="w-6 h-6 rounded-full bg-amber-600 text-white font-black text-xs flex items-center justify-center shadow-xs">🥉</span>';
+    } else {
+      rankBadge = `<span class="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-bold text-xs flex items-center justify-center border border-slate-200">#${q.rank}</span>`;
+    }
+
+    // Points styling
+    const pointsColor = q.totalPoints > 0 ? 'text-amber-950 bg-amber-400/90' : (q.totalPoints < 0 ? 'text-rose-950 bg-rose-300' : 'text-slate-800 bg-slate-200');
+
+    // Matches accordion list
+    let matchesHtml = '';
+    if (q.matches && q.matches.length > 0) {
+      matchesHtml = `
+        <div id="quizzer-matches-${idx}" class="hidden mt-2.5 pt-2.5 border-t border-slate-100 space-y-1.5 text-xs">
+          <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Round-by-Round Breakdown:</div>
+          ${q.matches.map(m => `
+            <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="font-black text-slate-700">M#${m.matchNumber}</span>
+                <span class="text-slate-500">vs ${escapeHtml(m.opponentTeamName)}</span>
+                ${m.isQuizzedOut ? `<span class="text-[9px] font-black px-1.5 py-0.2 rounded-full ${m.quizOutBonus > 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-purple-100 text-purple-800'}">⭐ QO</span>` : ''}
+                ${m.isErroredOut ? `<span class="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800">❌ EO</span>` : ''}
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] font-bold text-emerald-700">✅ ${m.correct}</span>
+                <span class="text-[11px] font-bold text-rose-700">❌ ${m.errors}</span>
+                <span class="font-black text-xs ${m.points >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${m.points >= 0 ? '+' : ''}${m.points} pts</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    cardsHtml += `
+      <div class="bg-white rounded-2xl p-3 shadow-2xs border border-slate-200 transition-all hover:border-slate-300">
+        <!-- Top Row: Rank, Name, Team, and Points -->
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-start gap-2.5 min-w-0">
+            <div class="pt-0.5 flex-shrink-0">${rankBadge}</div>
+            <div class="min-w-0">
+              <h3 class="text-sm font-black text-slate-900 truncate leading-tight">${escapeHtml(q.name)}</h3>
+              <div class="text-[11px] text-slate-500 font-semibold truncate mt-0.5">
+                <span>${escapeHtml(q.teamName)}</span>
+                ${q.church && q.church !== q.teamName ? `<span class="text-slate-400 font-normal"> • ${escapeHtml(q.church)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <!-- Points Badge -->
+          <div class="flex-shrink-0 text-right">
+            <span class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-black shadow-2xs ${pointsColor}">
+              ${q.totalPoints} pts
+            </span>
+            ${q.matchesPlayed > 0 ? `<div class="text-[10px] text-slate-400 font-bold mt-0.5">${q.avgPoints} avg/m</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Middle Row: Stats Badges -->
+        <div class="flex items-center gap-1.5 flex-wrap mt-2.5 pt-2 border-t border-slate-100 text-[11px] font-bold">
+          <span class="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+            ✅ ${q.correct} Correct
+          </span>
+          <span class="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-800 border border-rose-200/60">
+            ❌ ${q.errors} Errors
+          </span>
+          <span class="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200/60">
+            🎯 ${q.accuracy}% Acc
+          </span>
+          ${q.quizOuts > 0 ? `
+            <span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-300/80 font-black">
+              ⭐ ${q.quizOuts} QO ${q.perfectQuizOuts > 0 ? `(${q.perfectQuizOuts} perfect)` : ''}
+            </span>
+          ` : ''}
+          ${q.fouls > 0 ? `
+            <span class="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200/60">
+              ⚠️ ${q.fouls} Foul
+            </span>
+          ` : ''}
+          <span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
+            📊 ${q.matchesPlayed} Match${q.matchesPlayed === 1 ? '' : 'es'}
+          </span>
+        </div>
+
+        <!-- Optional: Match details toggle if matches exist -->
+        ${q.matches && q.matches.length > 0 ? `
+          <div class="mt-2 text-right">
+            <button id="quizzer-toggle-btn-${idx}" onclick="toggleQuizzerMatchDetails(${idx})" class="text-[11px] text-amber-600 hover:text-amber-700 font-bold active:scale-95 cursor-pointer">
+              ▼ View Match Details (${q.matches.length})
+            </button>
+          </div>
+          ${matchesHtml}
+        ` : ''}
+      </div>
+    `;
+  });
+
+  if (listContainer) listContainer.innerHTML = cardsHtml;
+}
+
 // Live Tournament Poller: Automatically updates standings and matches for spectators & coaches
 setInterval(() => {
   if (!state.auth || state.currentTab === 'questions') {
     fetchPublicSummary();
   } else if (state.currentTab === 'teams') {
     fetchTeamsByDivision();
+  } else if (state.currentTab === 'quizzers') {
+    fetchQuizzersStats();
   }
 }, 15000);

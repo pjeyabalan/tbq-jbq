@@ -168,6 +168,7 @@
         <span id="auth-user-name"></span>
         <div id="coach-nav-tabs">
           <button id="tab-btn-scoresheet" onclick="switchTab('scoresheet')"></button>
+          <button id="tab-btn-quizzers" onclick="switchTab('quizzers')"></button>
           <button id="tab-btn-teams" onclick="switchTab('teams')"></button>
           <button id="tab-btn-coaches" onclick="switchTab('coaches')"></button>
         </div>
@@ -607,6 +608,102 @@
     </main>
 
     <!-- ========================================== -->
+    <!-- 3. QUIZZERS INDIVIDUAL SCORES TRACKER TAB  -->
+    <!-- ========================================== -->
+    <main id="section-quizzers" class="w-full px-3 py-3 flex-grow hidden">
+
+      <!-- TOP HEADER & ROLE CONTEXT -->
+      <div class="bg-white rounded-2xl p-3.5 shadow-2xs border border-slate-200 mb-3">
+        <div class="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-100">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-xl flex-shrink-0">🌟</span>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <h2 class="text-sm font-black text-slate-900 truncate" id="quizzers-view-title">Quizzers Score Tracker</h2>
+                <span id="quizzers-role-badge" class="text-[9px] font-black px-2 py-0.5 rounded-full border bg-amber-400 text-slate-950 border-amber-300"></span>
+              </div>
+              <p class="text-[11px] text-slate-500 truncate" id="quizzers-view-subtitle">Individual student points, answer accuracy & match records.</p>
+            </div>
+          </div>
+          <button onclick="fetchQuizzersStats()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-1 flex-shrink-0 cursor-pointer border border-slate-200" title="Refresh Scores">
+            <span>🔄</span>
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        <!-- SEARCH & FILTER BAR -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+          <div class="relative">
+            <input
+              type="text"
+              id="quizzers-search-input"
+              oninput="handleQuizzersFilterChange()"
+              placeholder="🔍 Search quizzer by name..."
+              class="w-full pl-3 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+            <button id="quizzers-search-clear" onclick="clearQuizzersSearch()" class="hidden absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer">✕</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Team Filter (Populated dynamically) -->
+            <select
+              id="quizzers-team-filter"
+              onchange="handleQuizzersFilterChange()"
+              class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+            >
+              <option value="all">All Teams</option>
+            </select>
+            <!-- Sort Selector -->
+            <select
+              id="quizzers-sort-select"
+              onchange="handleQuizzersFilterChange()"
+              class="px-2.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+            >
+              <option value="points">Points ▾</option>
+              <option value="correct">Correct ▾</option>
+              <option value="accuracy">Accuracy ▾</option>
+              <option value="name">Name A-Z</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- SUMMARY STATS CHIPS -->
+        <div id="quizzers-summary-stats" class="grid grid-cols-4 gap-1.5 mt-3 pt-2.5 border-t border-slate-100 text-center">
+          <div class="bg-slate-50 rounded-xl p-1.5 border border-slate-100">
+            <div class="text-[10px] uppercase font-bold text-slate-400">Kids</div>
+            <div id="quizzers-stat-kids" class="text-xs font-black text-slate-800">0</div>
+          </div>
+          <div class="bg-amber-50 rounded-xl p-1.5 border border-amber-200/60">
+            <div class="text-[10px] uppercase font-bold text-amber-700">Total Pts</div>
+            <div id="quizzers-stat-points" class="text-xs font-black text-amber-900">0</div>
+          </div>
+          <div class="bg-emerald-50 rounded-xl p-1.5 border border-emerald-200/60">
+            <div class="text-[10px] uppercase font-bold text-emerald-700">Correct</div>
+            <div id="quizzers-stat-correct" class="text-xs font-black text-emerald-900">0</div>
+          </div>
+          <div class="bg-purple-50 rounded-xl p-1.5 border border-purple-200/60">
+            <div class="text-[10px] uppercase font-bold text-purple-700">Quiz-Outs</div>
+            <div id="quizzers-stat-qos" class="text-xs font-black text-purple-900">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUIZZERS CARDS CONTAINER -->
+      <div id="quizzers-cards-list" class="space-y-2.5">
+        <!-- Rendered dynamically via JS -->
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div id="quizzers-empty-state" class="hidden bg-white rounded-2xl p-6 shadow-2xs border border-slate-200 text-center my-4">
+        <div class="text-3xl mb-2">🎒</div>
+        <h3 class="text-sm font-black text-slate-800" id="quizzers-empty-title">No Quizzers Found</h3>
+        <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto" id="quizzers-empty-desc">
+          No students match the current filter or division.
+        </p>
+      </div>
+
+    </main>
+
+    <!-- ========================================== -->
     <!-- 4. TEAMS & MATCHES ROSTER TAB              -->
     <!-- ========================================== -->
     <main id="section-teams" class="w-full px-3 py-3 flex-grow hidden">
@@ -784,24 +881,29 @@
     <!-- 6. FIXED NATIVE BOTTOM NAVIGATION BAR      -->
     <!-- ========================================== -->
     <nav id="mobile-bottom-nav" class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 shadow-2xl safe-bottom no-print">
-      <div class="flex items-center justify-around max-w-xl mx-auto py-1 px-2">
+      <div class="flex items-center justify-around max-w-xl mx-auto py-1 px-1">
         <!-- 1. SCORER TAB -->
-        <button onclick="handleScorerTabClick()" id="mob-tab-btn-scoresheet" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs font-black transition-all text-amber-400 active:scale-95 cursor-pointer">
+        <button onclick="handleScorerTabClick()" id="mob-tab-btn-scoresheet" class="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs font-black transition-all text-amber-400 active:scale-95 cursor-pointer">
           <span class="text-lg leading-none">⚡</span>
           <span class="text-[10px] mt-0.5 tracking-tight font-black">Scorer</span>
         </button>
         <!-- 2. STANDINGS TAB -->
-        <button onclick="switchTab('questions')" id="mob-tab-btn-standings" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white active:scale-95 cursor-pointer">
+        <button onclick="switchTab('questions')" id="mob-tab-btn-standings" class="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white active:scale-95 cursor-pointer">
           <span class="text-lg leading-none">🏆</span>
           <span class="text-[10px] mt-0.5 tracking-tight">Standings</span>
         </button>
-        <!-- 3. TEAMS TAB -->
-        <button onclick="switchTab('teams')" id="mob-tab-btn-teams" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white active:scale-95 cursor-pointer">
+        <!-- 3. QUIZZERS TAB -->
+        <button onclick="switchTab('quizzers')" id="mob-tab-btn-quizzers" class="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white active:scale-95 cursor-pointer">
+          <span class="text-lg leading-none">🌟</span>
+          <span class="text-[10px] mt-0.5 tracking-tight">Quizzers</span>
+        </button>
+        <!-- 4. TEAMS TAB -->
+        <button onclick="switchTab('teams')" id="mob-tab-btn-teams" class="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white active:scale-95 cursor-pointer">
           <span class="text-lg leading-none">👥</span>
           <span class="text-[10px] mt-0.5 tracking-tight">Teams</span>
         </button>
-        <!-- 4. MORE / SETTINGS TAB -->
-        <button onclick="switchTab('coaches')" id="mob-tab-btn-coaches" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white active:scale-95 cursor-pointer">
+        <!-- 5. MORE / SETTINGS TAB -->
+        <button onclick="switchTab('coaches')" id="mob-tab-btn-coaches" class="flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs font-bold transition-all text-slate-400 hover:text-white active:scale-95 cursor-pointer">
           <span class="text-lg leading-none">⚙️</span>
           <span class="text-[10px] mt-0.5 tracking-tight">More</span>
         </button>

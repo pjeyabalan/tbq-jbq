@@ -254,6 +254,28 @@ function requireSuperCoach(req, res, next) {
   next();
 }
 
+// Strict Coach Authentication Middleware (requires valid session token or passcode - NO fallback)
+function requireCoachAuth(req, res, next) {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : req.headers['x-coach-token'] || req.query?.token;
+
+  if (token && activeSessions.has(token)) {
+    req.user = activeSessions.get(token);
+    return next();
+  }
+
+  const passcode = req.body?.passcode || req.headers['x-coach-passcode'];
+  if (passcode) {
+    const matched = coaches.find(c => c.passcode === passcode);
+    if (matched) {
+      req.user = matched;
+      return next();
+    }
+  }
+
+  return res.status(401).json({ error: 'Authentication required. Please sign in as a coach or supercoach.' });
+}
+
 // Auth Login Endpoint
 app.post('/api/auth/login', (req, res) => {
   const { username, passcode } = req.body;
@@ -1779,6 +1801,223 @@ app.get('/api/tbq', authenticateCoach, (req, res) => {
     activeRound: activeMatch,
     divisionsSummary: getDivisionsSummary(),
     userAssignedTeams: coachTeamIds ? Array.from(coachTeamIds) : null
+  });
+});
+
+// GET Quizzers Stats (Individual Student Score Tracker)
+// Supercoach sees all kids across all churches; Coaches see ONLY kids from their assigned teams.
+app.get('/api/tbq/quizzers-stats', requireCoachAuth, (req, res) => {
+  const ctx = getPlatformContext(req);
+  const dataset = ctx.dataset;
+  const isSuper = req.user.role === 'supercoach';
+  const coachTeamIds = getCoachTeamIds(req.user, dataset);
+
+  // Accessible teams
+  const allTeams = dataset.teams || [];
+  const accessibleTeams = isSuper 
+    ? allTeams 
+    : allTeams.filter(t => coachTeamIds && coachTeamIds.has(t.id));
+
+  // Map of student stats: key = `${teamId}::${studentName.toLowerCase()}`
+  const quizzerMap = new Map();
+
+  // Initialize every rostered quizzer from accessible teams
+  accessibleTeams.forEach(team => {
+    (team.quizzers || []).forEach(name => {
+      const cleanName = String(name).trim();
+      if (!cleanName) return;
+      const key = `${team.id}::${cleanName.toLowerCase()}`;
+      if (!quizzerMap.has(key)) {
+        quizzerMap.set(key, {
+          name: cleanName,
+          teamId: team.id,
+          teamName: team.name,
+          church: team.church || team.name,
+          division: ctx.division,
+          divisionName: ctx.division === 'c_level' ? 'C-Level' : 'B-Level',
+          totalPoints: 0,
+          matchesPlayed: 0,
+          correct: 0,
+          errors: 0,
+          fouls: 0,
+          quizOuts: 0,
+          perfectQuizOuts: 0,
+          erroredOuts: 0,
+          matches: []
+        });
+      }
+    });
+  });
+
+  // Scan all matches in dataset
+  const allMatchKeys = Object.keys(dataset.matches || {});
+  allMatchKeys.forEach(mKey => {
+    const m = dataset.matches[mKey];
+    if (!m) return;
+
+    const isTeamAInScope = accessibleTeams.some(t => t.id === m.teamAId);
+    const isTeamBInScope = accessibleTeams.some(t => t.id === m.teamBId);
+    if (!isTeamAInScope && !isTeamBInScope) return;
+
+    const targetSheetId = resolveTargetSheetId(req, m, dataset);
+    const stats = calculateMatchStats(mKey, dataset, ctx.isJBQ, targetSheetId);
+    if (!stats) return;
+
+    // We consider matches that have any answers recorded or are in progress/completed
+    const hasActivity = (stats.completedQuestionsCount > 0) || (stats.questions && stats.questions.length > 0) || stats.isCompleted;
+    if (!hasActivity) return;
+
+    // Process Team A quizzers
+    if (isTeamAInScope && stats.teamA && Array.isArray(stats.teamA.quizzers)) {
+      stats.teamA.quizzers.forEach(qStat => {
+        if (!qStat || !qStat.name) return;
+        const key = `${m.teamAId}::${qStat.name.toLowerCase()}`;
+        let entry = quizzerMap.get(key);
+        if (!entry) {
+          const tObj = getTeamById(m.teamAId, dataset) || { name: stats.teamA.name, church: stats.teamA.church };
+          entry = {
+            name: qStat.name,
+            teamId: m.teamAId,
+            teamName: tObj.name,
+            church: tObj.church || tObj.name,
+            division: ctx.division,
+            divisionName: ctx.division === 'c_level' ? 'C-Level' : 'B-Level',
+            totalPoints: 0,
+            matchesPlayed: 0,
+            correct: 0,
+            errors: 0,
+            fouls: 0,
+            quizOuts: 0,
+            perfectQuizOuts: 0,
+            erroredOuts: 0,
+            matches: []
+          };
+          quizzerMap.set(key, entry);
+        }
+
+        entry.totalPoints += (qStat.points || 0);
+        entry.correct += (qStat.correct || 0);
+        entry.errors += (qStat.errors || 0);
+        entry.fouls += (qStat.fouls || 0);
+        if (qStat.isQuizzedOut) {
+          entry.quizOuts += 1;
+          if (qStat.quizOutBonus > 0 || qStat.errors === 0) entry.perfectQuizOuts += 1;
+        }
+        if (qStat.isErroredOut) {
+          entry.erroredOuts += 1;
+        }
+        entry.matchesPlayed += 1;
+        entry.matches.push({
+          matchId: m.id,
+          matchNumber: m.matchNumber || "01",
+          roundNum: m.roundNum || 1,
+          opponentTeamName: stats.teamB.name,
+          opponentChurch: stats.teamB.church,
+          points: qStat.points || 0,
+          correct: qStat.correct || 0,
+          errors: qStat.errors || 0,
+          fouls: qStat.fouls || 0,
+          isQuizzedOut: !!qStat.isQuizzedOut,
+          isErroredOut: !!qStat.isErroredOut,
+          quizOutBonus: qStat.quizOutBonus || 0,
+          isMatchCompleted: !!stats.isCompleted
+        });
+      });
+    }
+
+    // Process Team B quizzers
+    if (isTeamBInScope && stats.teamB && Array.isArray(stats.teamB.quizzers)) {
+      stats.teamB.quizzers.forEach(qStat => {
+        if (!qStat || !qStat.name) return;
+        const key = `${m.teamBId}::${qStat.name.toLowerCase()}`;
+        let entry = quizzerMap.get(key);
+        if (!entry) {
+          const tObj = getTeamById(m.teamBId, dataset) || { name: stats.teamB.name, church: stats.teamB.church };
+          entry = {
+            name: qStat.name,
+            teamId: m.teamBId,
+            teamName: tObj.name,
+            church: tObj.church || tObj.name,
+            division: ctx.division,
+            divisionName: ctx.division === 'c_level' ? 'C-Level' : 'B-Level',
+            totalPoints: 0,
+            matchesPlayed: 0,
+            correct: 0,
+            errors: 0,
+            fouls: 0,
+            quizOuts: 0,
+            perfectQuizOuts: 0,
+            erroredOuts: 0,
+            matches: []
+          };
+          quizzerMap.set(key, entry);
+        }
+
+        entry.totalPoints += (qStat.points || 0);
+        entry.correct += (qStat.correct || 0);
+        entry.errors += (qStat.errors || 0);
+        entry.fouls += (qStat.fouls || 0);
+        if (qStat.isQuizzedOut) {
+          entry.quizOuts += 1;
+          if (qStat.quizOutBonus > 0 || qStat.errors === 0) entry.perfectQuizOuts += 1;
+        }
+        if (qStat.isErroredOut) {
+          entry.erroredOuts += 1;
+        }
+        entry.matchesPlayed += 1;
+        entry.matches.push({
+          matchId: m.id,
+          matchNumber: m.matchNumber || "01",
+          roundNum: m.roundNum || 1,
+          opponentTeamName: stats.teamA.name,
+          opponentChurch: stats.teamA.church,
+          points: qStat.points || 0,
+          correct: qStat.correct || 0,
+          errors: qStat.errors || 0,
+          fouls: qStat.fouls || 0,
+          isQuizzedOut: !!qStat.isQuizzedOut,
+          isErroredOut: !!qStat.isErroredOut,
+          quizOutBonus: qStat.quizOutBonus || 0,
+          isMatchCompleted: !!stats.isCompleted
+        });
+      });
+    }
+  });
+
+  const quizzersList = Array.from(quizzerMap.values()).map(q => {
+    const totalAttempts = q.correct + q.errors;
+    q.accuracy = totalAttempts > 0 ? Math.round((q.correct / totalAttempts) * 100) : 0;
+    q.avgPoints = q.matchesPlayed > 0 ? Math.round(q.totalPoints / q.matchesPlayed) : 0;
+    return q;
+  }).sort((a, b) => {
+    if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+    if (b.correct !== a.correct) return b.correct - a.correct;
+    if (a.errors !== b.errors) return a.errors - b.errors;
+    return a.name.localeCompare(b.name);
+  });
+
+  quizzersList.forEach((q, idx) => {
+    q.rank = idx + 1;
+  });
+
+  const meets = (platformData.jbq && platformData.jbq.meets) || {};
+  const currentMeetObj = meets[ctx.meetId];
+
+  res.json({
+    success: true,
+    isSuper,
+    coach: {
+      id: req.user.id,
+      name: req.user.name,
+      username: req.user.username,
+      role: req.user.role
+    },
+    meetId: ctx.meetId,
+    meetTitle: currentMeetObj ? currentMeetObj.title : 'Current Meet',
+    division: ctx.division,
+    divisionName: ctx.division === 'c_level' ? 'C-Level' : 'B-Level',
+    teams: accessibleTeams.map(t => ({ id: t.id, name: t.name, church: t.church })),
+    quizzers: quizzersList
   });
 });
 
