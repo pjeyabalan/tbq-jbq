@@ -4,10 +4,7 @@ PRACTICE SETS 10 POINTERS
 2026–2027 Season
 ================================================================================
 
-TOTAL UNIQUE 10-POINTERS: 88
-  • Mark Chapter 4: 34 questions
-  • Mark Chapter 5: 54 questions
-RAW POOL ANALYZED: 97 questions (9 duplicates merged)
+TOTAL QUESTIONS: 88
 
 ================================================================================
 SECTION 1: MARK CHAPTER 4 (UNIQUE 10-POINT QUESTIONS)
