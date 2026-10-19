@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TBQ Practice Sets — Mark Chapters 4 & 5 (10, 20 & 30 Pointers)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+              950: '#1e1b4b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .safe-top { padding-top: env(safe-area-inset-top, 0px); }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    /* Hide scrollbars for horizontal tab bar */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- TOP APP BAR -->
+  <header class="sticky top-0 z-30 bg-slate-900 text-white shadow-md border-b border-slate-800 safe-top">
+    <div class="max-w-4xl mx-auto px-3 py-2.5 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <a href="/scores" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors" title="Back to Scores">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        </a>
+        <div>
+          <h1 class="text-sm font-black text-white leading-tight flex items-center gap-1.5">
+            <span>📖</span>
+            <span>TBQ Practice Sets</span>
+            <span class="text-[10px] font-bold bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full">Mark 4 & 5</span>
+          </h1>
+          <p class="text-[10px] text-slate-400 font-medium">Assemblies of God 2026–2027 Season</p>
+        </div>
+      </div>
+
+      <!-- Quick Nav Buttons -->
+      <div class="flex items-center gap-1.5">
+        <button onclick="toggleAllAnswers()" id="btn-toggle-all" class="text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2.5 py-1.5 rounded-lg transition-all active:scale-95 cursor-pointer flex items-center gap-1">
+          <span id="toggle-all-icon">👁️</span>
+          <span id="toggle-all-text" class="hidden sm:inline">Show Answers</span>
+        </button>
+        <a href="/scores" class="text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 px-2.5 py-1.5 rounded-lg transition-all active:scale-95 shadow-xs">
+          🏆 Standings
+        </a>
+      </div>
+    </div>
+
+    <!-- TABS BAR (SWITCH BETWEEN 10, 20, 30 POINTERS OR ALL) -->
+    <div class="bg-slate-950/80 backdrop-blur-md border-t border-slate-800/80 px-3 py-1.5">
+      <div class="max-w-4xl mx-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <!-- TAB 1: 10 POINTERS -->
+        <button onclick="setPointsTab('10')" id="tab-btn-10" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-emerald-500 text-white shadow-sm">
+          <span>⚡ 10 Pts</span>
+          <span class="bg-emerald-700/60 text-white text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-10">88</span>
+        </button>
+
+        <!-- TAB 2: 20 POINTERS -->
+        <button onclick="setPointsTab('20')" id="tab-btn-20" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-slate-800 text-slate-300 hover:text-white">
+          <span>🔥 20 Pts</span>
+          <span class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-20">85</span>
+        </button>
+
+        <!-- TAB 3: 30 POINTERS -->
+        <button onclick="setPointsTab('30')" id="tab-btn-30" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-slate-800 text-slate-300 hover:text-white">
+          <span>🌟 30 Pts</span>
+          <span class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-30">28</span>
+        </button>
+
+        <!-- TAB 4: ALL QUESTIONS -->
+        <button onclick="setPointsTab('all')" id="tab-btn-all" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-slate-800 text-slate-300 hover:text-white">
+          <span>📚 All</span>
+          <span class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-all">201</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="flex-1 max-w-4xl w-full mx-auto px-3 py-3">
+
+    <!-- SEARCH & CHAPTER FILTER CONTROLS -->
+    <div class="bg-white rounded-2xl p-3 shadow-xs border border-slate-200 mb-3 space-y-2.5">
+      <!-- Search Input -->
+      <div class="relative">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">🔍</span>
+        <input 
+          type="text" 
+          id="search-input" 
+          oninput="handleSearchInput()" 
+          placeholder="Search question, answer, verse (e.g. Jairus, lamp, 4:35, seed)..." 
+          class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all"
+        />
+        <button id="search-clear-btn" onclick="clearSearch()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 text-sm hidden">✕</button>
+      </div>
+
+      <!-- Chapter Filter Pills & PDF Download Buttons -->
+      <div class="flex items-center justify-between gap-2 flex-wrap pt-1 border-t border-slate-100">
+        <!-- Chapter Pills -->
+        <div class="flex items-center gap-1.5">
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Chapter:</span>
+          <button onclick="setChapterFilter('all')" id="btn-chapter-all" class="px-2.5 py-1 rounded-lg text-xs font-black bg-slate-900 text-white shadow-2xs">All</button>
+          <button onclick="setChapterFilter('4')" id="btn-chapter-4" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 4</button>
+          <button onclick="setChapterFilter('5')" id="btn-chapter-5" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 5</button>
+        </div>
+
+        <!-- Download PDF Action -->
+        <div class="flex items-center gap-1.5 ml-auto">
+          <a id="download-current-pdf-btn" href="/data/tbq_mark_4_5_ten_pointers.pdf" target="_blank" class="text-[11px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 active:scale-95 shadow-2xs">
+            <span>📄</span>
+            <span id="download-pdf-label">Download 10 Pts PDF</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUESTIONS SUMMARY CHIPS -->
+    <div class="flex items-center justify-between px-1 mb-2.5 text-xs text-slate-500 font-semibold">
+      <div class="flex items-center gap-2">
+        <span class="font-black text-slate-900" id="filtered-count-label">Showing 88 questions</span>
+        <span id="active-filter-badge" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">10 Pointers • All Chapters</span>
+      </div>
+      <button onclick="shuffleQuestions()" class="text-brand-600 hover:text-brand-700 font-bold active:scale-95 flex items-center gap-1 cursor-pointer" title="Randomize order for drilling">
+        <span>🔀</span>
+        <span>Shuffle Drill</span>
+      </button>
+    </div>
+
+    <!-- QUESTIONS LIST CONTAINER -->
+    <div id="questions-container" class="space-y-2.5">
+      <!-- Loading Skeleton -->
+      <div class="bg-white rounded-2xl p-6 text-center border border-slate-200 animate-pulse">
+        <div class="text-2xl mb-2">⏳</div>
+        <div class="text-sm font-bold text-slate-600">Loading Practice Sets...</div>
+      </div>
+    </div>
+
+    <!-- EMPTY SEARCH STATE -->
+    <div id="empty-state" class="hidden bg-white rounded-2xl p-8 text-center border border-slate-200 my-4 shadow-xs">
+      <div class="text-4xl mb-2">🔍</div>
+      <h3 class="text-base font-black text-slate-800">No Matching Questions</h3>
+      <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto" id="empty-desc">No questions match your current search and chapter filter.</p>
+      <button onclick="resetFilters()" class="mt-4 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold active:scale-95 shadow-xs">
+        Clear All Filters
+      </button>
+    </div>
+
+  </main>
+
+  <!-- JAVASCRIPT APP ENGINE -->
+  <script>
+    // State
+    const state = {
+      activeTab: '10', // '10', '20', '30', or 'all'
+      chapterFilter: 'all', // 'all', '4', or '5'
+      searchQuery: '',
+      showAllAnswers: false,
+      revealedCards: new Set(),
+      isShuffled: false,
+      data: null
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Check URL search params (e.g. ?pts=20&ch=4)
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('pts')) state.activeTab = params.get('pts');
+      if (params.get('ch')) state.chapterFilter = params.get('ch');
+
+      try {
+        const res = await fetch('/data/tbq_mark_4_5_all_pointers.json');
+        if (!res.ok) throw new Error('Failed to load questions JSON');
+        state.data = await res.json();
+      } catch (err) {
+        console.error('Error fetching questions:', err);
+        // Fallback alert
+        document.getElementById('questions-container').innerHTML = `
+          <div class="bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-5 text-center">
+            <div class="text-2xl mb-1">⚠️</div>
+            <div class="text-sm font-black">Unable to load questions</div>
+            <div class="text-xs text-rose-600 mt-1">Please check your internet connection or reload the page.</div>
+          </div>
+        `;
+        return;
+      }
+
+      updateTabCounts();
+      syncUI();
+      renderQuestions();
+    });
+
+    function updateTabCounts() {
+      if (!state.data) return;
+      const s = state.data.metadata.summary;
+      document.getElementById('tab-count-10').textContent = s['10_pointers'].total;
+      document.getElementById('tab-count-20').textContent = s['20_pointers'].total;
+      document.getElementById('tab-count-30').textContent = s['30_pointers'].total;
+      document.getElementById('tab-count-all').textContent = state.data.metadata.total_unique_questions;
+    }
+
+    // Switch Points Tab (10, 20, 30, All)
+    function setPointsTab(tab) {
+      state.activeTab = tab;
+      state.isShuffled = false;
+      syncHistory();
+      syncUI();
+      renderQuestions();
+    }
+
+    // Switch Chapter Filter (All, 4, 5)
+    function setChapterFilter(ch) {
+      state.chapterFilter = ch;
+      state.isShuffled = false;
+      syncHistory();
+      syncUI();
+      renderQuestions();
+    }
+
+    function syncHistory() {
+      const q = new URLSearchParams();
+      if (state.activeTab !== '10') q.set('pts', state.activeTab);
+      if (state.chapterFilter !== 'all') q.set('ch', state.chapterFilter);
+      const str = q.toString() ? '?' + q.toString() : '';
+      window.history.replaceState({}, '', '/practice' + str);
+    }
+
+    function syncUI() {
+      // 1. Sync Tab Buttons
+      const tabs = ['10', '20', '30', 'all'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (!btn) return;
+        const isActive = state.activeTab === t;
+        if (isActive) {
+          if (t === '10') {
+            btn.className = 'flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-emerald-500 text-white shadow-sm';
+          } else if (t === '20') {
+            btn.className = 'flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-blue-600 text-white shadow-sm';
+          } else if (t === '30') {
+            btn.className = 'flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-amber-500 text-slate-950 shadow-sm';
+          } else {
+            btn.className = 'flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-indigo-600 text-white shadow-sm';
+          }
+        } else {
+          btn.className = 'flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-slate-800 text-slate-400 hover:text-white';
+        }
+      });
+
+      // 2. Sync Chapter Buttons
+      const chs = ['all', '4', '5'];
+      chs.forEach(c => {
+        const btn = document.getElementById(`btn-chapter-${c}`);
+        if (!btn) return;
+        const isActive = state.chapterFilter === c;
+        if (isActive) {
+          btn.className = 'px-2.5 py-1 rounded-lg text-xs font-black bg-slate-900 text-white shadow-2xs';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700';
+        }
+      });
+
+      // 3. Sync PDF download link
+      const pdfBtn = document.getElementById('download-current-pdf-btn');
+      const pdfLabel = document.getElementById('download-pdf-label');
+      if (pdfBtn && pdfLabel) {
+        if (state.activeTab === '10') {
+          pdfBtn.href = '/data/tbq_mark_4_5_ten_pointers.pdf';
+          pdfLabel.textContent = '📄 Download 10 Pts PDF';
+        } else if (state.activeTab === '20') {
+          pdfBtn.href = '/data/tbq_mark_4_5_twenty_pointers.pdf';
+          pdfLabel.textContent = '📄 Download 20 Pts PDF';
+        } else if (state.activeTab === '30') {
+          pdfBtn.href = '/data/tbq_mark_4_5_thirty_pointers.pdf';
+          pdfLabel.textContent = '📄 Download 30 Pts PDF';
+        } else {
+          pdfBtn.href = '/data/tbq_mark_4_5_ten_pointers.pdf';
+          pdfLabel.textContent = '📄 Download Study PDF';
+        }
+      }
+    }
+
+    function handleSearchInput() {
+      const input = document.getElementById('search-input');
+      state.searchQuery = (input ? input.value : '').trim().toLowerCase();
+      document.getElementById('search-clear-btn').classList.toggle('hidden', !state.searchQuery);
+      renderQuestions();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('search-input');
+      if (input) input.value = '';
+      state.searchQuery = '';
+      document.getElementById('search-clear-btn').classList.add('hidden');
+      renderQuestions();
+    }
+
+    function resetFilters() {
+      clearSearch();
+      state.activeTab = '10';
+      state.chapterFilter = 'all';
+      syncHistory();
+      syncUI();
+      renderQuestions();
+    }
+
+    function toggleAllAnswers() {
+      state.showAllAnswers = !state.showAllAnswers;
+      const icon = document.getElementById('toggle-all-icon');
+      const text = document.getElementById('toggle-all-text');
+      if (state.showAllAnswers) {
+        if (icon) icon.textContent = '🙈';
+        if (text) text.textContent = 'Hide Answers';
+      } else {
+        if (icon) icon.textContent = '👁️';
+        if (text) text.textContent = 'Show Answers';
+        state.revealedCards.clear();
+      }
+      renderQuestions();
+    }
+
+    function toggleCardAnswer(cardKey) {
+      if (state.revealedCards.has(cardKey)) {
+        state.revealedCards.delete(cardKey);
+      } else {
+        state.revealedCards.add(cardKey);
+      }
+      const ansEl = document.getElementById(`ans-${cardKey}`);
+      const btnEl = document.getElementById(`btn-ans-${cardKey}`);
+      if (ansEl && btnEl) {
+        const isRevealed = state.showAllAnswers || state.revealedCards.has(cardKey);
+        ansEl.classList.toggle('hidden', !isRevealed);
+        btnEl.textContent = isRevealed ? '🙈 Hide' : '👁️ Answer';
+      }
+    }
+
+    function shuffleQuestions() {
+      state.isShuffled = !state.isShuffled;
+      renderQuestions();
+    }
+
+    function renderQuestions() {
+      if (!state.data) return;
+
+      // 1. Gather questions according to active tab
+      let list = [];
+      if (state.activeTab === '10') {
+        list = [...state.data.ten_pointers];
+      } else if (state.activeTab === '20') {
+        list = [...state.data.twenty_pointers];
+      } else if (state.activeTab === '30') {
+        list = [...state.data.thirty_pointers];
+      } else {
+        list = [
+          ...state.data.ten_pointers,
+          ...state.data.twenty_pointers,
+          ...state.data.thirty_pointers
+        ];
+        // Sort all by chapter, verse, points
+        list.sort((a, b) => a.chapter - b.chapter || a.verse - b.verse || a.points - b.points);
+      }
+
+      // 2. Filter by chapter
+      if (state.chapterFilter !== 'all') {
+        const chNum = parseInt(state.chapterFilter, 10);
+        list = list.filter(q => q.chapter === chNum);
+      }
+
+      // 3. Filter by search query
+      if (state.searchQuery) {
+        const qStr = state.searchQuery;
+        list = list.filter(q => {
+          return q.prompt_and_question.toLowerCase().includes(qStr) ||
+                 q.answer.toLowerCase().includes(qStr) ||
+                 q.scripture_ref.toLowerCase().includes(qStr) ||
+                 q.source_file.toLowerCase().includes(qStr);
+        });
+      }
+
+      // 4. Shuffle if requested
+      if (state.isShuffled) {
+        for (let i = list.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [list[i], list[j]] = [list[j], list[i]];
+        }
+      }
+
+      // Update summary badge & count
+      const countLabel = document.getElementById('filtered-count-label');
+      const filterBadge = document.getElementById('active-filter-badge');
+      if (countLabel) countLabel.textContent = `Showing ${list.length} question${list.length === 1 ? '' : 's'}`;
+      if (filterBadge) {
+        const tabText = state.activeTab === 'all' ? 'All Points' : `${state.activeTab} Pointers`;
+        const chText = state.chapterFilter === 'all' ? 'Mark 4 & 5' : `Mark ${state.chapterFilter}`;
+        const shuffleText = state.isShuffled ? ' • 🔀 Shuffled' : '';
+        filterBadge.textContent = `${tabText} • ${chText}${shuffleText}`;
+      }
+
+      const container = document.getElementById('questions-container');
+      const emptyState = document.getElementById('empty-state');
+
+      if (list.length === 0) {
+        if (container) container.innerHTML = '';
+        if (emptyState) emptyState.classList.remove('hidden');
+        return;
+      }
+
+      if (emptyState) emptyState.classList.add('hidden');
+
+      // Render cards
+      let html = '';
+      list.forEach((q, idx) => {
+        const cardKey = `${q.points}-${q.chapter}-${q.verse}-${q.id}`;
+        const isRevealed = state.showAllAnswers || state.revealedCards.has(cardKey);
+
+        // Point styling
+        let ptsBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+        if (q.points === 20) ptsBadgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
+        if (q.points === 30) ptsBadgeClass = 'bg-amber-100 text-amber-900 border-amber-300';
+
+        // Alternate versions
+        let altHtml = '';
+        if (q.alternate_sources && q.alternate_sources.length > 0) {
+          altHtml = `
+            <div class="mt-2 text-[10px] text-slate-500 bg-slate-50 border border-slate-200/60 rounded-lg p-2">
+              <span class="font-bold text-slate-600">Alternate / Merged Version:</span>
+              ${q.alternate_sources.map(a => `
+                <div class="mt-0.5">• [${escapeHtml(a.source)}] ${escapeHtml(a.alternate_question)} → <em class="text-slate-700">${escapeHtml(a.alternate_answer)}</em></div>
+              `).join('')}
+            </div>
+          `;
+        }
+
+        const srcLabel = q.set_number ? `${q.source_file} Set ${q.set_number} (Q${q.question_number})` : `${q.source_file} (Q${q.question_number})`;
+
+        html += `
+          <div class="bg-white rounded-2xl p-3.5 shadow-2xs border border-slate-200 hover:border-slate-300 transition-all">
+            <!-- Header bar of card -->
+            <div class="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-100">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs font-black px-2 py-0.5 rounded-md border ${ptsBadgeClass}">
+                  ${q.points} Pts
+                </span>
+                <span class="text-xs font-black px-2 py-0.5 rounded-md bg-slate-900 text-white shadow-2xs">
+                  ${q.scripture_ref}
+                </span>
+                <span class="text-[10px] text-slate-400 font-semibold truncate max-w-[200px]" title="${escapeHtml(srcLabel)}">
+                  ${escapeHtml(srcLabel)}
+                </span>
+              </div>
+
+              <!-- Quick Answer Button -->
+              <button 
+                id="btn-ans-${cardKey}" 
+                onclick="toggleCardAnswer('${cardKey}')" 
+                class="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all active:scale-95 cursor-pointer flex-shrink-0"
+              >
+                ${isRevealed ? '🙈 Hide' : '👁️ Answer'}
+              </button>
+            </div>
+
+            <!-- Question Body -->
+            <div class="text-xs font-medium text-slate-800 leading-relaxed">
+              ${escapeHtml(q.prompt_and_question)}
+            </div>
+
+            <!-- Answer Box (collapsible flashcard style) -->
+            <div id="ans-${cardKey}" class="${isRevealed ? '' : 'hidden'} mt-2.5 pt-2 border-t border-slate-100">
+              <div class="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-950 p-2.5 rounded-r-xl text-xs font-bold">
+                <div class="text-[9px] uppercase font-black text-emerald-700 tracking-wider mb-0.5">Official Answer:</div>
+                <div>${escapeHtml(q.answer)}</div>
+              </div>
+              ${altHtml}
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+
+</body>
+</html>

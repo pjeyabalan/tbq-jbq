@@ -38,6 +38,9 @@ app.get(['/scores', '/dashboard', '/standings'], (req, res) => {
 app.get(['/scoresheet', '/scorer'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+app.get(['/practice', '/study', '/drills', '/questions'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'practice.html'));
+});
 
 app.use(express.static(path.join(__dirname, 'public'), { etag: false }));
 
