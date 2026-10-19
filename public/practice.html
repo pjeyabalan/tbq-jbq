@@ -434,19 +434,6 @@
         if (q.points === 20) ptsBadgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
         if (q.points === 30) ptsBadgeClass = 'bg-amber-100 text-amber-900 border-amber-300';
 
-        // Alternate versions
-        let altHtml = '';
-        if (q.alternate_sources && q.alternate_sources.length > 0) {
-          altHtml = `
-            <div class="mt-2 text-[10px] text-slate-500 bg-slate-50 border border-slate-200/60 rounded-lg p-2">
-              <span class="font-bold text-slate-600">Alternate / Merged Version:</span>
-              ${q.alternate_sources.map(a => `
-                <div class="mt-0.5">• [${escapeHtml(a.source)}] ${escapeHtml(a.alternate_question)} → <em class="text-slate-700">${escapeHtml(a.alternate_answer)}</em></div>
-              `).join('')}
-            </div>
-          `;
-        }
-
         const srcLabel = q.set_number ? `${q.source_file} Set ${q.set_number} (Q${q.question_number})` : `${q.source_file} (Q${q.question_number})`;
 
         html += `
@@ -483,10 +470,9 @@
             <!-- Answer Box (collapsible flashcard style) -->
             <div id="ans-${cardKey}" class="${isRevealed ? '' : 'hidden'} mt-2.5 pt-2 border-t border-slate-100">
               <div class="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-950 p-2.5 rounded-r-xl text-xs font-bold">
-                <div class="text-[9px] uppercase font-black text-emerald-700 tracking-wider mb-0.5">Official Answer:</div>
+                <div class="text-[9px] uppercase font-black text-emerald-700 tracking-wider mb-0.5">Answer:</div>
                 <div>${escapeHtml(q.answer)}</div>
               </div>
-              ${altHtml}
             </div>
           </div>
         `;
