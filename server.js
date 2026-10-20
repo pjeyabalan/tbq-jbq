@@ -18,6 +18,8 @@ app.use((req, res, next) => {
     req.path === '/scores' ||
     req.path === '/scoresheet' ||
     req.path === '/scorer' ||
+    req.path === '/booking' ||
+    req.path === '/book' ||
     req.path.endsWith('.html') || 
     req.path.endsWith('.css')
   ) {
@@ -41,6 +43,9 @@ app.get(['/scoresheet', '/scorer'], (req, res) => {
 app.get(['/practice', '/study', '/drills', '/questions'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'practice.html'));
 });
+app.get(['/booking', '/book', '/sessions', '/schedule'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'booking.html'));
+});
 
 app.use(express.static(path.join(__dirname, 'public'), { etag: false }));
 
@@ -48,6 +53,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 const SCORES_FILE = path.join(DATA_DIR, 'scores.json');
 const COACHES_FILE = path.join(DATA_DIR, 'coaches.json');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
 
 // ==========================================
 // POSTGRESQL PERSISTENCE POOL
@@ -561,6 +567,87 @@ function saveScoresData() {
     ).catch(err => console.error('[PG] Error persisting scores to DB:', err.message));
   } else {
     saveScoresDataLocal();
+  }
+}
+
+// ==========================================
+// 1:1 COACHING SESSIONS BOOKING DATA & PERSISTENCE
+// ==========================================
+const DEFAULT_BOOKING_DATA = {
+  allowedKids: [
+    'Isabelle',
+    'Ameil',
+    'Noah',
+    'Deewana',
+    'Hosanna',
+    'Jade',
+    'Prakash'
+  ],
+  maxSlotsPerKid: 2,
+  maxCapacityPerSlot: 2, // Double booking allowed
+  days: [
+    {
+      id: '2026-10-21',
+      date: '2026-10-21',
+      dayOfWeek: 'Wednesday',
+      displayDate: 'Wednesday, Oct 21, 2026',
+      timeRange: '6:30 PM – 8:00 PM'
+    },
+    {
+      id: '2026-10-22',
+      date: '2026-10-22',
+      dayOfWeek: 'Thursday',
+      displayDate: 'Thursday, Oct 22, 2026',
+      timeRange: '6:30 PM – 8:00 PM'
+    }
+  ],
+  timeSlots: [
+    { id: '18:30', start: '6:30 PM', end: '6:45 PM', label: '6:30 PM – 6:45 PM' },
+    { id: '18:45', start: '6:45 PM', end: '7:00 PM', label: '6:45 PM – 7:00 PM' },
+    { id: '19:00', start: '7:00 PM', end: '7:15 PM', label: '7:00 PM – 7:15 PM' },
+    { id: '19:15', start: '7:15 PM', end: '7:30 PM', label: '7:15 PM – 7:30 PM' },
+    { id: '19:30', start: '7:30 PM', end: '7:45 PM', label: '7:30 PM – 7:45 PM' },
+    { id: '19:45', start: '7:45 PM', end: '8:00 PM', label: '7:45 PM – 8:00 PM' }
+  ],
+  bookings: []
+};
+
+let bookingData = JSON.parse(JSON.stringify(DEFAULT_BOOKING_DATA));
+
+function loadBookingsDataLocal() {
+  if (fs.existsSync(BOOKINGS_FILE)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(BOOKINGS_FILE, 'utf8'));
+      if (data && Array.isArray(data.bookings)) {
+        bookingData = { ...DEFAULT_BOOKING_DATA, ...data };
+        console.log(`[BOOKINGS] Restored ${bookingData.bookings.length} 1:1 bookings locally.`);
+      }
+    } catch (e) {
+      console.error('Error loading bookings locally:', e.message);
+    }
+  }
+}
+
+function saveBookingsDataLocal() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    const tempFile = `${BOOKINGS_FILE}.tmp`;
+    fs.writeFileSync(tempFile, JSON.stringify(bookingData, null, 2), 'utf8');
+    fs.renameSync(tempFile, BOOKINGS_FILE);
+  } catch (err) {
+    console.error('Error saving bookings data locally:', err);
+  }
+}
+
+function saveBookingsData() {
+  if (dbPool) {
+    dbPool.query(
+      `INSERT INTO tbq_store (key, value, updated_at) VALUES ('bookings', $1::jsonb, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+      [JSON.stringify(bookingData)]
+    ).catch(err => console.error('[PG] Error persisting bookings to DB:', err.message));
+  } else {
+    saveBookingsDataLocal();
   }
 }
 
@@ -2900,6 +2987,126 @@ app.post('/api/tbq/restore', authenticateCoach, (req, res) => {
   res.json({ success: true, message: 'Platform data restored successfully.' });
 });
 
+// ==========================================
+// 1:1 COACHING SESSIONS API ROUTES
+// ==========================================
+
+// GET all 1:1 booking state & configuration
+app.get('/api/bookings', (req, res) => {
+  res.json({ success: true, data: bookingData });
+});
+
+// POST book a 1:1 session slot
+app.post('/api/bookings/book', (req, res) => {
+  const { kidName, dayId, slotId } = req.body;
+
+  if (!kidName || !dayId || !slotId) {
+    return res.status(400).json({ success: false, error: 'Please specify quizzer name, day, and time slot.' });
+  }
+
+  // Validate quizzer name
+  const cleanKid = String(kidName).trim();
+  const matchedKid = bookingData.allowedKids.find(k => k.toLowerCase() === cleanKid.toLowerCase());
+  if (!matchedKid) {
+    return res.status(400).json({ 
+      success: false, 
+      error: `"${cleanKid}" is not one of the 7 quizzers (${bookingData.allowedKids.join(', ')}).` 
+    });
+  }
+
+  // Validate day
+  const matchedDay = bookingData.days.find(d => d.id === dayId);
+  if (!matchedDay) {
+    return res.status(400).json({ success: false, error: 'Invalid day selected.' });
+  }
+
+  // Validate time slot
+  const matchedSlot = bookingData.timeSlots.find(s => s.id === slotId);
+  if (!matchedSlot) {
+    return res.status(400).json({ success: false, error: 'Invalid time slot selected.' });
+  }
+
+  // Check quizzer total booking limit (max 2 slots total across both days)
+  const kidBookings = bookingData.bookings.filter(b => b.kidName === matchedKid);
+  if (kidBookings.length >= bookingData.maxSlotsPerKid) {
+    return res.status(400).json({ 
+      success: false, 
+      error: `${matchedKid} has already booked the maximum of ${bookingData.maxSlotsPerKid} slots. You can cancel an existing slot below to change times.` 
+    });
+  }
+
+  // Check if kid already booked this exact slot
+  const alreadyInSlot = kidBookings.some(b => b.dayId === dayId && b.slotId === slotId);
+  if (alreadyInSlot) {
+    return res.status(400).json({ 
+      success: false, 
+      error: `${matchedKid} is already booked in this time slot.` 
+    });
+  }
+
+  // Check slot capacity (max 2 kids, double booking allowed)
+  const slotBookings = bookingData.bookings.filter(b => b.dayId === dayId && b.slotId === slotId);
+  if (slotBookings.length >= bookingData.maxCapacityPerSlot) {
+    return res.status(400).json({ 
+      success: false, 
+      error: `This slot is full (maximum of ${bookingData.maxCapacityPerSlot} quizzers allowed).` 
+    });
+  }
+
+  // Create and persist new booking
+  const newBooking = {
+    id: 'bk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+    kidName: matchedKid,
+    dayId,
+    slotId,
+    bookedAt: new Date().toISOString()
+  };
+
+  bookingData.bookings.push(newBooking);
+  saveBookingsData();
+
+  console.log(`[1:1 BOOKING] ${matchedKid} booked ${matchedDay.displayDate} @ ${matchedSlot.label}. Kid slots: ${kidBookings.length + 1}/${bookingData.maxSlotsPerKid}`);
+  res.json({ success: true, booking: newBooking, data: bookingData });
+});
+
+// POST cancel a booking
+app.post('/api/bookings/cancel', (req, res) => {
+  const { bookingId, kidName, dayId, slotId } = req.body;
+
+  let idx = -1;
+  if (bookingId) {
+    idx = bookingData.bookings.findIndex(b => b.id === bookingId);
+  } else if (kidName && dayId && slotId) {
+    idx = bookingData.bookings.findIndex(b => 
+      b.kidName.toLowerCase() === String(kidName).trim().toLowerCase() && 
+      b.dayId === dayId && 
+      b.slotId === slotId
+    );
+  }
+
+  if (idx === -1) {
+    return res.status(404).json({ success: false, error: 'Booking not found.' });
+  }
+
+  const removed = bookingData.bookings.splice(idx, 1)[0];
+  saveBookingsData();
+
+  console.log(`[1:1 BOOKING] Canceled booking for ${removed.kidName} (${removed.dayId} @ ${removed.slotId})`);
+  res.json({ success: true, removed, data: bookingData });
+});
+
+// POST reset all bookings (Admin/Coach with PIN)
+app.post('/api/bookings/reset', (req, res) => {
+  const { pin } = req.body;
+  if (pin !== '2026' && pin !== 'coach') {
+    return res.status(401).json({ success: false, error: 'Unauthorized. PIN required to reset schedule.' });
+  }
+  const clearedCount = bookingData.bookings.length;
+  bookingData.bookings = [];
+  saveBookingsData();
+  console.log(`[1:1 BOOKING] Reset schedule: cleared ${clearedCount} bookings.`);
+  res.json({ success: true, message: `Cleared ${clearedCount} bookings.`, data: bookingData });
+});
 
 // ==========================================
 // 8. INITIALIZE STORAGE & START SERVER
@@ -3023,6 +3230,19 @@ async function initStorage() {
         }
       }
 
+      // 4. Restore or seed Bookings Data directly from Database
+      const bookingsRes = await dbPool.query(`SELECT value FROM tbq_store WHERE key = 'bookings'`);
+      if (bookingsRes.rows.length > 0 && bookingsRes.rows[0].value) {
+        let loadedBookings = bookingsRes.rows[0].value;
+        if (typeof loadedBookings === 'string') {
+          try { loadedBookings = JSON.parse(loadedBookings); } catch (e) {}
+        }
+        if (loadedBookings && Array.isArray(loadedBookings.bookings)) {
+          bookingData = { ...DEFAULT_BOOKING_DATA, ...loadedBookings };
+          console.log(`[PG] Restored ${bookingData.bookings.length} 1:1 bookings directly from database.`);
+        }
+      }
+
       console.log('[PG] Database-first initialization complete. No static files loaded!');
       return;
     } catch (err) {
@@ -3035,6 +3255,7 @@ async function initStorage() {
   loadCoachesLocal();
   loadScoresDataLocal();
   loadSessionsLocal();
+  loadBookingsDataLocal();
 }
 
 // Start Server after Storage initialization

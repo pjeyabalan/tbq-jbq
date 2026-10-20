@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>1:1 Coaching Drills Booking — Mark 4 & 5</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+              950: '#1e1b4b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .safe-top { padding-top: env(safe-area-inset-top, 0px); }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white !important; color: black !important; font-size: 11px; }
+      @page { size: portrait; margin: 1cm; }
+    }
+    .print-only { display: none; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- ========================================== -->
+  <!-- 1. TOP HEADER & BRAND                      -->
+  <!-- ========================================== -->
+  <header class="sticky top-0 z-40 bg-slate-900 text-white shadow-md border-b border-slate-800 safe-top no-print">
+    <div class="max-w-4xl mx-auto px-3 py-2.5 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <a href="/scores" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors" title="Back to Scores">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        </a>
+        <div>
+          <h1 class="text-sm font-black text-white leading-tight flex items-center gap-1.5">
+            <span>🗓️</span>
+            <span>1:1 Coaching Drills</span>
+            <span class="text-[10px] font-bold bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full">Mark 4 & 5</span>
+          </h1>
+          <p class="text-[10px] text-slate-400 font-medium">Wed Oct 21 & Thu Oct 22 • 6:30 PM – 8:00 PM</p>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="flex items-center gap-1.5">
+        <a href="/practice" class="text-xs bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-400/30 font-bold px-2 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1">
+          <span>📖</span>
+          <span class="hidden sm:inline">Practice</span>
+        </a>
+        <button onclick="fetchBookings(true)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95" title="Refresh Live Bookings">
+          <svg id="refresh-spinner" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- 2. MAIN CONTAINER                         -->
+  <!-- ========================================== -->
+  <main class="flex-1 max-w-4xl w-full mx-auto px-3 py-3 space-y-3">
+
+    <!-- RULES SUMMARY CALLOUT -->
+    <div class="bg-gradient-to-r from-indigo-900 via-slate-900 to-slate-900 text-white rounded-2xl p-3.5 shadow-sm border border-slate-800">
+      <div class="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-md uppercase tracking-wider">Session Rules</span>
+            <span class="text-xs text-slate-300 font-semibold">Mark Chapters 4 & 5 Individual Prep</span>
+          </div>
+          <div class="mt-2 text-xs text-slate-200 space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400">✓</span>
+              <span><strong>7 Quizzers:</strong> Isabelle, Ameil, Noah, Deewana, Hosanna, Jade, Prakash</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400">✓</span>
+              <span><strong>2 Slots per Quizzer:</strong> Book 2 slots on the same day OR 1 slot each day</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400">✓</span>
+              <span><strong>Double Booking Allowed:</strong> Up to 2 quizzers can practice in each 15-min slot</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 3. STEP 1: QUIZZER SELECTOR TILES         -->
+    <!-- ========================================== -->
+    <div class="bg-white rounded-2xl p-3.5 shadow-2xs border border-slate-200">
+      <div class="flex items-center justify-between mb-2">
+        <div>
+          <h2 class="text-xs font-black uppercase text-slate-500 tracking-wider">Step 1: Tap Your Name</h2>
+          <p class="text-xs text-slate-700 font-medium">Select who is booking or changing slots:</p>
+        </div>
+        <div id="selection-status-badge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+          None selected
+        </div>
+      </div>
+
+      <!-- 7 Kid Avatar Buttons -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2" id="kids-selector-grid">
+        <!-- Rendered dynamically via JS -->
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 4. ACTIVE QUIZZER BANNER                  -->
+    <!-- ========================================== -->
+    <div id="active-quizzer-banner" class="hidden bg-emerald-50 border-2 border-emerald-500/80 rounded-2xl p-3.5 shadow-xs transition-all">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-base font-black text-emerald-950" id="active-quizzer-name">Isabelle</span>
+            <span id="active-quizzer-count-badge" class="text-xs font-black px-2 py-0.5 rounded-md bg-emerald-600 text-white">0 / 2 slots booked</span>
+          </div>
+          <p class="text-xs text-emerald-800 font-medium mt-0.5" id="active-quizzer-hint">
+            Tap any open slot below to book.
+          </p>
+        </div>
+
+        <!-- Booked Slots List for this kid -->
+        <div id="active-quizzer-booked-chips" class="flex items-center gap-1.5 flex-wrap">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 5. DAY SWITCHER TABS                      -->
+    <!-- ========================================== -->
+    <div class="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl">
+      <button 
+        onclick="setActiveDayTab('2026-10-21')" 
+        id="day-tab-2026-10-21" 
+        class="flex-1 py-2 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs"
+      >
+        <span>📅 Wednesday, Oct 21</span>
+        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-21">6:30-8:00</span>
+      </button>
+
+      <button 
+        onclick="setActiveDayTab('2026-10-22')" 
+        id="day-tab-2026-10-22" 
+        class="flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900"
+      >
+        <span>📅 Thursday, Oct 22</span>
+        <span class="bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-22">6:30-8:00</span>
+      </button>
+
+      <button 
+        onclick="setActiveDayTab('master')" 
+        id="day-tab-master" 
+        class="py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 text-slate-600 hover:text-slate-900"
+      >
+        <span>📊 Master Roster</span>
+      </button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 6. TIME SLOTS VIEW (FOR SELECTED DAY)      -->
+    <!-- ========================================== -->
+    <div id="slots-view-container" class="space-y-2.5">
+      <div class="flex items-center justify-between px-1">
+        <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider" id="active-day-heading">
+          Wednesday, Oct 21, 2026 • 6:30 PM – 8:00 PM (15-min Slots)
+        </h3>
+        <span class="text-[11px] text-slate-400 font-medium">Double Booking: Max 2 Quizzers / Slot</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5" id="slots-grid">
+        <!-- Rendered dynamically via JS -->
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 7. MASTER ROSTER VIEW                      -->
+    <!-- ========================================== -->
+    <div id="master-view-container" class="hidden bg-white rounded-2xl p-4 shadow-2xs border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+        <div>
+          <h3 class="text-sm font-black text-slate-900">7 Quizzers Booking Status</h3>
+          <p class="text-xs text-slate-500">Live overview of all 1:1 sessions booked across Wednesday & Thursday</p>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="copyScheduleSummary()" class="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1 cursor-pointer">
+            <span>📋</span>
+            <span>Copy Summary</span>
+          </button>
+          <button onclick="window.print()" class="text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1 cursor-pointer">
+            <span>🖨️</span>
+            <span>Print</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quizzers Status Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+            <tr>
+              <th class="py-2.5 px-3">Quizzer</th>
+              <th class="py-2.5 px-3">Total Booked</th>
+              <th class="py-2.5 px-3">Slot 1</th>
+              <th class="py-2.5 px-3">Slot 2</th>
+              <th class="py-2.5 px-3">Status</th>
+            </tr>
+          </thead>
+          <tbody id="master-roster-tbody" class="divide-y divide-slate-100 font-medium">
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Coach Reset Action -->
+      <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+        <span class="text-xs text-slate-400">Coach Administration</span>
+        <button onclick="promptResetSchedule()" class="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer">
+          ⚠️ Reset All Bookings
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- 8. TOAST NOTIFICATION CONTAINER            -->
+  <!-- ========================================== -->
+  <div id="toast-container" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none transition-all"></div>
+
+  <!-- ========================================== -->
+  <!-- 9. SCRIPT ENGINE                           -->
+  <!-- ========================================== -->
+  <script>
+    // State
+    const state = {
+      selectedKid: null,
+      activeDayId: '2026-10-21',
+      allowedKids: ['Isabelle', 'Ameil', 'Noah', 'Deewana', 'Hosanna', 'Jade', 'Prakash'],
+      days: [],
+      timeSlots: [],
+      bookings: [],
+      maxSlotsPerKid: 2,
+      maxCapacityPerSlot: 2,
+      isSubmitting: false,
+    };
+
+    // Kid Colors / Avatars for quick recognition
+    const KID_COLORS = {
+      'Isabelle': { bg: 'bg-pink-100 text-pink-700 border-pink-300', dot: 'bg-pink-500' },
+      'Ameil':    { bg: 'bg-blue-100 text-blue-700 border-blue-300', dot: 'bg-blue-500' },
+      'Noah':     { bg: 'bg-emerald-100 text-emerald-700 border-emerald-300', dot: 'bg-emerald-500' },
+      'Deewana':  { bg: 'bg-purple-100 text-purple-700 border-purple-300', dot: 'bg-purple-500' },
+      'Hosanna':  { bg: 'bg-amber-100 text-amber-800 border-amber-300', dot: 'bg-amber-500' },
+      'Jade':     { bg: 'bg-teal-100 text-teal-700 border-teal-300', dot: 'bg-teal-500' },
+      'Prakash':  { bg: 'bg-indigo-100 text-indigo-700 border-indigo-300', dot: 'bg-indigo-500' },
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchBookings();
+      // Auto-poll every 5 seconds for real-time collaboration
+      setInterval(() => {
+        fetchBookings(false);
+      }, 5000);
+    });
+
+    // Fetch Bookings from API
+    async function fetchBookings(showToastNotification = false) {
+      const spinner = document.getElementById('refresh-spinner');
+      if (spinner) spinner.classList.add('animate-spin');
+
+      try {
+        const res = await fetch('/api/bookings');
+        const json = await res.json();
+        if (json.success && json.data) {
+          state.allowedKids = json.data.allowedKids || state.allowedKids;
+          state.days = json.data.days || [];
+          state.timeSlots = json.data.timeSlots || [];
+          state.bookings = json.data.bookings || [];
+          state.maxSlotsPerKid = json.data.maxSlotsPerKid || 2;
+          state.maxCapacityPerSlot = json.data.maxCapacityPerSlot || 2;
+
+          renderAll();
+          if (showToastNotification) {
+            showToast('✅ Schedule refreshed with latest bookings.', 'success');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching bookings:', err);
+        if (showToastNotification) {
+          showToast('Failed to refresh bookings.', 'error');
+        }
+      } finally {
+        if (spinner) {
+          setTimeout(() => spinner.classList.remove('animate-spin'), 400);
+        }
+      }
+    }
+
+    // Select active kid
+    function selectKid(kidName) {
+      state.selectedKid = kidName;
+      renderAll();
+
+      // Scroll smoothly to active banner
+      const banner = document.getElementById('active-quizzer-banner');
+      if (banner) {
+        banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    // Switch Day Tab
+    function setActiveDayTab(dayId) {
+      state.activeDayId = dayId;
+      renderTabs();
+      renderDayContent();
+    }
+
+    // Render Everything
+    function renderAll() {
+      renderKidsSelector();
+      renderActiveQuizzerBanner();
+      renderTabs();
+      renderDayContent();
+      renderMasterRoster();
+    }
+
+    // Render 7 Kids Selector Tiles
+    function renderKidsSelector() {
+      const grid = document.getElementById('kids-selector-grid');
+      const badge = document.getElementById('selection-status-badge');
+      if (!grid) return;
+
+      if (state.selectedKid) {
+        badge.textContent = `Selected: ${state.selectedKid}`;
+        badge.className = 'text-xs font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+      } else {
+        badge.textContent = 'Tap to select';
+        badge.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600';
+      }
+
+      let html = '';
+      state.allowedKids.forEach(kid => {
+        const isSelected = (state.selectedKid === kid);
+        const kidBookings = state.bookings.filter(b => b.kidName.toLowerCase() === kid.toLowerCase());
+        const count = kidBookings.length;
+        const color = KID_COLORS[kid] || { bg: 'bg-slate-100 text-slate-700 border-slate-300', dot: 'bg-slate-500' };
+
+        let statusClass = 'bg-slate-100 text-slate-600';
+        let statusText = `${count}/2`;
+        if (count === 1) statusClass = 'bg-amber-100 text-amber-800 font-black';
+        if (count >= 2) statusClass = 'bg-emerald-100 text-emerald-800 font-black';
+
+        html += `
+          <button 
+            type="button"
+            onclick="selectKid('${kid}')"
+            class="p-2.5 rounded-xl border-2 transition-all flex flex-col items-center justify-center text-center cursor-pointer active:scale-95 ${
+              isSelected 
+                ? 'border-emerald-600 bg-emerald-50/70 shadow-sm ring-2 ring-emerald-400/40' 
+                : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 shadow-2xs'
+            }"
+          >
+            <!-- Avatar Circle -->
+            <div class="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm mb-1.5 border ${color.bg}">
+              ${kid.charAt(0)}
+            </div>
+
+            <!-- Name -->
+            <div class="text-xs font-black text-slate-900 leading-tight truncate w-full">
+              ${kid}
+            </div>
+
+            <!-- Status Pill -->
+            <div class="mt-1 text-[10px] px-1.5 py-0.2 rounded-full font-bold ${statusClass}">
+              ${count >= 2 ? '✓ 2/2' : `${count}/2`}
+            </div>
+          </button>
+        `;
+      });
+
+      grid.innerHTML = html;
+    }
+
+    // Render Active Quizzer Banner
+    function renderActiveQuizzerBanner() {
+      const banner = document.getElementById('active-quizzer-banner');
+      const nameEl = document.getElementById('active-quizzer-name');
+      const badgeEl = document.getElementById('active-quizzer-count-badge');
+      const hintEl = document.getElementById('active-quizzer-hint');
+      const chipsEl = document.getElementById('active-quizzer-booked-chips');
+
+      if (!state.selectedKid) {
+        banner.classList.add('hidden');
+        return;
+      }
+
+      banner.classList.remove('hidden');
+      nameEl.textContent = state.selectedKid;
+
+      const kidBookings = state.bookings.filter(b => b.kidName.toLowerCase() === state.selectedKid.toLowerCase());
+      const count = kidBookings.length;
+
+      badgeEl.textContent = `${count} of ${state.maxSlotsPerKid} slots booked`;
+      if (count === 0) {
+        badgeEl.className = 'text-xs font-black px-2 py-0.5 rounded-md bg-slate-700 text-white';
+        hintEl.textContent = 'You have 2 available slots. Tap any green or yellow slot below to claim your time!';
+      } else if (count === 1) {
+        badgeEl.className = 'text-xs font-black px-2 py-0.5 rounded-md bg-amber-600 text-white';
+        hintEl.textContent = 'You have 1 more slot available. Choose another time slot below on Wednesday or Thursday.';
+      } else {
+        badgeEl.className = 'text-xs font-black px-2 py-0.5 rounded-md bg-emerald-600 text-white';
+        hintEl.textContent = 'All 2 slots booked! To change times, tap "✕ Cancel" on one of your bookings below.';
+      }
+
+      // Render chips for current bookings
+      if (count === 0) {
+        chipsEl.innerHTML = `<span class="text-xs text-slate-500 italic">No slots booked yet</span>`;
+      } else {
+        chipsEl.innerHTML = kidBookings.map(b => {
+          const dayObj = state.days.find(d => d.id === b.dayId) || { dayOfWeek: b.dayId };
+          const slotObj = state.timeSlots.find(s => s.id === b.slotId) || { label: b.slotId };
+          return `
+            <div class="bg-white border border-emerald-300 rounded-lg px-2.5 py-1 text-xs flex items-center gap-2 shadow-2xs">
+              <span class="font-bold text-slate-900">${dayObj.dayOfWeek} ${slotObj.start || slotObj.label}</span>
+              <button 
+                onclick="cancelBooking('${b.id}')"
+                class="text-rose-600 hover:text-rose-800 font-bold hover:underline cursor-pointer"
+                title="Cancel this slot"
+              >
+                ✕ Cancel
+              </button>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // Render Tab Buttons
+    function renderTabs() {
+      ['2026-10-21', '2026-10-22', 'master'].forEach(tabId => {
+        const btn = document.getElementById(`day-tab-${tabId}`);
+        if (!btn) return;
+        const isActive = (state.activeDayId === tabId);
+
+        if (isActive) {
+          btn.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs';
+        } else {
+          btn.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900';
+        }
+      });
+    }
+
+    // Render Day Content (Slots or Master)
+    function renderDayContent() {
+      const slotsContainer = document.getElementById('slots-view-container');
+      const masterContainer = document.getElementById('master-view-container');
+
+      if (state.activeDayId === 'master') {
+        slotsContainer.classList.add('hidden');
+        masterContainer.classList.remove('hidden');
+        renderMasterRoster();
+        return;
+      }
+
+      slotsContainer.classList.remove('hidden');
+      masterContainer.classList.add('hidden');
+
+      const dayObj = state.days.find(d => d.id === state.activeDayId) || { displayDate: 'Selected Date', timeRange: '6:30 PM – 8:00 PM' };
+      document.getElementById('active-day-heading').textContent = `${dayObj.displayDate} • ${dayObj.timeRange}`;
+
+      renderSlots();
+    }
+
+    // Render Slots Grid
+    function renderSlots() {
+      const grid = document.getElementById('slots-grid');
+      if (!grid) return;
+
+      const currentDayBookings = state.bookings.filter(b => b.dayId === state.activeDayId);
+      const activeKidBookings = state.selectedKid 
+        ? state.bookings.filter(b => b.kidName.toLowerCase() === state.selectedKid.toLowerCase()) 
+        : [];
+      const activeKidTotalBooked = activeKidBookings.length;
+
+      let html = '';
+
+      state.timeSlots.forEach(slot => {
+        const slotBookings = currentDayBookings.filter(b => b.slotId === slot.id);
+        const bookedCount = slotBookings.length;
+        const spotsLeft = Math.max(0, state.maxCapacityPerSlot - bookedCount);
+        const isFull = (spotsLeft === 0);
+
+        // Check if selected kid is booked in this slot
+        const myBooking = state.selectedKid 
+          ? slotBookings.find(b => b.kidName.toLowerCase() === state.selectedKid.toLowerCase())
+          : null;
+
+        // Card Border & Background
+        let cardBg = 'bg-white border-slate-200';
+        let capacityBadge = `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded-full">🟢 2 Spots Open</span>`;
+
+        if (bookedCount === 1) {
+          capacityBadge = `<span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full">🟡 1 Spot Open</span>`;
+        } else if (bookedCount >= 2) {
+          cardBg = 'bg-slate-50 border-slate-200';
+          capacityBadge = `<span class="bg-slate-200 text-slate-700 border border-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full">🔴 Slot Full (2/2)</span>`;
+        }
+
+        if (myBooking) {
+          cardBg = 'bg-emerald-50/50 border-emerald-500 shadow-xs ring-1 ring-emerald-400/40';
+        }
+
+        // Quizzers list in this slot
+        let quizzersHtml = '';
+        if (slotBookings.length === 0) {
+          quizzersHtml = `<span class="text-xs text-slate-400 italic">Open slot — no bookings yet</span>`;
+        } else {
+          quizzersHtml = slotBookings.map(b => {
+            const isMe = state.selectedKid && (b.kidName.toLowerCase() === state.selectedKid.toLowerCase());
+            const color = KID_COLORS[b.kidName] || { bg: 'bg-slate-100 text-slate-700 border-slate-300' };
+            return `
+              <span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md border ${
+                isMe ? 'bg-emerald-600 text-white border-emerald-600 font-black' : color.bg
+              }">
+                <span>${isMe ? '⭐ You' : `👤 ${b.kidName}`}</span>
+              </span>
+            `;
+          }).join(' ');
+        }
+
+        // Action Button Logic
+        let actionBtn = '';
+        if (!state.selectedKid) {
+          actionBtn = `
+            <button 
+              onclick="promptSelectKid()" 
+              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all active:scale-95 cursor-pointer"
+            >
+              👉 Select Quizzer Above to Book
+            </button>
+          `;
+        } else if (myBooking) {
+          actionBtn = `
+            <button 
+              onclick="cancelBooking('${myBooking.id}')" 
+              class="w-full text-xs font-black py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+            >
+              <span>✕</span>
+              <span>Cancel My Booking</span>
+            </button>
+          `;
+        } else if (isFull) {
+          actionBtn = `
+            <button 
+              disabled 
+              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 text-slate-400 cursor-not-allowed"
+            >
+              Slot Full (2/2)
+            </button>
+          `;
+        } else if (activeKidTotalBooked >= state.maxSlotsPerKid) {
+          actionBtn = `
+            <button 
+              disabled 
+              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 text-slate-400 cursor-not-allowed"
+              title="${state.selectedKid} has already booked 2 slots."
+            >
+              Max 2 Slots Booked
+            </button>
+          `;
+        } else {
+          actionBtn = `
+            <button 
+              onclick="bookSlot('${state.selectedKid}', '${state.activeDayId}', '${slot.id}')" 
+              class="w-full text-xs font-black py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+            >
+              <span>⚡</span>
+              <span>Book Slot for ${state.selectedKid}</span>
+            </button>
+          `;
+        }
+
+        html += `
+          <div class="rounded-2xl p-3.5 border transition-all ${cardBg}">
+            <!-- Slot Header -->
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm font-black text-slate-900">${slot.label}</span>
+              </div>
+              <div>
+                ${capacityBadge}
+              </div>
+            </div>
+
+            <!-- Booked Quizzers Row -->
+            <div class="mb-3 min-h-[24px] flex items-center gap-1 flex-wrap">
+              ${quizzersHtml}
+            </div>
+
+            <!-- Button Action -->
+            <div>
+              ${actionBtn}
+            </div>
+          </div>
+        `;
+      });
+
+      grid.innerHTML = html;
+    }
+
+    // Prompt user to select kid
+    function promptSelectKid() {
+      showToast('Please select your quizzer name from Step 1 above!', 'info');
+      const selGrid = document.getElementById('kids-selector-grid');
+      if (selGrid) {
+        selGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    // Book a Slot API call
+    async function bookSlot(kidName, dayId, slotId) {
+      if (state.isSubmitting) return;
+      state.isSubmitting = true;
+
+      try {
+        const res = await fetch('/api/bookings/book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kidName, dayId, slotId })
+        });
+        const json = await res.json();
+        if (json.success) {
+          state.bookings = json.data.bookings || [];
+          renderAll();
+          showToast(`🎉 Slot booked for ${kidName}!`, 'success');
+        } else {
+          showToast(json.error || 'Failed to book slot.', 'error');
+        }
+      } catch (err) {
+        console.error('Booking error:', err);
+        showToast('Network error while booking. Please try again.', 'error');
+      } finally {
+        state.isSubmitting = false;
+      }
+    }
+
+    // Cancel a Booking API call
+    async function cancelBooking(bookingId) {
+      if (state.isSubmitting) return;
+      if (!confirm('Are you sure you want to cancel this 1:1 session slot?')) return;
+
+      state.isSubmitting = true;
+      try {
+        const res = await fetch('/api/bookings/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId })
+        });
+        const json = await res.json();
+        if (json.success) {
+          state.bookings = json.data.bookings || [];
+          renderAll();
+          showToast('🗑️ Slot booking canceled.', 'info');
+        } else {
+          showToast(json.error || 'Failed to cancel booking.', 'error');
+        }
+      } catch (err) {
+        console.error('Cancel error:', err);
+        showToast('Network error while canceling.', 'error');
+      } finally {
+        state.isSubmitting = false;
+      }
+    }
+
+    // Render Master Roster Table
+    function renderMasterRoster() {
+      const tbody = document.getElementById('master-roster-tbody');
+      if (!tbody) return;
+
+      let html = '';
+      state.allowedKids.forEach(kid => {
+        const kidBookings = state.bookings.filter(b => b.kidName.toLowerCase() === kid.toLowerCase());
+        const count = kidBookings.length;
+        const color = KID_COLORS[kid] || { bg: 'bg-slate-100 text-slate-700 border-slate-300' };
+
+        const slot1 = kidBookings[0] ? formatSlotBadge(kidBookings[0]) : '<span class="text-slate-400 italic">None</span>';
+        const slot2 = kidBookings[1] ? formatSlotBadge(kidBookings[1]) : '<span class="text-slate-400 italic">None</span>';
+
+        let statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">Not Booked</span>';
+        if (count === 1) statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">1 More Needed</span>';
+        if (count >= 2) statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">✓ Complete (2/2)</span>';
+
+        html += `
+          <tr class="hover:bg-slate-50/80 transition-colors">
+            <td class="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${color.bg}">
+                ${kid.charAt(0)}
+              </span>
+              <span>${kid}</span>
+            </td>
+            <td class="py-2.5 px-3 font-black text-slate-800">${count} / 2</td>
+            <td class="py-2.5 px-3">${slot1}</td>
+            <td class="py-2.5 px-3">${slot2}</td>
+            <td class="py-2.5 px-3">${statusBadge}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function formatSlotBadge(b) {
+      const dayObj = state.days.find(d => d.id === b.dayId) || { dayOfWeek: b.dayId };
+      const slotObj = state.timeSlots.find(s => s.id === b.slotId) || { start: b.slotId };
+      return `<span class="bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold px-2 py-0.5 rounded-md">${dayObj.dayOfWeek} ${slotObj.start || slotObj.label}</span>`;
+    }
+
+    // Copy Schedule Summary to Clipboard
+    function copyScheduleSummary() {
+      let text = 'TBQ 1:1 COACHING SCHEDULE (WED OCT 21 & THU OCT 22)\n';
+      text += 'Time: 6:30 PM – 8:00 PM • 7 Quizzers (2 Slots Each)\n';
+      text += '===================================================\n\n';
+
+      state.days.forEach(day => {
+        text += `[${day.displayDate}]\n`;
+        state.timeSlots.forEach(slot => {
+          const slotBookings = state.bookings.filter(b => b.dayId === day.id && b.slotId === slot.id);
+          const names = slotBookings.map(b => b.kidName).join(', ');
+          text += `  • ${slot.label}: ${names || '(Open - 2 spots)'}\n`;
+        });
+        text += '\n';
+      });
+
+      text += 'QUIZZER ROSTER STATUS:\n';
+      state.allowedKids.forEach(kid => {
+        const kidBookings = state.bookings.filter(b => b.kidName.toLowerCase() === kid.toLowerCase());
+        const details = kidBookings.map(b => {
+          const dayObj = state.days.find(d => d.id === b.dayId) || { dayOfWeek: b.dayId };
+          const slotObj = state.timeSlots.find(s => s.id === b.slotId) || { start: b.slotId };
+          return `${dayObj.dayOfWeek} ${slotObj.start}`;
+        }).join(' & ');
+        text += `  • ${kid} (${kidBookings.length}/2): ${details || 'No slots booked'}\n`;
+      });
+
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('📋 Schedule copied to clipboard!', 'success');
+      }).catch(() => {
+        showToast('Could not copy to clipboard.', 'error');
+      });
+    }
+
+    // Coach Reset Schedule Modal
+    async function promptResetSchedule() {
+      const pin = prompt('Enter Coach PIN to reset all 1:1 session bookings:');
+      if (!pin) return;
+
+      try {
+        const res = await fetch('/api/bookings/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin })
+        });
+        const json = await res.json();
+        if (json.success) {
+          state.bookings = [];
+          renderAll();
+          showToast('Schedule reset: all bookings cleared.', 'info');
+        } else {
+          showToast(json.error || 'Reset failed.', 'error');
+        }
+      } catch (err) {
+        showToast('Error resetting schedule.', 'error');
+      }
+    }
+
+    // Toast Notification Helper
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      let bg = 'bg-slate-900 text-white border-slate-700';
+      if (type === 'success') bg = 'bg-emerald-600 text-white border-emerald-500';
+      if (type === 'error') bg = 'bg-rose-600 text-white border-rose-500';
+
+      toast.className = `${bg} pointer-events-auto px-4 py-2 rounded-xl text-xs font-bold shadow-lg border transition-all duration-300 transform translate-y-2 opacity-0 flex items-center gap-2`;
+      toast.textContent = msg;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
