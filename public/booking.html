@@ -200,8 +200,18 @@
       selectedKid: null,
       activeDayId: '2026-10-21',
       allowedKids: ['Isabelle', 'Ameil', 'Noah', 'Deewana', 'Hosanna', 'Jade', 'Prakash'],
-      days: [],
-      timeSlots: [],
+      days: [
+        { id: '2026-10-21', date: '2026-10-21', dayOfWeek: 'Wednesday', displayDate: 'Wednesday, Oct 21, 2026', timeRange: '6:30 PM – 8:00 PM' },
+        { id: '2026-10-22', date: '2026-10-22', dayOfWeek: 'Thursday', displayDate: 'Thursday, Oct 22, 2026', timeRange: '6:30 PM – 8:00 PM' }
+      ],
+      timeSlots: [
+        { id: '18:30', start: '6:30 PM', end: '6:45 PM', label: '6:30 PM – 6:45 PM' },
+        { id: '18:45', start: '6:45 PM', end: '7:00 PM', label: '6:45 PM – 7:00 PM' },
+        { id: '19:00', start: '7:00 PM', end: '7:15 PM', label: '7:00 PM – 7:15 PM' },
+        { id: '19:15', start: '7:15 PM', end: '7:30 PM', label: '7:15 PM – 7:30 PM' },
+        { id: '19:30', start: '7:30 PM', end: '7:45 PM', label: '7:30 PM – 7:45 PM' },
+        { id: '19:45', start: '7:45 PM', end: '8:00 PM', label: '7:45 PM – 8:00 PM' }
+      ],
       bookings: [],
       maxSlotsPerKid: 2,
       maxCapacityPerSlot: 2,
@@ -221,6 +231,7 @@
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
+      renderAll();
       fetchBookings();
       // Auto-poll every 5 seconds for real-time collaboration
       setInterval(() => {
@@ -608,8 +619,6 @@
       } finally {
         state.isSubmitting = false;
       }
-    }
-
     }
 
     // Toast Notification Helper
