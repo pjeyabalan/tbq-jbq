@@ -132,7 +132,6 @@
         <div>
           <div class="flex items-center gap-2">
             <span class="text-base font-black text-emerald-950" id="active-quizzer-name">Isabelle</span>
-            <span id="active-quizzer-count-badge" class="text-xs font-black px-2 py-0.5 rounded-md bg-emerald-600 text-white">0 / 2 slots booked</span>
           </div>
           <p class="text-xs text-emerald-800 font-medium mt-0.5" id="active-quizzer-hint">
             Tap any open slot below to book.
@@ -153,27 +152,19 @@
       <button 
         onclick="setActiveDayTab('2026-10-21')" 
         id="day-tab-2026-10-21" 
-        class="flex-1 py-2 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs"
+        class="flex-1 py-2.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs"
       >
         <span>📅 Wednesday, Oct 21</span>
-        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-21">6:30-8:00</span>
+        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-21">6:30 – 8:00 PM</span>
       </button>
 
       <button 
         onclick="setActiveDayTab('2026-10-22')" 
         id="day-tab-2026-10-22" 
-        class="flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900"
+        class="flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900"
       >
         <span>📅 Thursday, Oct 22</span>
-        <span class="bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-22">6:30-8:00</span>
-      </button>
-
-      <button 
-        onclick="setActiveDayTab('master')" 
-        id="day-tab-master" 
-        class="py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 text-slate-600 hover:text-slate-900"
-      >
-        <span>📊 Master Roster</span>
+        <span class="bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-22">6:30 – 8:00 PM</span>
       </button>
     </div>
 
@@ -190,54 +181,6 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5" id="slots-grid">
         <!-- Rendered dynamically via JS -->
-      </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- 7. MASTER ROSTER VIEW                      -->
-    <!-- ========================================== -->
-    <div id="master-view-container" class="hidden bg-white rounded-2xl p-4 shadow-2xs border border-slate-200 space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
-        <div>
-          <h3 class="text-sm font-black text-slate-900">7 Quizzers Booking Status</h3>
-          <p class="text-xs text-slate-500">Live overview of all 1:1 sessions booked across Wednesday & Thursday</p>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <button onclick="copyScheduleSummary()" class="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1 cursor-pointer">
-            <span>📋</span>
-            <span>Copy Summary</span>
-          </button>
-          <button onclick="window.print()" class="text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1 cursor-pointer">
-            <span>🖨️</span>
-            <span>Print</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Quizzers Status Table -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-xs text-left">
-          <thead class="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
-            <tr>
-              <th class="py-2.5 px-3">Quizzer</th>
-              <th class="py-2.5 px-3">Total Booked</th>
-              <th class="py-2.5 px-3">Slot 1</th>
-              <th class="py-2.5 px-3">Slot 2</th>
-              <th class="py-2.5 px-3">Status</th>
-            </tr>
-          </thead>
-          <tbody id="master-roster-tbody" class="divide-y divide-slate-100 font-medium">
-            <!-- Populated via JS -->
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Coach Reset Action -->
-      <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
-        <span class="text-xs text-slate-400">Coach Administration</span>
-        <button onclick="promptResetSchedule()" class="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer">
-          ⚠️ Reset All Bookings
-        </button>
       </div>
     </div>
 
@@ -343,10 +286,9 @@
       renderActiveQuizzerBanner();
       renderTabs();
       renderDayContent();
-      renderMasterRoster();
     }
 
-    // Render 7 Kids Selector Tiles
+    // Render 7 Kids Selector Tiles (Names only, no counts)
     function renderKidsSelector() {
       const grid = document.getElementById('kids-selector-grid');
       const badge = document.getElementById('selection-status-badge');
@@ -363,14 +305,7 @@
       let html = '';
       state.allowedKids.forEach(kid => {
         const isSelected = (state.selectedKid === kid);
-        const kidBookings = state.bookings.filter(b => b.kidName.toLowerCase() === kid.toLowerCase());
-        const count = kidBookings.length;
         const color = KID_COLORS[kid] || { bg: 'bg-slate-100 text-slate-700 border-slate-300', dot: 'bg-slate-500' };
-
-        let statusClass = 'bg-slate-100 text-slate-600';
-        let statusText = `${count}/2`;
-        if (count === 1) statusClass = 'bg-amber-100 text-amber-800 font-black';
-        if (count >= 2) statusClass = 'bg-emerald-100 text-emerald-800 font-black';
 
         html += `
           <button 
@@ -391,11 +326,6 @@
             <div class="text-xs font-black text-slate-900 leading-tight truncate w-full">
               ${kid}
             </div>
-
-            <!-- Status Pill -->
-            <div class="mt-1 text-[10px] px-1.5 py-0.2 rounded-full font-bold ${statusClass}">
-              ${count >= 2 ? '✓ 2/2' : `${count}/2`}
-            </div>
           </button>
         `;
       });
@@ -407,7 +337,6 @@
     function renderActiveQuizzerBanner() {
       const banner = document.getElementById('active-quizzer-banner');
       const nameEl = document.getElementById('active-quizzer-name');
-      const badgeEl = document.getElementById('active-quizzer-count-badge');
       const hintEl = document.getElementById('active-quizzer-hint');
       const chipsEl = document.getElementById('active-quizzer-booked-chips');
 
@@ -422,16 +351,12 @@
       const kidBookings = state.bookings.filter(b => b.kidName.toLowerCase() === state.selectedKid.toLowerCase());
       const count = kidBookings.length;
 
-      badgeEl.textContent = `${count} of ${state.maxSlotsPerKid} slots booked`;
       if (count === 0) {
-        badgeEl.className = 'text-xs font-black px-2 py-0.5 rounded-md bg-slate-700 text-white';
-        hintEl.textContent = 'You have 2 available slots. Tap any green or yellow slot below to claim your time!';
+        hintEl.textContent = 'Tap any open slot below to claim a time (up to 2 slots total).';
       } else if (count === 1) {
-        badgeEl.className = 'text-xs font-black px-2 py-0.5 rounded-md bg-amber-600 text-white';
-        hintEl.textContent = 'You have 1 more slot available. Choose another time slot below on Wednesday or Thursday.';
+        hintEl.textContent = 'You have 1 slot booked below. You can book 1 more slot if desired.';
       } else {
-        badgeEl.className = 'text-xs font-black px-2 py-0.5 rounded-md bg-emerald-600 text-white';
-        hintEl.textContent = 'All 2 slots booked! To change times, tap "✕ Cancel" on one of your bookings below.';
+        hintEl.textContent = 'You have booked 2 slots. To change times, tap "✕ Cancel" on one of your bookings below.';
       }
 
       // Render chips for current bookings
@@ -459,33 +384,24 @@
 
     // Render Tab Buttons
     function renderTabs() {
-      ['2026-10-21', '2026-10-22', 'master'].forEach(tabId => {
+      ['2026-10-21', '2026-10-22'].forEach(tabId => {
         const btn = document.getElementById(`day-tab-${tabId}`);
         if (!btn) return;
         const isActive = (state.activeDayId === tabId);
 
         if (isActive) {
-          btn.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs';
+          btn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs';
         } else {
-          btn.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900';
+          btn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900';
         }
       });
     }
 
-    // Render Day Content (Slots or Master)
+    // Render Day Content
     function renderDayContent() {
       const slotsContainer = document.getElementById('slots-view-container');
-      const masterContainer = document.getElementById('master-view-container');
-
-      if (state.activeDayId === 'master') {
-        slotsContainer.classList.add('hidden');
-        masterContainer.classList.remove('hidden');
-        renderMasterRoster();
-        return;
-      }
-
+      if (!slotsContainer) return;
       slotsContainer.classList.remove('hidden');
-      masterContainer.classList.add('hidden');
 
       const dayObj = state.days.find(d => d.id === state.activeDayId) || { displayDate: 'Selected Date', timeRange: '6:30 PM – 8:00 PM' };
       document.getElementById('active-day-heading').textContent = `${dayObj.displayDate} • ${dayObj.timeRange}`;
@@ -694,105 +610,6 @@
       }
     }
 
-    // Render Master Roster Table
-    function renderMasterRoster() {
-      const tbody = document.getElementById('master-roster-tbody');
-      if (!tbody) return;
-
-      let html = '';
-      state.allowedKids.forEach(kid => {
-        const kidBookings = state.bookings.filter(b => b.kidName.toLowerCase() === kid.toLowerCase());
-        const count = kidBookings.length;
-        const color = KID_COLORS[kid] || { bg: 'bg-slate-100 text-slate-700 border-slate-300' };
-
-        const slot1 = kidBookings[0] ? formatSlotBadge(kidBookings[0]) : '<span class="text-slate-400 italic">None</span>';
-        const slot2 = kidBookings[1] ? formatSlotBadge(kidBookings[1]) : '<span class="text-slate-400 italic">None</span>';
-
-        let statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">Not Booked</span>';
-        if (count === 1) statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">1 More Needed</span>';
-        if (count >= 2) statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">✓ Complete (2/2)</span>';
-
-        html += `
-          <tr class="hover:bg-slate-50/80 transition-colors">
-            <td class="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-2">
-              <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${color.bg}">
-                ${kid.charAt(0)}
-              </span>
-              <span>${kid}</span>
-            </td>
-            <td class="py-2.5 px-3 font-black text-slate-800">${count} / 2</td>
-            <td class="py-2.5 px-3">${slot1}</td>
-            <td class="py-2.5 px-3">${slot2}</td>
-            <td class="py-2.5 px-3">${statusBadge}</td>
-          </tr>
-        `;
-      });
-
-      tbody.innerHTML = html;
-    }
-
-    function formatSlotBadge(b) {
-      const dayObj = state.days.find(d => d.id === b.dayId) || { dayOfWeek: b.dayId };
-      const slotObj = state.timeSlots.find(s => s.id === b.slotId) || { start: b.slotId };
-      return `<span class="bg-indigo-50 border border-indigo-200 text-indigo-900 font-bold px-2 py-0.5 rounded-md">${dayObj.dayOfWeek} ${slotObj.start || slotObj.label}</span>`;
-    }
-
-    // Copy Schedule Summary to Clipboard
-    function copyScheduleSummary() {
-      let text = 'TBQ 1:1 COACHING SCHEDULE (WED OCT 21 & THU OCT 22)\n';
-      text += 'Time: 6:30 PM – 8:00 PM • 7 Quizzers (2 Slots Each)\n';
-      text += '===================================================\n\n';
-
-      state.days.forEach(day => {
-        text += `[${day.displayDate}]\n`;
-        state.timeSlots.forEach(slot => {
-          const slotBookings = state.bookings.filter(b => b.dayId === day.id && b.slotId === slot.id);
-          const names = slotBookings.map(b => b.kidName).join(', ');
-          text += `  • ${slot.label}: ${names || '(Open - 2 spots)'}\n`;
-        });
-        text += '\n';
-      });
-
-      text += 'QUIZZER ROSTER STATUS:\n';
-      state.allowedKids.forEach(kid => {
-        const kidBookings = state.bookings.filter(b => b.kidName.toLowerCase() === kid.toLowerCase());
-        const details = kidBookings.map(b => {
-          const dayObj = state.days.find(d => d.id === b.dayId) || { dayOfWeek: b.dayId };
-          const slotObj = state.timeSlots.find(s => s.id === b.slotId) || { start: b.slotId };
-          return `${dayObj.dayOfWeek} ${slotObj.start}`;
-        }).join(' & ');
-        text += `  • ${kid} (${kidBookings.length}/2): ${details || 'No slots booked'}\n`;
-      });
-
-      navigator.clipboard.writeText(text).then(() => {
-        showToast('📋 Schedule copied to clipboard!', 'success');
-      }).catch(() => {
-        showToast('Could not copy to clipboard.', 'error');
-      });
-    }
-
-    // Coach Reset Schedule Modal
-    async function promptResetSchedule() {
-      const pin = prompt('Enter Coach PIN to reset all 1:1 session bookings:');
-      if (!pin) return;
-
-      try {
-        const res = await fetch('/api/bookings/reset', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin })
-        });
-        const json = await res.json();
-        if (json.success) {
-          state.bookings = [];
-          renderAll();
-          showToast('Schedule reset: all bookings cleared.', 'info');
-        } else {
-          showToast(json.error || 'Reset failed.', 'error');
-        }
-      } catch (err) {
-        showToast('Error resetting schedule.', 'error');
-      }
     }
 
     // Toast Notification Helper
