@@ -7,3 +7,4 @@ cloudflared
 data/sessions.json
 data/*.json
 data/*.tmp
+scratch/
