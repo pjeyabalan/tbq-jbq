@@ -587,17 +587,17 @@ const DEFAULT_BOOKING_DATA = {
   maxCapacityPerSlot: 2, // Double booking allowed
   days: [
     {
-      id: '2026-10-21',
-      date: '2026-10-21',
-      dayOfWeek: 'Wednesday',
-      displayDate: 'Wednesday, Oct 21, 2026',
+      id: '2026-10-27',
+      date: '2026-10-27',
+      dayOfWeek: 'Tuesday',
+      displayDate: 'Tuesday, Oct 27, 2026',
       timeRange: '6:30 PM – 8:00 PM'
     },
     {
-      id: '2026-10-22',
-      date: '2026-10-22',
-      dayOfWeek: 'Thursday',
-      displayDate: 'Thursday, Oct 22, 2026',
+      id: '2026-10-28',
+      date: '2026-10-28',
+      dayOfWeek: 'Wednesday',
+      displayDate: 'Wednesday, Oct 28, 2026',
       timeRange: '6:30 PM – 8:00 PM'
     }
   ],
@@ -619,7 +619,16 @@ function loadBookingsDataLocal() {
     try {
       const data = JSON.parse(fs.readFileSync(BOOKINGS_FILE, 'utf8'));
       if (data && Array.isArray(data.bookings)) {
-        bookingData = { ...DEFAULT_BOOKING_DATA, ...data };
+        const validDayIds = new Set(DEFAULT_BOOKING_DATA.days.map(d => d.id));
+        const activeBookings = (data.bookings || []).filter(b => validDayIds.has(b.dayId));
+        bookingData = {
+          ...DEFAULT_BOOKING_DATA,
+          days: DEFAULT_BOOKING_DATA.days,
+          timeSlots: DEFAULT_BOOKING_DATA.timeSlots,
+          allowedKids: DEFAULT_BOOKING_DATA.allowedKids,
+          bookings: activeBookings
+        };
+        saveBookingsDataLocal();
         console.log(`[BOOKINGS] Restored ${bookingData.bookings.length} 1:1 bookings locally.`);
       }
     } catch (e) {
@@ -3238,8 +3247,17 @@ async function initStorage() {
           try { loadedBookings = JSON.parse(loadedBookings); } catch (e) {}
         }
         if (loadedBookings && Array.isArray(loadedBookings.bookings)) {
-          bookingData = { ...DEFAULT_BOOKING_DATA, ...loadedBookings };
-          console.log(`[PG] Restored ${bookingData.bookings.length} 1:1 bookings directly from database.`);
+          const validDayIds = new Set(DEFAULT_BOOKING_DATA.days.map(d => d.id));
+          const activeBookings = (loadedBookings.bookings || []).filter(b => validDayIds.has(b.dayId));
+          bookingData = {
+            ...DEFAULT_BOOKING_DATA,
+            days: DEFAULT_BOOKING_DATA.days,
+            timeSlots: DEFAULT_BOOKING_DATA.timeSlots,
+            allowedKids: DEFAULT_BOOKING_DATA.allowedKids,
+            bookings: activeBookings
+          };
+          saveBookingsData();
+          console.log(`[PG] Restored ${bookingData.bookings.length} active 1:1 bookings directly from database.`);
         }
       }
 

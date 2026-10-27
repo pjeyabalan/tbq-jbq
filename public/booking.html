@@ -54,9 +54,9 @@
           <h1 class="text-sm font-black text-white leading-tight flex items-center gap-1.5">
             <span>🗓️</span>
             <span>1:1 Coaching Drills</span>
-            <span class="text-[10px] font-bold bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full">Mark 4 & 5</span>
+            <span class="text-[10px] font-bold bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full">Mark 1–5</span>
           </h1>
-          <p class="text-[10px] text-slate-400 font-medium">Wed Oct 21 & Thu Oct 22 • 6:30 PM – 8:00 PM</p>
+          <p class="text-[10px] text-slate-400 font-medium">Tue Oct 27 & Wed Oct 28 • 6:30 PM – 8:00 PM</p>
         </div>
       </div>
 
@@ -122,23 +122,23 @@
     <!-- ========================================== -->
     <!-- 5. DAY SWITCHER TABS                      -->
     <!-- ========================================== -->
-    <div class="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl">
+    <div class="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl" id="day-switcher-container">
       <button 
-        onclick="setActiveDayTab('2026-10-21')" 
-        id="day-tab-2026-10-21" 
+        onclick="setActiveDayTab('2026-10-27')" 
+        id="day-tab-2026-10-27" 
         class="flex-1 py-2.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs"
       >
-        <span>📅 Wednesday, Oct 21</span>
-        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-21">6:30 – 8:00 PM</span>
+        <span>📅 Tuesday, Oct 27</span>
+        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-27">6:30 – 8:00 PM</span>
       </button>
 
       <button 
-        onclick="setActiveDayTab('2026-10-22')" 
-        id="day-tab-2026-10-22" 
+        onclick="setActiveDayTab('2026-10-28')" 
+        id="day-tab-2026-10-28" 
         class="flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900"
       >
-        <span>📅 Thursday, Oct 22</span>
-        <span class="bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-22">6:30 – 8:00 PM</span>
+        <span>📅 Wednesday, Oct 28</span>
+        <span class="bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-28">6:30 – 8:00 PM</span>
       </button>
     </div>
 
@@ -148,7 +148,7 @@
     <div id="slots-view-container" class="space-y-2.5">
       <div class="flex items-center justify-between px-1">
         <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider" id="active-day-heading">
-          Wednesday, Oct 21, 2026 • 6:30 PM – 8:00 PM (15-min Slots)
+          Tuesday, Oct 27, 2026 • 6:30 PM – 8:00 PM (15-min Slots)
         </h3>
         <span class="text-[11px] text-slate-400 font-medium">Double Booking: Max 2 Quizzers / Slot</span>
       </div>
@@ -172,11 +172,11 @@
     // State
     const state = {
       selectedKid: null,
-      activeDayId: '2026-10-21',
+      activeDayId: '2026-10-27',
       allowedKids: ['Isabelle', 'Ameil', 'Noah', 'Deewana', 'Hosanna', 'Jade', 'Prakash'],
       days: [
-        { id: '2026-10-21', date: '2026-10-21', dayOfWeek: 'Wednesday', displayDate: 'Wednesday, Oct 21, 2026', timeRange: '6:30 PM – 8:00 PM' },
-        { id: '2026-10-22', date: '2026-10-22', dayOfWeek: 'Thursday', displayDate: 'Thursday, Oct 22, 2026', timeRange: '6:30 PM – 8:00 PM' }
+        { id: '2026-10-27', date: '2026-10-27', dayOfWeek: 'Tuesday', displayDate: 'Tuesday, Oct 27, 2026', timeRange: '6:30 PM – 8:00 PM' },
+        { id: '2026-10-28', date: '2026-10-28', dayOfWeek: 'Wednesday', displayDate: 'Wednesday, Oct 28, 2026', timeRange: '6:30 PM – 8:00 PM' }
       ],
       timeSlots: [
         { id: '18:30', start: '6:30 PM', end: '6:45 PM', label: '6:30 PM – 6:45 PM' },
@@ -228,6 +228,10 @@
           state.bookings = json.data.bookings || [];
           state.maxSlotsPerKid = json.data.maxSlotsPerKid || 2;
           state.maxCapacityPerSlot = json.data.maxCapacityPerSlot || 2;
+
+          if (!state.days.some(d => d.id === state.activeDayId) && state.days.length > 0) {
+            state.activeDayId = state.days[0].id;
+          }
 
           renderAll();
           if (showToastNotification) {
@@ -369,17 +373,30 @@
 
     // Render Tab Buttons
     function renderTabs() {
-      ['2026-10-21', '2026-10-22'].forEach(tabId => {
-        const btn = document.getElementById(`day-tab-${tabId}`);
-        if (!btn) return;
-        const isActive = (state.activeDayId === tabId);
+      const container = document.getElementById('day-switcher-container');
+      if (!container) return;
 
-        if (isActive) {
-          btn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs';
-        } else {
-          btn.className = 'flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900';
-        }
-      });
+      container.innerHTML = state.days.map(d => {
+        const isActive = (state.activeDayId === d.id);
+        const dayLabel = `${d.dayOfWeek}, ${d.displayDate.replace(`${d.dayOfWeek}, `, '').replace(', 2026', '')}`;
+        const btnClass = isActive 
+          ? 'flex-1 py-2.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs'
+          : 'flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900';
+        const badgeClass = isActive 
+          ? 'bg-emerald-100 text-emerald-800 text-[10px] font-black px-1.5 py-0.2 rounded-full'
+          : 'bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full';
+
+        return `
+          <button 
+            onclick="setActiveDayTab('${d.id}')" 
+            id="day-tab-${d.id}" 
+            class="${btnClass}"
+          >
+            <span>📅 ${dayLabel}</span>
+            <span class="${badgeClass}" id="day-badge-${d.id}">6:30 – 8:00 PM</span>
+          </button>
+        `;
+      }).join('');
     }
 
     // Render Day Content
