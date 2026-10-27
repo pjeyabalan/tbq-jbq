@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>TBQ Practice Sets — Mark Chapters 1–5 (10, 20 & 30 Pointers)</title>
+  <title>TBQ Practice Sets — Mark Chapters 4 & 5 (100-Question Drill Set)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -45,9 +45,9 @@
           <h1 class="text-sm font-black text-white leading-tight flex items-center gap-1.5">
             <span>📖</span>
             <span>TBQ Practice Sets</span>
-            <span class="text-[10px] font-bold bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full">Mark 1–5</span>
+            <span class="text-[10px] font-bold bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full">Mark 4 & 5</span>
           </h1>
-          <p class="text-[10px] text-slate-400 font-medium">Assemblies of God 2026–2027 Season</p>
+          <p class="text-[10px] text-slate-400 font-medium">Assemblies of God 2026–2027 Season • 100-Question Drill Set</p>
         </div>
       </div>
 
@@ -70,25 +70,25 @@
         <!-- TAB 1: 10 POINTERS -->
         <button onclick="setPointsTab('10')" id="tab-btn-10" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-emerald-500 text-white shadow-sm">
           <span>⚡ 10 Pts</span>
-          <span class="bg-emerald-700/60 text-white text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-10">213</span>
+          <span class="bg-emerald-700/60 text-white text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-10">40</span>
         </button>
 
         <!-- TAB 2: 20 POINTERS -->
         <button onclick="setPointsTab('20')" id="tab-btn-20" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-slate-800 text-slate-300 hover:text-white">
           <span>🔥 20 Pts</span>
-          <span class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-20">201</span>
+          <span class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-20">40</span>
         </button>
 
         <!-- TAB 3: 30 POINTERS -->
         <button onclick="setPointsTab('30')" id="tab-btn-30" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-slate-800 text-slate-300 hover:text-white">
           <span>🌟 30 Pts</span>
-          <span class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-30">68</span>
+          <span class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-30">20</span>
         </button>
 
         <!-- TAB 4: ALL QUESTIONS -->
         <button onclick="setPointsTab('all')" id="tab-btn-all" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-slate-800 text-slate-300 hover:text-white">
           <span>📚 All</span>
-          <span class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-all">482</span>
+          <span class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.2 rounded-full" id="tab-count-all">100</span>
         </button>
       </div>
     </div>
@@ -117,17 +117,14 @@
         <!-- Chapter Pills -->
         <div class="flex items-center gap-1.5 flex-wrap">
           <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Chapter:</span>
-          <button onclick="setChapterFilter('all')" id="btn-chapter-all" class="px-2.5 py-1 rounded-lg text-xs font-black bg-slate-900 text-white shadow-2xs">All</button>
-          <button onclick="setChapterFilter('1')" id="btn-chapter-1" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 1</button>
-          <button onclick="setChapterFilter('2')" id="btn-chapter-2" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 2</button>
-          <button onclick="setChapterFilter('3')" id="btn-chapter-3" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 3</button>
+          <button onclick="setChapterFilter('all')" id="btn-chapter-all" class="px-2.5 py-1 rounded-lg text-xs font-black bg-slate-900 text-white shadow-2xs">All (Mark 4 & 5)</button>
           <button onclick="setChapterFilter('4')" id="btn-chapter-4" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 4</button>
           <button onclick="setChapterFilter('5')" id="btn-chapter-5" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 5</button>
         </div>
 
         <!-- Download PDF Action -->
         <div class="flex items-center gap-1.5 ml-auto">
-          <a id="download-current-pdf-btn" href="/data/tbq_mark_1_5_ten_pointers.pdf" target="_blank" class="text-[11px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 active:scale-95 shadow-2xs">
+          <a id="download-current-pdf-btn" href="/data/tbq_mark_4_5_ten_pointers.pdf" target="_blank" class="text-[11px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 active:scale-95 shadow-2xs">
             <span>📄</span>
             <span id="download-pdf-label">Download 10 Pts PDF</span>
           </a>
@@ -138,8 +135,8 @@
     <!-- QUESTIONS SUMMARY CHIPS -->
     <div class="flex items-center justify-between px-1 mb-2.5 text-xs text-slate-500 font-semibold">
       <div class="flex items-center gap-2">
-        <span class="font-black text-slate-900" id="filtered-count-label">Showing 213 questions</span>
-        <span id="active-filter-badge" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">10 Pointers • Mark 1–5</span>
+        <span class="font-black text-slate-900" id="filtered-count-label">Showing 40 questions</span>
+        <span id="active-filter-badge" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">10 Pointers • Mark 4 & 5</span>
       </div>
       <button onclick="shuffleQuestions()" class="text-brand-600 hover:text-brand-700 font-bold active:scale-95 flex items-center gap-1 cursor-pointer" title="Randomize order for drilling">
         <span>🔀</span>
@@ -268,7 +265,7 @@
       });
 
       // 2. Sync Chapter Buttons
-      const chs = ['all', '1', '2', '3', '4', '5'];
+      const chs = ['all', '4', '5'];
       chs.forEach(c => {
         const btn = document.getElementById(`btn-chapter-${c}`);
         if (!btn) return;
@@ -285,17 +282,17 @@
       const pdfLabel = document.getElementById('download-pdf-label');
       if (pdfBtn && pdfLabel) {
         if (state.activeTab === '10') {
-          pdfBtn.href = '/data/tbq_mark_1_5_ten_pointers.pdf';
+          pdfBtn.href = '/data/tbq_mark_4_5_ten_pointers.pdf';
           pdfLabel.textContent = '📄 Download 10 Pts PDF';
         } else if (state.activeTab === '20') {
-          pdfBtn.href = '/data/tbq_mark_1_5_twenty_pointers.pdf';
+          pdfBtn.href = '/data/tbq_mark_4_5_twenty_pointers.pdf';
           pdfLabel.textContent = '📄 Download 20 Pts PDF';
         } else if (state.activeTab === '30') {
-          pdfBtn.href = '/data/tbq_mark_1_5_thirty_pointers.pdf';
+          pdfBtn.href = '/data/tbq_mark_4_5_thirty_pointers.pdf';
           pdfLabel.textContent = '📄 Download 30 Pts PDF';
         } else {
-          pdfBtn.href = '/data/tbq_mark_1_5_ten_pointers.pdf';
-          pdfLabel.textContent = '📄 Download Study PDF';
+          pdfBtn.href = '/data/tbq_mark_4_5_all_pointers.pdf';
+          pdfLabel.textContent = '📄 Download Complete 100-Drill PDF';
         }
       }
     }
@@ -411,7 +408,7 @@
       if (countLabel) countLabel.textContent = `Showing ${list.length} question${list.length === 1 ? '' : 's'}`;
       if (filterBadge) {
         const tabText = state.activeTab === 'all' ? 'All Points' : `${state.activeTab} Pointers`;
-        const chText = state.chapterFilter === 'all' ? 'Mark 1–5' : `Mark ${state.chapterFilter}`;
+        const chText = state.chapterFilter === 'all' ? 'Mark 4 & 5' : `Mark ${state.chapterFilter}`;
         const shuffleText = state.isShuffled ? ' • 🔀 Shuffled' : '';
         filterBadge.textContent = `${tabText} • ${chText}${shuffleText}`;
       }
@@ -475,7 +472,7 @@
             <div id="ans-${cardKey}" class="${isRevealed ? '' : 'hidden'} mt-2.5 pt-2 border-t border-slate-100">
               <div class="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-950 p-2.5 rounded-r-xl text-xs font-bold">
                 <div class="text-[9px] uppercase font-black text-emerald-700 tracking-wider mb-0.5">Answer:</div>
-                <div>${escapeHtml(q.answer)}</div>
+                <div class="whitespace-pre-line leading-relaxed">${escapeHtml(q.answer)}</div>
               </div>
             </div>
           </div>
