@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>1:1 Coaching Drills Booking — Mark 4 & 5</title>
+  <title>1:1 Coaching Drills Booking — Mark 1–5</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -56,7 +56,7 @@
             <span>1:1 Coaching Drills</span>
             <span class="text-[10px] font-bold bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full">Mark 1–5</span>
           </h1>
-          <p class="text-[10px] text-slate-400 font-medium">Tue Oct 27 & Wed Oct 28 • 6:30 PM – 8:00 PM</p>
+          <p class="text-[10px] text-slate-400 font-medium">Tue Nov 3, Wed Nov 4 & Thu Nov 5 • 6:30 PM – 8:00 PM</p>
         </div>
       </div>
 
@@ -108,7 +108,7 @@
             <span class="text-base font-black text-emerald-950" id="active-quizzer-name">Isabelle</span>
           </div>
           <p class="text-xs text-emerald-800 font-medium mt-0.5" id="active-quizzer-hint">
-            Tap any open slot below to book.
+            Tap any open slot below to book your 1:1 session.
           </p>
         </div>
 
@@ -124,21 +124,30 @@
     <!-- ========================================== -->
     <div class="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl" id="day-switcher-container">
       <button 
-        onclick="setActiveDayTab('2026-10-27')" 
-        id="day-tab-2026-10-27" 
+        onclick="setActiveDayTab('2026-11-03')" 
+        id="day-tab-2026-11-03" 
         class="flex-1 py-2.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs"
       >
-        <span>📅 Tuesday, Oct 27</span>
-        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-27">6:30 – 8:00 PM</span>
+        <span>📅 Tuesday, Nov 3</span>
+        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-1.5 py-0.2 rounded-full" id="day-badge-2026-11-03">6:30 – 8:00 PM</span>
       </button>
 
       <button 
-        onclick="setActiveDayTab('2026-10-28')" 
-        id="day-tab-2026-10-28" 
+        onclick="setActiveDayTab('2026-11-04')" 
+        id="day-tab-2026-11-04" 
         class="flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900"
       >
-        <span>📅 Wednesday, Oct 28</span>
-        <span class="bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full" id="day-badge-2026-10-28">6:30 – 8:00 PM</span>
+        <span>📅 Wednesday, Nov 4</span>
+        <span class="bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full" id="day-badge-2026-11-04">6:30 – 8:00 PM</span>
+      </button>
+
+      <button 
+        onclick="setActiveDayTab('2026-11-05')" 
+        id="day-tab-2026-11-05" 
+        class="flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900"
+      >
+        <span>📅 Thursday, Nov 5</span>
+        <span class="bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full" id="day-badge-2026-11-05">6:30 – 8:00 PM</span>
       </button>
     </div>
 
@@ -148,9 +157,9 @@
     <div id="slots-view-container" class="space-y-2.5">
       <div class="flex items-center justify-between px-1">
         <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider" id="active-day-heading">
-          Tuesday, Oct 27, 2026 • 6:30 PM – 8:00 PM (15-min Slots)
+          Tuesday, Nov 3, 2026 • 6:30 PM – 8:00 PM (15-min Slots)
         </h3>
-        <span class="text-[11px] text-slate-400 font-medium">Double Booking: Max 2 Quizzers / Slot</span>
+        <span class="text-[11px] text-slate-400 font-medium">1 Quizzer per Slot (1:1 Coaching)</span>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5" id="slots-grid">
@@ -172,11 +181,12 @@
     // State
     const state = {
       selectedKid: null,
-      activeDayId: '2026-10-27',
+      activeDayId: '2026-11-03',
       allowedKids: ['Isabelle', 'Ameil', 'Noah', 'Deewana', 'Hosanna', 'Jade', 'Prakash'],
       days: [
-        { id: '2026-10-27', date: '2026-10-27', dayOfWeek: 'Tuesday', displayDate: 'Tuesday, Oct 27, 2026', timeRange: '6:30 PM – 8:00 PM' },
-        { id: '2026-10-28', date: '2026-10-28', dayOfWeek: 'Wednesday', displayDate: 'Wednesday, Oct 28, 2026', timeRange: '6:30 PM – 8:00 PM' }
+        { id: '2026-11-03', date: '2026-11-03', dayOfWeek: 'Tuesday', displayDate: 'Tuesday, Nov 3, 2026', timeRange: '6:30 PM – 8:00 PM' },
+        { id: '2026-11-04', date: '2026-11-04', dayOfWeek: 'Wednesday', displayDate: 'Wednesday, Nov 4, 2026', timeRange: '6:30 PM – 8:00 PM' },
+        { id: '2026-11-05', date: '2026-11-05', dayOfWeek: 'Thursday', displayDate: 'Thursday, Nov 5, 2026', timeRange: '6:30 PM – 8:00 PM' }
       ],
       timeSlots: [
         { id: '18:30', start: '6:30 PM', end: '6:45 PM', label: '6:30 PM – 6:45 PM' },
@@ -187,8 +197,8 @@
         { id: '19:45', start: '7:45 PM', end: '8:00 PM', label: '7:45 PM – 8:00 PM' }
       ],
       bookings: [],
-      maxSlotsPerKid: 2,
-      maxCapacityPerSlot: 2,
+      maxSlotsPerKid: 1,
+      maxCapacityPerSlot: 1,
       isSubmitting: false,
     };
 
@@ -341,11 +351,9 @@
       const count = kidBookings.length;
 
       if (count === 0) {
-        hintEl.textContent = 'Tap any open slot below to claim a time (up to 2 slots total).';
-      } else if (count === 1) {
-        hintEl.textContent = 'You have 1 slot booked below. You can book 1 more slot if desired.';
+        hintEl.textContent = 'Tap any open slot below to claim your 1:1 coaching session.';
       } else {
-        hintEl.textContent = 'You have booked 2 slots. To change times, tap "✕ Cancel" on one of your bookings below.';
+        hintEl.textContent = 'You have 1 slot booked below. To change times, tap "✕ Cancel" on your booking below.';
       }
 
       // Render chips for current bookings
@@ -437,29 +445,28 @@
 
         // Card Border & Background
         let cardBg = 'bg-white border-slate-200';
-        let capacityBadge = `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded-full">🟢 2 Spots Open</span>`;
+        let capacityBadge = `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded-full">🟢 Open Slot</span>`;
 
-        if (bookedCount === 1) {
-          capacityBadge = `<span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full">🟡 1 Spot Open</span>`;
-        } else if (bookedCount >= 2) {
+        if (isFull) {
           cardBg = 'bg-slate-50 border-slate-200';
-          capacityBadge = `<span class="bg-slate-200 text-slate-700 border border-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full">🔴 Slot Full (2/2)</span>`;
+          capacityBadge = `<span class="bg-slate-200 text-slate-700 border border-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full">🔴 Booked</span>`;
         }
 
         if (myBooking) {
           cardBg = 'bg-emerald-50/50 border-emerald-500 shadow-xs ring-1 ring-emerald-400/40';
+          capacityBadge = `<span class="bg-emerald-600 text-white border border-emerald-600 text-[10px] font-black px-2 py-0.5 rounded-full">⭐ Your Slot</span>`;
         }
 
         // Quizzers list in this slot
         let quizzersHtml = '';
         if (slotBookings.length === 0) {
-          quizzersHtml = `<span class="text-xs text-slate-400 italic">Open slot — no bookings yet</span>`;
+          quizzersHtml = `<span class="text-xs text-slate-400 italic">Available</span>`;
         } else {
           quizzersHtml = slotBookings.map(b => {
             const isMe = state.selectedKid && (b.kidName.toLowerCase() === state.selectedKid.toLowerCase());
             const color = KID_COLORS[b.kidName] || { bg: 'bg-slate-100 text-slate-700 border-slate-300' };
             return `
-              <span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md border ${
+              <span class="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-md border ${
                 isMe ? 'bg-emerald-600 text-white border-emerald-600 font-black' : color.bg
               }">
                 <span>${isMe ? '⭐ You' : `👤 ${b.kidName}`}</span>
@@ -495,7 +502,7 @@
               disabled 
               class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 text-slate-400 cursor-not-allowed"
             >
-              Slot Full (2/2)
+              Slot Taken
             </button>
           `;
         } else if (activeKidTotalBooked >= state.maxSlotsPerKid) {
@@ -503,9 +510,9 @@
             <button 
               disabled 
               class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 text-slate-400 cursor-not-allowed"
-              title="${state.selectedKid} has already booked 2 slots."
+              title="${state.selectedKid} has already booked 1 slot."
             >
-              Max 2 Slots Booked
+              Already Booked 1 Slot
             </button>
           `;
         } else {

@@ -583,21 +583,28 @@ const DEFAULT_BOOKING_DATA = {
     'Jade',
     'Prakash'
   ],
-  maxSlotsPerKid: 2,
-  maxCapacityPerSlot: 2, // Double booking allowed
+  maxSlotsPerKid: 1,
+  maxCapacityPerSlot: 1, // Single booking per slot (true 1:1 coaching)
   days: [
     {
-      id: '2026-10-27',
-      date: '2026-10-27',
+      id: '2026-11-03',
+      date: '2026-11-03',
       dayOfWeek: 'Tuesday',
-      displayDate: 'Tuesday, Oct 27, 2026',
+      displayDate: 'Tuesday, Nov 3, 2026',
       timeRange: '6:30 PM – 8:00 PM'
     },
     {
-      id: '2026-10-28',
-      date: '2026-10-28',
+      id: '2026-11-04',
+      date: '2026-11-04',
       dayOfWeek: 'Wednesday',
-      displayDate: 'Wednesday, Oct 28, 2026',
+      displayDate: 'Wednesday, Nov 4, 2026',
+      timeRange: '6:30 PM – 8:00 PM'
+    },
+    {
+      id: '2026-11-05',
+      date: '2026-11-05',
+      dayOfWeek: 'Thursday',
+      displayDate: 'Thursday, Nov 5, 2026',
       timeRange: '6:30 PM – 8:00 PM'
     }
   ],
@@ -623,6 +630,8 @@ function loadBookingsDataLocal() {
         const activeBookings = (data.bookings || []).filter(b => validDayIds.has(b.dayId));
         bookingData = {
           ...DEFAULT_BOOKING_DATA,
+          maxSlotsPerKid: DEFAULT_BOOKING_DATA.maxSlotsPerKid,
+          maxCapacityPerSlot: DEFAULT_BOOKING_DATA.maxCapacityPerSlot,
           days: DEFAULT_BOOKING_DATA.days,
           timeSlots: DEFAULT_BOOKING_DATA.timeSlots,
           allowedKids: DEFAULT_BOOKING_DATA.allowedKids,
@@ -3035,12 +3044,12 @@ app.post('/api/bookings/book', (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid time slot selected.' });
   }
 
-  // Check quizzer total booking limit (max 2 slots total across both days)
+  // Check quizzer total booking limit (max 1 slot allowed)
   const kidBookings = bookingData.bookings.filter(b => b.kidName === matchedKid);
   if (kidBookings.length >= bookingData.maxSlotsPerKid) {
     return res.status(400).json({ 
       success: false, 
-      error: `${matchedKid} has already booked the maximum of ${bookingData.maxSlotsPerKid} slots. You can cancel an existing slot below to change times.` 
+      error: `${matchedKid} has already booked their 1:1 coaching slot (${bookingData.maxSlotsPerKid} slot allowed). You can cancel your existing slot below to change times.` 
     });
   }
 
@@ -3053,12 +3062,12 @@ app.post('/api/bookings/book', (req, res) => {
     });
   }
 
-  // Check slot capacity (max 2 kids, double booking allowed)
+  // Check slot capacity (max 1 quizzer per slot, true 1:1)
   const slotBookings = bookingData.bookings.filter(b => b.dayId === dayId && b.slotId === slotId);
   if (slotBookings.length >= bookingData.maxCapacityPerSlot) {
     return res.status(400).json({ 
       success: false, 
-      error: `This slot is full (maximum of ${bookingData.maxCapacityPerSlot} quizzers allowed).` 
+      error: `This slot is already booked. Please choose another open time slot.` 
     });
   }
 
@@ -3251,6 +3260,8 @@ async function initStorage() {
           const activeBookings = (loadedBookings.bookings || []).filter(b => validDayIds.has(b.dayId));
           bookingData = {
             ...DEFAULT_BOOKING_DATA,
+            maxSlotsPerKid: DEFAULT_BOOKING_DATA.maxSlotsPerKid,
+            maxCapacityPerSlot: DEFAULT_BOOKING_DATA.maxCapacityPerSlot,
             days: DEFAULT_BOOKING_DATA.days,
             timeSlots: DEFAULT_BOOKING_DATA.timeSlots,
             allowedKids: DEFAULT_BOOKING_DATA.allowedKids,
