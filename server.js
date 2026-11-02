@@ -583,7 +583,8 @@ const DEFAULT_BOOKING_DATA = {
     'Jade',
     'Prakash'
   ],
-  maxSlotsPerKid: 1,
+  maxSlotsPerKidPerDay: 1, // 1 slot per student per day
+  maxSlotsPerKid: 3, // up to 1 slot per day across all days
   maxCapacityPerSlot: 1, // Single booking per slot (true 1:1 coaching)
   days: [
     {
@@ -630,6 +631,7 @@ function loadBookingsDataLocal() {
         const activeBookings = (data.bookings || []).filter(b => validDayIds.has(b.dayId));
         bookingData = {
           ...DEFAULT_BOOKING_DATA,
+          maxSlotsPerKidPerDay: DEFAULT_BOOKING_DATA.maxSlotsPerKidPerDay,
           maxSlotsPerKid: DEFAULT_BOOKING_DATA.maxSlotsPerKid,
           maxCapacityPerSlot: DEFAULT_BOOKING_DATA.maxCapacityPerSlot,
           days: DEFAULT_BOOKING_DATA.days,
@@ -3044,12 +3046,14 @@ app.post('/api/bookings/book', (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid time slot selected.' });
   }
 
-  // Check quizzer total booking limit (max 1 slot allowed)
+  // Check quizzer daily booking limit (1 slot per day restriction)
   const kidBookings = bookingData.bookings.filter(b => b.kidName === matchedKid);
-  if (kidBookings.length >= bookingData.maxSlotsPerKid) {
+  const kidBookingsToday = kidBookings.filter(b => b.dayId === dayId);
+  const maxPerDay = bookingData.maxSlotsPerKidPerDay || 1;
+  if (kidBookingsToday.length >= maxPerDay) {
     return res.status(400).json({ 
       success: false, 
-      error: `${matchedKid} has already booked their 1:1 coaching slot (${bookingData.maxSlotsPerKid} slot allowed). You can cancel your existing slot below to change times.` 
+      error: `${matchedKid} already has a 1:1 session booked for ${matchedDay.dayOfWeek}. Students can book 1 slot per day. You can cancel your slot on this day to change times, or select an open slot on another day.` 
     });
   }
 
@@ -3260,6 +3264,7 @@ async function initStorage() {
           const activeBookings = (loadedBookings.bookings || []).filter(b => validDayIds.has(b.dayId));
           bookingData = {
             ...DEFAULT_BOOKING_DATA,
+            maxSlotsPerKidPerDay: DEFAULT_BOOKING_DATA.maxSlotsPerKidPerDay,
             maxSlotsPerKid: DEFAULT_BOOKING_DATA.maxSlotsPerKid,
             maxCapacityPerSlot: DEFAULT_BOOKING_DATA.maxCapacityPerSlot,
             days: DEFAULT_BOOKING_DATA.days,

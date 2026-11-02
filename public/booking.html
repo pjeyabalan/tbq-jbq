@@ -56,7 +56,7 @@
             <span>1:1 Coaching Drills</span>
             <span class="text-[10px] font-bold bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full">Mark 1–5</span>
           </h1>
-          <p class="text-[10px] text-slate-400 font-medium">Tue Nov 3, Wed Nov 4 & Thu Nov 5 • 6:30 PM – 8:00 PM</p>
+          <p class="text-[10px] text-slate-400 font-medium">Tue Nov 3, Wed Nov 4 & Thu Nov 5 • 6:30 PM – 8:00 PM • 1 Slot / Day</p>
         </div>
       </div>
 
@@ -159,7 +159,7 @@
         <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider" id="active-day-heading">
           Tuesday, Nov 3, 2026 • 6:30 PM – 8:00 PM (15-min Slots)
         </h3>
-        <span class="text-[11px] text-slate-400 font-medium">1 Quizzer per Slot (1:1 Coaching)</span>
+        <span class="text-[11px] text-slate-400 font-medium">1 Quizzer per Slot • 1 Slot per Day</span>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5" id="slots-grid">
@@ -197,7 +197,8 @@
         { id: '19:45', start: '7:45 PM', end: '8:00 PM', label: '7:45 PM – 8:00 PM' }
       ],
       bookings: [],
-      maxSlotsPerKid: 1,
+      maxSlotsPerKidPerDay: 1,
+      maxSlotsPerKid: 3,
       maxCapacityPerSlot: 1,
       isSubmitting: false,
     };
@@ -236,8 +237,9 @@
           state.days = json.data.days || [];
           state.timeSlots = json.data.timeSlots || [];
           state.bookings = json.data.bookings || [];
-          state.maxSlotsPerKid = json.data.maxSlotsPerKid || 2;
-          state.maxCapacityPerSlot = json.data.maxCapacityPerSlot || 2;
+          state.maxSlotsPerKidPerDay = json.data.maxSlotsPerKidPerDay || 1;
+          state.maxSlotsPerKid = json.data.maxSlotsPerKid || 3;
+          state.maxCapacityPerSlot = json.data.maxCapacityPerSlot || 1;
 
           if (!state.days.some(d => d.id === state.activeDayId) && state.days.length > 0) {
             state.activeDayId = state.days[0].id;
@@ -351,9 +353,14 @@
       const count = kidBookings.length;
 
       if (count === 0) {
-        hintEl.textContent = 'Tap any open slot below to claim your 1:1 coaching session.';
+        hintEl.textContent = 'Tap any open slot below to claim a 1:1 coaching session (1 slot per day allowed).';
       } else {
-        hintEl.textContent = 'You have 1 slot booked below. To change times, tap "✕ Cancel" on your booking below.';
+        const daysList = kidBookings.map(b => {
+          const d = state.days.find(x => x.id === b.dayId);
+          const s = state.timeSlots.find(x => x.id === b.slotId);
+          return `${d ? d.dayOfWeek : b.dayId} (${s ? s.start : b.slotId})`;
+        }).join(', ');
+        hintEl.textContent = `You have ${count} slot${count === 1 ? '' : 's'} booked: ${daysList}. Limit: 1 slot per day.`;
       }
 
       // Render chips for current bookings
@@ -429,6 +436,8 @@
         ? state.bookings.filter(b => b.kidName.toLowerCase() === state.selectedKid.toLowerCase()) 
         : [];
       const activeKidTotalBooked = activeKidBookings.length;
+      const activeKidDayBookings = activeKidBookings.filter(b => b.dayId === state.activeDayId);
+      const activeKidDayBooked = activeKidDayBookings.length;
 
       let html = '';
 
@@ -505,14 +514,14 @@
               Slot Taken
             </button>
           `;
-        } else if (activeKidTotalBooked >= state.maxSlotsPerKid) {
+        } else if (activeKidDayBooked >= (state.maxSlotsPerKidPerDay || 1)) {
           actionBtn = `
             <button 
               disabled 
               class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 text-slate-400 cursor-not-allowed"
-              title="${state.selectedKid} has already booked 1 slot."
+              title="${state.selectedKid} already has a slot booked for this day (limit: 1 slot per day)."
             >
-              Already Booked 1 Slot
+              Already Booked on This Day
             </button>
           `;
         } else {
