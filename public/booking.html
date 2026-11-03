@@ -70,7 +70,7 @@
           <span>📖</span>
           <span class="hidden sm:inline">Practice</span>
         </a>
-        <button onclick="fetchBookings(true)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95" title="Refresh Live Bookings">
+        <button onclick="fetchBookings(true)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95 cursor-pointer" title="Refresh Live Bookings">
           <svg id="refresh-spinner" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </button>
       </div>
@@ -88,11 +88,11 @@
     <div class="bg-white rounded-2xl p-3.5 shadow-2xs border border-slate-200">
       <div class="flex items-center justify-between mb-2">
         <div>
-          <h2 class="text-xs font-black uppercase text-slate-500 tracking-wider">Step 1: Tap Your Name</h2>
-          <p class="text-xs text-slate-700 font-medium">Select who is booking or changing slots:</p>
+          <h2 class="text-xs font-black uppercase text-slate-500 tracking-wider">Step 1: Quizzer Selection</h2>
+          <p class="text-xs text-slate-700 font-medium">Tap your name to book/cancel, or stay outside to view all bookings:</p>
         </div>
-        <div id="selection-status-badge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-          None selected
+        <div id="selection-status-badge" class="text-xs font-bold">
+          <!-- Populated by JS -->
         </div>
       </div>
 
@@ -100,75 +100,76 @@
       <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2" id="kids-selector-grid">
         <!-- Rendered dynamically via JS -->
       </div>
+
+      <!-- Stay Outside / Master View Control Row -->
+      <div class="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+        <button 
+          type="button"
+          onclick="clearSelectedKid()" 
+          id="btn-master-view"
+          class="text-xs font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+        >
+          <span>👁️</span>
+          <span>Stay Outside (Master View / No Quizzer Selected)</span>
+        </button>
+        <span class="text-[11px] text-slate-400 italic">
+          💡 Tap a name to select. Tap the same name again or click "Stay Outside" to deselect.
+        </span>
+      </div>
     </div>
 
     <!-- ========================================== -->
-    <!-- 4. ACTIVE QUIZZER BANNER                  -->
+    <!-- 4. MASTER OVERVIEW BANNER (WHEN OUTSIDE)   -->
+    <!-- ========================================== -->
+    <div id="master-overview-banner" class="transition-all">
+      <!-- Populated dynamically via JS when no kid is selected -->
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 5. ACTIVE QUIZZER BANNER (WHEN SELECTED)   -->
     <!-- ========================================== -->
     <div id="active-quizzer-banner" class="hidden bg-emerald-50 border-2 border-emerald-500/80 rounded-2xl p-3.5 shadow-xs transition-all">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div>
           <div class="flex items-center gap-2">
-            <span class="text-base font-black text-emerald-950" id="active-quizzer-name">Isabelle</span>
+            <span class="text-base font-black text-emerald-950" id="active-quizzer-name">Quizzer</span>
+            <span class="text-[10px] font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full">Active Quizzer</span>
           </div>
           <p class="text-xs text-emerald-800 font-medium mt-0.5" id="active-quizzer-hint">
-            Tap any open slot below to book your 1:1 session.
+            Tap any open slot below to book your 1:1 session (limit 1 slot per day).
           </p>
         </div>
 
-        <!-- Booked Slots List for this kid -->
-        <div id="active-quizzer-booked-chips" class="flex items-center gap-1.5 flex-wrap">
-          <!-- Populated via JS -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- Booked Slots List for this kid -->
+          <div id="active-quizzer-booked-chips" class="flex items-center gap-1.5 flex-wrap">
+            <!-- Populated via JS -->
+          </div>
+          <button 
+            type="button"
+            onclick="clearSelectedKid()" 
+            class="text-xs font-bold px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-700 hover:text-slate-950 hover:border-slate-400 shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+            title="Return to Master Schedule View"
+          >
+            <span>👁️</span>
+            <span>Return to Master View</span>
+          </button>
         </div>
       </div>
     </div>
 
     <!-- ========================================== -->
-    <!-- 5. DAY SWITCHER TABS                      -->
+    <!-- 6. DAY SWITCHER TABS                      -->
     <!-- ========================================== -->
-    <div class="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl" id="day-switcher-container">
-      <button 
-        onclick="setActiveDayTab('2026-11-03')" 
-        id="day-tab-2026-11-03" 
-        class="flex-1 py-2.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs"
-      >
-        <span>📅 Tuesday, Nov 3</span>
-        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-1.5 py-0.2 rounded-full" id="day-badge-2026-11-03">6:30 – 8:00 PM</span>
-      </button>
-
-      <button 
-        onclick="setActiveDayTab('2026-11-04')" 
-        id="day-tab-2026-11-04" 
-        class="flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900"
-      >
-        <span>📅 Wednesday, Nov 4</span>
-        <span class="bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full" id="day-badge-2026-11-04">6:30 – 8:00 PM</span>
-      </button>
-
-      <button 
-        onclick="setActiveDayTab('2026-11-05')" 
-        id="day-tab-2026-11-05" 
-        class="flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900"
-      >
-        <span>📅 Thursday, Nov 5</span>
-        <span class="bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full" id="day-badge-2026-11-05">6:30 – 8:00 PM</span>
-      </button>
+    <div class="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl overflow-x-auto no-scrollbar" id="day-switcher-container">
+      <!-- Populated dynamically via JS -->
     </div>
 
     <!-- ========================================== -->
-    <!-- 6. TIME SLOTS VIEW (FOR SELECTED DAY)      -->
+    <!-- 7. TIME SLOTS VIEW                         -->
     <!-- ========================================== -->
-    <div id="slots-view-container" class="space-y-2.5">
-      <div class="flex items-center justify-between px-1">
-        <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider" id="active-day-heading">
-          Tuesday, Nov 3, 2026 • 6:30 PM – 8:00 PM (15-min Slots)
-        </h3>
-        <span class="text-[11px] text-slate-400 font-medium">1 Quizzer per Slot • 1 Slot per Day</span>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5" id="slots-grid">
-        <!-- Rendered dynamically via JS -->
-      </div>
+    <div id="slots-view-container" class="space-y-4">
+      <!-- Rendered dynamically via JS -->
     </div>
 
   </main>
@@ -184,7 +185,7 @@
   <script>
     // State
     const state = {
-      selectedKid: null,
+      selectedKid: null, // Defaults to null: viewing mode / stay outside
       activeDayId: '2026-11-03',
       allowedKids: ['Isabelle', 'Ameil', 'Noah', 'Deewana', 'Hosanna', 'Jade', 'Prakash'],
       days: [
@@ -218,19 +219,14 @@
       'Prakash':  { bg: 'bg-indigo-100 text-indigo-700 border-indigo-300', dot: 'bg-indigo-500' },
     };
 
-    // Initialize
+    // Initialize on Page Load (defaults to Stay Outside / Viewing Mode)
     document.addEventListener('DOMContentLoaded', () => {
-      try {
-        const saved = localStorage.getItem('tbq_selected_kid');
-        if (saved && state.allowedKids.includes(saved)) {
-          state.selectedKid = saved;
-        } else if (!state.selectedKid && state.allowedKids.length > 0) {
-          state.selectedKid = state.allowedKids[0]; // pre-selected on load
-        }
-      } catch (e) {}
+      // Intentionally start in Viewing Mode (selectedKid = null)
+      state.selectedKid = null;
 
       renderAll();
       fetchBookings();
+
       // Auto-poll every 5 seconds for real-time collaboration
       setInterval(() => {
         fetchBookings(false);
@@ -247,25 +243,19 @@
         const json = await res.json();
         if (json.success && json.data) {
           state.allowedKids = json.data.allowedKids || state.allowedKids;
-          state.days = json.data.days || [];
-          state.timeSlots = json.data.timeSlots || [];
+          state.days = json.data.days || state.days;
+          state.timeSlots = json.data.timeSlots || state.timeSlots;
           state.bookings = json.data.bookings || [];
           state.maxSlotsPerKidPerDay = json.data.maxSlotsPerKidPerDay || 1;
           state.maxSlotsPerKid = json.data.maxSlotsPerKid || 3;
           state.maxCapacityPerSlot = json.data.maxCapacityPerSlot || 1;
 
-          if (!state.selectedKid) {
-            try {
-              const saved = localStorage.getItem('tbq_selected_kid');
-              if (saved && state.allowedKids.includes(saved)) {
-                state.selectedKid = saved;
-              } else if (state.allowedKids.length > 0) {
-                state.selectedKid = state.allowedKids[0];
-              }
-            } catch (e) {}
+          // If current selected kid is no longer allowed, reset to null
+          if (state.selectedKid && !state.allowedKids.includes(state.selectedKid)) {
+            state.selectedKid = null;
           }
 
-          if (!state.days.some(d => d.id === state.activeDayId) && state.days.length > 0) {
+          if (state.activeDayId !== 'all' && !state.days.some(d => d.id === state.activeDayId) && state.days.length > 0) {
             state.activeDayId = state.days[0].id;
           }
 
@@ -286,17 +276,22 @@
       }
     }
 
-    // Select active kid
+    // Toggle select quizzer (Tap once to select; tap again to deselect / stay outside)
     function selectKid(kidName) {
-      state.selectedKid = kidName;
-      try { localStorage.setItem('tbq_selected_kid', kidName); } catch (e) {}
-      renderAll();
-
-      // Scroll smoothly to active banner
-      const banner = document.getElementById('active-quizzer-banner');
-      if (banner) {
-        banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (state.selectedKid === kidName) {
+        // Toggle OFF / Deselect
+        state.selectedKid = null;
+      } else {
+        // Select this kid
+        state.selectedKid = kidName;
       }
+      renderAll();
+    }
+
+    // Explicitly Clear Selection and Stay Outside
+    function clearSelectedKid() {
+      state.selectedKid = null;
+      renderAll();
     }
 
     // Switch Day Tab
@@ -306,26 +301,44 @@
       renderDayContent();
     }
 
-    // Render Everything
+    // Render All Components
     function renderAll() {
       renderKidsSelector();
+      renderMasterOverviewBanner();
       renderActiveQuizzerBanner();
       renderTabs();
       renderDayContent();
     }
 
-    // Render 7 Kids Selector Tiles (Names only, no counts)
+    // Render Step 1: Quizzer Selector Tiles
     function renderKidsSelector() {
       const grid = document.getElementById('kids-selector-grid');
       const badge = document.getElementById('selection-status-badge');
+      const masterBtn = document.getElementById('btn-master-view');
       if (!grid) return;
 
       if (state.selectedKid) {
-        badge.textContent = `Selected: ${state.selectedKid}`;
-        badge.className = 'text-xs font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+        badge.innerHTML = `
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 font-black shadow-2xs">
+            <span>Selected: ${state.selectedKid}</span>
+            <button onclick="clearSelectedKid()" class="text-rose-600 hover:text-rose-800 font-bold hover:underline cursor-pointer text-[11px] bg-white px-2 py-0.5 rounded-full border border-rose-200" title="Deselect and stay outside">
+              ✕ Deselect
+            </button>
+          </span>
+        `;
+        if (masterBtn) {
+          masterBtn.className = 'text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95';
+        }
       } else {
-        badge.textContent = 'Tap to select';
-        badge.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600';
+        badge.innerHTML = `
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold shadow-2xs">
+            <span>👁️</span>
+            <span>Master View (No Quizzer Selected)</span>
+          </span>
+        `;
+        if (masterBtn) {
+          masterBtn.className = 'text-xs font-black px-3 py-1.5 rounded-xl border border-indigo-600 bg-indigo-600 text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ring-2 ring-indigo-400/40';
+        }
       }
 
       let html = '';
@@ -333,18 +346,22 @@
         const isSelected = (state.selectedKid === kid);
         const color = KID_COLORS[kid] || { bg: 'bg-slate-100 text-slate-700 border-slate-300', dot: 'bg-slate-500' };
 
+        // Count how many slots this kid has booked
+        const kidBookingsCount = state.bookings.filter(b => b.kidName.toLowerCase() === kid.toLowerCase()).length;
+
         html += `
           <button 
             type="button"
             onclick="selectKid('${kid}')"
-            class="p-2.5 rounded-xl border-2 transition-all flex flex-col items-center justify-center text-center cursor-pointer active:scale-95 ${
+            class="p-2.5 rounded-xl border-2 transition-all flex flex-col items-center justify-center text-center cursor-pointer active:scale-95 relative ${
               isSelected 
-                ? 'border-emerald-600 bg-emerald-50/70 shadow-sm ring-2 ring-emerald-400/40' 
+                ? 'border-emerald-600 bg-emerald-50 text-emerald-950 shadow-sm ring-2 ring-emerald-500/50' 
                 : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 shadow-2xs'
             }"
+            title="${isSelected ? 'Click to deselect ' + kid : 'Select ' + kid + ' to book or manage slots'}"
           >
             <!-- Avatar Circle -->
-            <div class="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm mb-1.5 border ${color.bg}">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm mb-1 border ${color.bg}">
               ${kid.charAt(0)}
             </div>
 
@@ -352,6 +369,15 @@
             <div class="text-xs font-black text-slate-900 leading-tight truncate w-full">
               ${kid}
             </div>
+
+            <!-- Selected / Booked Tag -->
+            ${
+              isSelected 
+                ? '<span class="text-[9px] font-black text-emerald-700 mt-0.5">✓ Selected</span>'
+                : (kidBookingsCount > 0 
+                    ? `<span class="text-[9px] font-bold text-slate-500 mt-0.5">${kidBookingsCount} booked</span>` 
+                    : '<span class="text-[9px] text-slate-400 mt-0.5">0 booked</span>')
+            }
           </button>
         `;
       });
@@ -359,7 +385,98 @@
       grid.innerHTML = html;
     }
 
-    // Render Active Quizzer Banner
+    // Render Master Overview Banner (When state.selectedKid === null)
+    function renderMasterOverviewBanner() {
+      const banner = document.getElementById('master-overview-banner');
+      if (!banner) return;
+
+      if (state.selectedKid) {
+        banner.innerHTML = '';
+        banner.classList.add('hidden');
+        return;
+      }
+
+      banner.classList.remove('hidden');
+
+      const totalBookings = state.bookings.length;
+      const totalPossible = state.days.length * state.timeSlots.length; // 18
+      const openSlots = Math.max(0, totalPossible - totalBookings);
+
+      // Group bookings by quizzer
+      const kidMap = {};
+      state.allowedKids.forEach(k => { kidMap[k] = []; });
+      state.bookings.forEach(b => {
+        if (!kidMap[b.kidName]) kidMap[b.kidName] = [];
+        kidMap[b.kidName].push(b);
+      });
+
+      // Build booked quizzers summary chips
+      const bookedChips = [];
+      state.allowedKids.forEach(kid => {
+        const bList = kidMap[kid];
+        if (bList.length > 0) {
+          const color = KID_COLORS[kid] || { bg: 'bg-slate-100 text-slate-700 border-slate-300', dot: 'bg-slate-500' };
+          const details = bList.map(b => {
+            const d = state.days.find(x => x.id === b.dayId);
+            const s = state.timeSlots.find(x => x.id === b.slotId);
+            const dayShort = d ? d.dayOfWeek.slice(0, 3) : b.dayId;
+            const timeShort = s ? s.start : b.slotId;
+            return `${dayShort} ${timeShort}`;
+          }).join(', ');
+
+          bookedChips.push(`
+            <button 
+              onclick="selectKid('${kid}')"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer bg-slate-800 border-slate-700 text-slate-200 hover:border-slate-500"
+              title="Click to select ${kid} and manage these slots"
+            >
+              <span class="w-2 h-2 rounded-full ${color.dot}"></span>
+              <strong class="text-white">${kid}:</strong>
+              <span class="text-emerald-300">${details}</span>
+              <span class="text-[10px] text-slate-400">(${bList.length})</span>
+            </button>
+          `);
+        }
+      });
+
+      banner.innerHTML = `
+        <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-700/50 rounded-2xl p-4 text-white shadow-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-base font-black text-white">📋 Master Coaching Schedule</span>
+                <span class="text-[10px] font-bold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 px-2 py-0.5 rounded-full">Viewing All Quizzers</span>
+              </div>
+              <p class="text-xs text-slate-300 mt-1">
+                You are in viewing mode (staying outside). You can see who booked every slot below. To book or cancel a slot, tap your name above.
+              </p>
+            </div>
+
+            <!-- Quick Live Stats -->
+            <div class="flex items-center gap-2 flex-wrap text-xs">
+              <span class="bg-slate-800/90 border border-slate-700 px-2.5 py-1 rounded-lg font-bold">
+                Booked: <strong class="text-emerald-400 font-black">${totalBookings}</strong> / ${totalPossible}
+              </span>
+              <span class="bg-slate-800/90 border border-slate-700 px-2.5 py-1 rounded-lg font-bold">
+                Open: <strong class="text-amber-400 font-black">${openSlots}</strong>
+              </span>
+            </div>
+          </div>
+
+          <!-- Booked Quizzers Summary Row -->
+          <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center gap-2 flex-wrap">
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Booked Quizzers:</span>
+            ${
+              bookedChips.length > 0 
+                ? bookedChips.join(' ') 
+                : '<span class="text-xs text-slate-400 italic">No slots booked yet. All 18 slots are currently open!</span>'
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    // Render Active Quizzer Banner (When state.selectedKid !== null)
     function renderActiveQuizzerBanner() {
       const banner = document.getElementById('active-quizzer-banner');
       const nameEl = document.getElementById('active-quizzer-name');
@@ -378,7 +495,7 @@
       const count = kidBookings.length;
 
       if (count === 0) {
-        hintEl.textContent = 'Tap any open slot below to claim a 1:1 coaching session (1 slot per day allowed).';
+        hintEl.textContent = 'Tap any open slot below to book your 1:1 coaching session (limit 1 slot per day).';
       } else {
         const daysList = kidBookings.map(b => {
           const d = state.days.find(x => x.id === b.dayId);
@@ -411,110 +528,185 @@
       }
     }
 
-    // Render Tab Buttons
+    // Render Tab Buttons (With live booking counters and "All 3 Days" view)
     function renderTabs() {
       const container = document.getElementById('day-switcher-container');
       if (!container) return;
 
-      container.innerHTML = state.days.map(d => {
-        const isActive = (state.activeDayId === d.id);
-        const dayLabel = `${d.dayOfWeek}, ${d.displayDate.replace(`${d.dayOfWeek}, `, '').replace(', 2026', '')}`;
-        const btnClass = isActive 
-          ? 'flex-1 py-2.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-2xs'
-          : 'flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900';
-        const badgeClass = isActive 
-          ? 'bg-emerald-100 text-emerald-800 text-[10px] font-black px-1.5 py-0.2 rounded-full'
-          : 'bg-slate-300/80 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full';
+      const tabs = [
+        ...state.days.map(d => {
+          const dayBookings = state.bookings.filter(b => b.dayId === d.id);
+          const bookedCount = dayBookings.length;
+          const totalSlots = state.timeSlots.length; // 6
+          const isFull = (bookedCount >= totalSlots);
+          const isActive = (state.activeDayId === d.id);
+
+          const badgeClass = isFull 
+            ? 'bg-rose-100 text-rose-800' 
+            : (bookedCount > 0 ? 'bg-emerald-100 text-emerald-800 font-bold' : 'bg-slate-300/80 text-slate-700');
+
+          return {
+            id: d.id,
+            label: `📅 ${d.dayOfWeek.slice(0, 3)}, ${d.displayDate.split(',')[1]?.trim() || d.date}`,
+            countLabel: `${bookedCount}/${totalSlots} Booked`,
+            isActive,
+            badgeClass
+          };
+        }),
+        {
+          id: 'all',
+          label: `📋 All 3 Days`,
+          countLabel: `${state.bookings.length}/18 Booked`,
+          isActive: (state.activeDayId === 'all'),
+          badgeClass: 'bg-indigo-100 text-indigo-900 font-black'
+        }
+      ];
+
+      container.innerHTML = tabs.map(tab => {
+        const btnClass = tab.isActive 
+          ? 'flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 bg-white text-slate-900 shadow-sm border border-slate-200 ring-2 ring-indigo-400/40 cursor-pointer'
+          : 'flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 text-slate-600 hover:text-slate-900 hover:bg-white/60 cursor-pointer';
 
         return `
           <button 
-            onclick="setActiveDayTab('${d.id}')" 
-            id="day-tab-${d.id}" 
+            type="button"
+            onclick="setActiveDayTab('${tab.id}')" 
+            id="day-tab-${tab.id}" 
             class="${btnClass}"
           >
-            <span>📅 ${dayLabel}</span>
-            <span class="${badgeClass}" id="day-badge-${d.id}">6:30 – 8:00 PM</span>
+            <span>${tab.label}</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold ${tab.badgeClass}">${tab.countLabel}</span>
           </button>
         `;
       }).join('');
     }
 
-    // Render Day Content
+    // Render Slots Content (Single day or All 3 Days view)
     function renderDayContent() {
-      const slotsContainer = document.getElementById('slots-view-container');
-      if (!slotsContainer) return;
-      slotsContainer.classList.remove('hidden');
+      const container = document.getElementById('slots-view-container');
+      if (!container) return;
 
-      const dayObj = state.days.find(d => d.id === state.activeDayId) || { displayDate: 'Selected Date', timeRange: '6:30 PM – 8:00 PM' };
-      document.getElementById('active-day-heading').textContent = `${dayObj.displayDate} • ${dayObj.timeRange}`;
+      if (state.activeDayId === 'all') {
+        // Render all 3 days stacked
+        let allHtml = '';
+        state.days.forEach(day => {
+          const dayBookings = state.bookings.filter(b => b.dayId === day.id);
+          allHtml += `
+            <div class="space-y-2.5 pt-2">
+              <div class="flex items-center justify-between px-1">
+                <h3 class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                  <span>📅 ${day.displayDate}</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-800">
+                    ${dayBookings.length}/6 Booked
+                  </span>
+                </h3>
+                <span class="text-[11px] text-slate-400 font-medium">${day.timeRange}</span>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                ${buildSlotsHtmlForDay(day)}
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = allHtml;
+      } else {
+        // Render selected single day
+        const day = state.days.find(d => d.id === state.activeDayId) || state.days[0];
+        const dayBookings = state.bookings.filter(b => b.dayId === day.id);
 
-      renderSlots();
+        container.innerHTML = `
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between px-1">
+              <h3 class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-2" id="active-day-heading">
+                <span>📅 ${day.displayDate}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${dayBookings.length >= 6 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}">
+                  ${dayBookings.length}/6 Booked
+                </span>
+              </h3>
+              <span class="text-[11px] text-slate-400 font-medium">${day.timeRange} • 1 Slot/Day Limit</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5" id="slots-grid">
+              ${buildSlotsHtmlForDay(day)}
+            </div>
+          </div>
+        `;
+      }
     }
 
-    // Render Slots Grid
-    function renderSlots() {
-      const grid = document.getElementById('slots-grid');
-      if (!grid) return;
+    // Build the 6 slot cards HTML for a specific day
+    function buildSlotsHtmlForDay(day) {
+      const dayBookings = state.bookings.filter(b => b.dayId === day.id);
+      const activeKidDayBooked = state.selectedKid 
+        ? state.bookings.some(b => b.dayId === day.id && b.kidName.toLowerCase() === state.selectedKid.toLowerCase())
+        : false;
 
-      const currentDayBookings = state.bookings.filter(b => b.dayId === state.activeDayId);
-      const activeKidBookings = state.selectedKid 
-        ? state.bookings.filter(b => b.kidName.toLowerCase() === state.selectedKid.toLowerCase()) 
-        : [];
-      const activeKidTotalBooked = activeKidBookings.length;
-      const activeKidDayBookings = activeKidBookings.filter(b => b.dayId === state.activeDayId);
-      const activeKidDayBooked = activeKidDayBookings.length;
-
-      let html = '';
+      let slotsHtml = '';
 
       state.timeSlots.forEach(slot => {
-        const slotBookings = currentDayBookings.filter(b => b.slotId === slot.id);
-        const bookedCount = slotBookings.length;
-        const spotsLeft = Math.max(0, state.maxCapacityPerSlot - bookedCount);
-        const isFull = (spotsLeft === 0);
+        const slotBookings = dayBookings.filter(b => b.slotId === slot.id);
+        const booked = slotBookings[0];
+        const isFull = !!booked;
+        const isMyBooking = (state.selectedKid && booked && booked.kidName.toLowerCase() === state.selectedKid.toLowerCase());
 
-        // Check if selected kid is booked in this slot
-        const myBooking = state.selectedKid 
-          ? slotBookings.find(b => b.kidName.toLowerCase() === state.selectedKid.toLowerCase())
-          : null;
-
-        // Card Border & Background
-        let cardBg = 'bg-white border-slate-200';
+        let cardBg = 'bg-white border-slate-200 hover:border-emerald-300';
         let capacityBadge = `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded-full">🟢 Open Slot</span>`;
 
         if (isFull) {
-          cardBg = 'bg-slate-50 border-slate-200';
+          cardBg = 'bg-slate-50/90 border-slate-300';
           capacityBadge = `<span class="bg-slate-200 text-slate-700 border border-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full">🔴 Booked</span>`;
         }
 
-        if (myBooking) {
-          cardBg = 'bg-emerald-50/50 border-emerald-500 shadow-xs ring-1 ring-emerald-400/40';
-          capacityBadge = `<span class="bg-emerald-600 text-white border border-emerald-600 text-[10px] font-black px-2 py-0.5 rounded-full">⭐ Your Slot</span>`;
+        if (isMyBooking) {
+          cardBg = 'bg-emerald-50/70 border-2 border-emerald-500 shadow-xs ring-1 ring-emerald-400/30';
+          capacityBadge = `<span class="bg-emerald-600 text-white border border-emerald-600 text-[10px] font-black px-2 py-0.5 rounded-full">⭐ Your Booking</span>`;
         }
 
-        // Quizzers list in this slot
-        let quizzersHtml = '';
-        if (slotBookings.length === 0) {
-          quizzersHtml = `<span class="text-xs text-slate-400 italic">Available</span>`;
+        // Quizzer display row
+        let quizzerRowHtml = '';
+        if (isFull) {
+          const color = KID_COLORS[booked.kidName] || { bg: 'bg-slate-100 text-slate-700 border-slate-300', dot: 'bg-slate-500' };
+          quizzerRowHtml = `
+            <div class="my-2 p-2 rounded-xl bg-white border border-slate-200 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center font-black text-xs border ${color.bg}">
+                  ${booked.kidName.charAt(0)}
+                </div>
+                <div>
+                  <div class="text-xs font-black text-slate-900 leading-tight flex items-center gap-1.5">
+                    <span>👤 ${booked.kidName}</span>
+                    ${isMyBooking ? '<span class="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded-full font-bold">You</span>' : ''}
+                  </div>
+                  <div class="text-[10px] text-slate-500 font-medium">
+                    1:1 Coaching Drill
+                  </div>
+                </div>
+              </div>
+              <span class="text-[10px] font-bold text-slate-400">15 min</span>
+            </div>
+          `;
         } else {
-          quizzersHtml = slotBookings.map(b => {
-            const isMe = state.selectedKid && (b.kidName.toLowerCase() === state.selectedKid.toLowerCase());
-            const color = KID_COLORS[b.kidName] || { bg: 'bg-slate-100 text-slate-700 border-slate-300' };
-            return `
-              <span class="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-md border ${
-                isMe ? 'bg-emerald-600 text-white border-emerald-600 font-black' : color.bg
-              }">
-                <span>${isMe ? '⭐ You' : `👤 ${b.kidName}`}</span>
-              </span>
-            `;
-          }).join(' ');
+          quizzerRowHtml = `
+            <div class="my-2 p-2 rounded-xl bg-slate-50/70 border border-dashed border-slate-200 flex items-center justify-between text-slate-500">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-400 border border-slate-200">
+                  +
+                </div>
+                <div class="text-xs font-medium text-slate-500">
+                  Open for booking
+                </div>
+              </div>
+              <span class="text-[10px] font-bold text-emerald-600">Available</span>
+            </div>
+          `;
         }
 
-        // Action Button Logic
+        // Action button logic
         let actionBtn = '';
-        if (myBooking) {
+        if (isMyBooking) {
           actionBtn = `
             <button 
-              onclick="cancelBooking('${myBooking.id}')" 
+              type="button"
+              onclick="cancelBooking('${booked.id}')" 
               class="w-full text-xs font-black py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1"
             >
               <span>✕</span>
@@ -522,38 +714,44 @@
             </button>
           `;
         } else if (isFull) {
-          const bookedKid = slotBookings[0] ? slotBookings[0].kidName : 'Another Quizzer';
           actionBtn = `
             <button 
+              type="button"
               disabled 
-              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed"
+              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-200/80 text-slate-600 border border-slate-300 cursor-not-allowed flex items-center justify-center gap-1"
             >
-              🔒 Booked by ${bookedKid}
+              <span>🔒</span>
+              <span>Booked by ${booked.kidName}</span>
             </button>
           `;
         } else if (!state.selectedKid) {
+          // Viewing mode: prompt user to select kid
           actionBtn = `
             <button 
+              type="button"
               onclick="promptSelectKid()" 
-              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all active:scale-95 cursor-pointer"
+              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-800 border border-slate-200 hover:border-indigo-300 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
             >
-              👉 Select Quizzer Above to Book
+              <span>👉</span>
+              <span>Tap Quizzer Name Above to Book</span>
             </button>
           `;
-        } else if (activeKidDayBooked >= (state.maxSlotsPerKidPerDay || 1)) {
+        } else if (activeKidDayBooked) {
           actionBtn = `
             <button 
+              type="button"
               disabled 
-              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 text-slate-400 cursor-not-allowed"
-              title="${state.selectedKid} already has a slot booked for this day (limit: 1 slot per day)."
+              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+              title="${state.selectedKid} already has a slot booked for ${day.dayOfWeek} (limit: 1 slot per day)."
             >
-              Already Booked on This Day
+              Already Booked on ${day.dayOfWeek} (${state.selectedKid})
             </button>
           `;
         } else {
           actionBtn = `
             <button 
-              onclick="bookSlot('${state.selectedKid}', '${state.activeDayId}', '${slot.id}')" 
+              type="button"
+              onclick="bookSlot('${state.selectedKid}', '${day.id}', '${slot.id}')" 
               class="w-full text-xs font-black py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1"
             >
               <span>⚡</span>
@@ -562,37 +760,29 @@
           `;
         }
 
-        html += `
+        slotsHtml += `
           <div class="rounded-2xl p-3.5 border transition-all ${cardBg}">
             <!-- Slot Header -->
-            <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
-              <div class="flex items-center gap-1.5">
-                <span class="text-sm font-black text-slate-900">${slot.label}</span>
-              </div>
-              <div>
-                ${capacityBadge}
-              </div>
+            <div class="flex items-center justify-between pb-1.5 border-b border-slate-100">
+              <span class="text-sm font-black text-slate-900">${slot.label}</span>
+              <div>${capacityBadge}</div>
             </div>
 
-            <!-- Booked Quizzers Row -->
-            <div class="mb-3 min-h-[24px] flex items-center gap-1 flex-wrap">
-              ${quizzersHtml}
-            </div>
+            <!-- Quizzer row -->
+            ${quizzerRowHtml}
 
-            <!-- Button Action -->
-            <div>
-              ${actionBtn}
-            </div>
+            <!-- Action Button -->
+            <div>${actionBtn}</div>
           </div>
         `;
       });
 
-      grid.innerHTML = html;
+      return slotsHtml;
     }
 
-    // Prompt user to select kid
+    // Prompt user to select kid from Step 1
     function promptSelectKid() {
-      showToast('Please select your quizzer name from Step 1 above!', 'info');
+      showToast('👉 Please select your quizzer name from Step 1 above to book!', 'info');
       const selGrid = document.getElementById('kids-selector-grid');
       if (selGrid) {
         selGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -613,7 +803,6 @@
         const json = await res.json();
         if (json.success) {
           state.bookings = json.data.bookings || [];
-          try { localStorage.setItem('tbq_selected_kid', kidName); } catch (e) {}
           renderAll();
           showToast(`🎉 Slot booked for ${kidName} and saved to database!`, 'success');
         } else {
