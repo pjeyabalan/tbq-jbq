@@ -2970,16 +2970,41 @@ app.post('/api/tbq/settings', authenticateCoach, (req, res) => {
 // ==========================================
 
 // GET Storage & System Status
-app.get('/api/system/status', (req, res) => {
+app.get('/api/system/status', async (req, res) => {
   const ctx = getPlatformContext(req);
+  let dbStatus = 'not_configured';
+  let dbError = null;
+  let dbRows = [];
+  let dbBookings = null;
+
+  if (dbPool) {
+    try {
+      const ping = await dbPool.query('SELECT NOW() as now, COUNT(*) as count FROM tbq_store');
+      dbStatus = 'connected';
+      const q = await dbPool.query('SELECT key, updated_at, length(value::text) as len FROM tbq_store');
+      dbRows = q.rows;
+      const bq = await dbPool.query("SELECT value FROM tbq_store WHERE key = 'bookings'");
+      dbBookings = bq.rows[0]?.value;
+    } catch (err) {
+      dbStatus = 'connection_error';
+      dbError = err.message;
+    }
+  }
+
   res.json({
     status: 'ok',
-    storage: dbPool ? 'postgresql' : 'local_json',
-    persistent: Boolean(dbPool),
+    storage: dbStatus === 'connected' ? 'postgresql' : (dbPool ? 'pg_error_fallback' : 'local_json'),
+    dbStatus,
+    dbError,
+    dbRows,
+    dbBookings,
+    persistent: dbStatus === 'connected',
     uptimeSeconds: Math.round(process.uptime()),
     activeLeague: platformData.activeLeague,
     matchesCount: Object.keys(ctx.dataset.matches || {}).length,
-    teamsCount: (ctx.dataset.teams || []).length
+    teamsCount: (ctx.dataset.teams || []).length,
+    memoryBookingsCount: bookingData.bookings.length,
+    memoryBookings: bookingData.bookings
   });
 });
 
