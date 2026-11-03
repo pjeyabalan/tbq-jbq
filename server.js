@@ -672,7 +672,29 @@ const DEFAULT_BOOKING_DATA = {
     { id: '19:30', start: '7:30 PM', end: '7:45 PM', label: '7:30 PM – 7:45 PM' },
     { id: '19:45', start: '7:45 PM', end: '8:00 PM', label: '7:45 PM – 8:00 PM' }
   ],
-  bookings: []
+  bookings: [
+    {
+      id: "bk_1793671682278_jjv3au",
+      kidName: "Noah",
+      dayId: "2026-11-03",
+      slotId: "18:30",
+      bookedAt: "2026-11-03T02:08:02.278Z"
+    },
+    {
+      id: "bk_1793671697365_0e1ocd",
+      kidName: "Isabelle",
+      dayId: "2026-11-04",
+      slotId: "18:30",
+      bookedAt: "2026-11-03T02:08:17.365Z"
+    },
+    {
+      id: "bk_1793671692617_iy8rna",
+      kidName: "Noah",
+      dayId: "2026-11-05",
+      slotId: "18:30",
+      bookedAt: "2026-11-03T02:08:12.617Z"
+    }
+  ]
 };
 
 let bookingData = JSON.parse(JSON.stringify(DEFAULT_BOOKING_DATA));
@@ -692,7 +714,7 @@ function loadBookingsDataLocal() {
           days: DEFAULT_BOOKING_DATA.days,
           timeSlots: DEFAULT_BOOKING_DATA.timeSlots,
           allowedKids: DEFAULT_BOOKING_DATA.allowedKids,
-          bookings: activeBookings
+          bookings: activeBookings.length > 0 ? activeBookings : DEFAULT_BOOKING_DATA.bookings
         };
         saveBookingsDataLocal();
         console.log(`[BOOKINGS] Restored ${bookingData.bookings.length} 1:1 bookings locally.`);

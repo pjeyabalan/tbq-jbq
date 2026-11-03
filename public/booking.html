@@ -245,7 +245,24 @@
           state.allowedKids = json.data.allowedKids || state.allowedKids;
           state.days = json.data.days || state.days;
           state.timeSlots = json.data.timeSlots || state.timeSlots;
-          state.bookings = json.data.bookings || [];
+          if (json.data.bookings && json.data.bookings.length > 0) {
+            state.bookings = json.data.bookings;
+            try { localStorage.setItem('tbq_cached_bookings', JSON.stringify(json.data.bookings)); } catch (e) {}
+          } else {
+            // Check if this browser has cached bookings to protect against restart wipes
+            try {
+              const cached = JSON.parse(localStorage.getItem('tbq_cached_bookings') || '[]');
+              if (cached && cached.length > 0) {
+                state.bookings = cached;
+                syncCachedBookingsToServer(cached);
+              } else {
+                state.bookings = [];
+              }
+            } catch (e) {
+              state.bookings = [];
+            }
+          }
+
           state.maxSlotsPerKidPerDay = json.data.maxSlotsPerKidPerDay || 1;
           state.maxSlotsPerKid = json.data.maxSlotsPerKid || 3;
           state.maxCapacityPerSlot = json.data.maxCapacityPerSlot || 1;
@@ -272,6 +289,24 @@
       } finally {
         if (spinner) {
           setTimeout(() => spinner.classList.remove('animate-spin'), 400);
+        }
+      }
+    }
+
+    // Auto-sync cached bookings from local storage to server if server was restarted with empty bookings
+    async function syncCachedBookingsToServer(cachedBookings) {
+      if (!Array.isArray(cachedBookings) || cachedBookings.length === 0) return;
+      console.log(`[SYNC] Restoring ${cachedBookings.length} cached bookings to server...`);
+      for (const b of cachedBookings) {
+        if (!b.kidName || !b.dayId || !b.slotId) continue;
+        try {
+          await fetch('/api/bookings/book', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kidName: b.kidName, dayId: b.dayId, slotId: b.slotId })
+          });
+        } catch (e) {
+          console.warn('[SYNC] Error syncing booking:', e);
         }
       }
     }
