@@ -3068,11 +3068,27 @@ app.get('/api/system/status', async (req, res) => {
     }
   }
 
+  let dbConfig = null;
+  if (process.env.DATABASE_URL) {
+    try {
+      const u = new URL(process.env.DATABASE_URL.trim());
+      dbConfig = {
+        host: u.hostname,
+        port: u.port || '5432',
+        user: u.username,
+        database: u.pathname.replace(/^\//, '')
+      };
+    } catch (e) {
+      dbConfig = { error: e.message };
+    }
+  }
+
   res.json({
     status: 'ok',
     storage: dbStatus === 'connected' ? 'postgresql' : (dbPool ? 'pg_error_fallback' : 'local_json'),
     dbStatus,
     dbError,
+    dbConfig,
     dbConnectionLogs,
     dbRows,
     dbBookings,
