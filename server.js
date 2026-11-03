@@ -59,9 +59,12 @@ const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
 // POSTGRESQL PERSISTENCE POOL
 // ==========================================
 let dbPool = null;
+let dbConnectionLogs = [];
 
 async function initDbPool() {
+  dbConnectionLogs = [];
   if (!process.env.DATABASE_URL) {
+    dbConnectionLogs.push('No process.env.DATABASE_URL found');
     console.log('[PG] No DATABASE_URL provided. Local storage fallback will be used.');
     return null;
   }
@@ -71,6 +74,7 @@ async function initDbPool() {
   try {
     parsedUrl = new URL(rawConnStr);
   } catch (e) {
+    dbConnectionLogs.push(`Invalid DATABASE_URL: ${e.message}`);
     console.error('[PG] Invalid DATABASE_URL:', e.message);
     return null;
   }
@@ -98,11 +102,13 @@ async function initDbPool() {
       const pool = new Pool({
         connectionString: candidateUrl.toString(),
         ssl: isSsl ? { rejectUnauthorized: false } : false,
-        connectionTimeoutMillis: 5000
+        connectionTimeoutMillis: 4000
       });
 
+      dbConnectionLogs.push(`Testing connection to ${host}...`);
       console.log(`[PG] Testing database connection to ${host}...`);
       const testRes = await pool.query('SELECT NOW() as now');
+      dbConnectionLogs.push(`SUCCESS connected to ${host}! Result: ${testRes.rows[0].now}`);
       console.log(`[PG] Connected successfully to PostgreSQL at ${host} (${testRes.rows[0].now})!`);
 
       pool.on('error', (err) => {
@@ -112,10 +118,12 @@ async function initDbPool() {
       dbPool = pool;
       return pool;
     } catch (err) {
+      dbConnectionLogs.push(`FAILED ${host}: ${err.message}`);
       console.warn(`[PG] Connection to ${host} failed: ${err.message}`);
     }
   }
 
+  dbConnectionLogs.push('All candidate database hosts failed. Running in local JSON mode.');
   console.error('[PG] All candidate database hosts failed. Falling back to local storage.');
   dbPool = null;
   return null;
@@ -3043,6 +3051,7 @@ app.get('/api/system/status', async (req, res) => {
     storage: dbStatus === 'connected' ? 'postgresql' : (dbPool ? 'pg_error_fallback' : 'local_json'),
     dbStatus,
     dbError,
+    dbConnectionLogs,
     dbRows,
     dbBookings,
     persistent: dbStatus === 'connected',
