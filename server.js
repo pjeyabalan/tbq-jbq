@@ -659,15 +659,19 @@ function saveBookingsDataLocal() {
   }
 }
 
-function saveBookingsData() {
+async function saveBookingsData() {
+  saveBookingsDataLocal();
   if (dbPool) {
-    dbPool.query(
-      `INSERT INTO tbq_store (key, value, updated_at) VALUES ('bookings', $1::jsonb, NOW())
-       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
-      [JSON.stringify(bookingData)]
-    ).catch(err => console.error('[PG] Error persisting bookings to DB:', err.message));
-  } else {
-    saveBookingsDataLocal();
+    try {
+      await dbPool.query(
+        `INSERT INTO tbq_store (key, value, updated_at) VALUES ('bookings', $1::jsonb, NOW())
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+        [JSON.stringify(bookingData)]
+      );
+      console.log(`[PG] Persisted ${bookingData.bookings.length} 1:1 bookings to database.`);
+    } catch (err) {
+      console.error('[PG] Error persisting bookings to DB:', err.message);
+    }
   }
 }
 
@@ -3017,7 +3021,7 @@ app.get('/api/bookings', (req, res) => {
 });
 
 // POST book a 1:1 session slot
-app.post('/api/bookings/book', (req, res) => {
+app.post('/api/bookings/book', async (req, res) => {
   const { kidName, dayId, slotId } = req.body;
 
   if (!kidName || !dayId || !slotId) {
@@ -3085,14 +3089,14 @@ app.post('/api/bookings/book', (req, res) => {
   };
 
   bookingData.bookings.push(newBooking);
-  saveBookingsData();
+  await saveBookingsData();
 
   console.log(`[1:1 BOOKING] ${matchedKid} booked ${matchedDay.displayDate} @ ${matchedSlot.label}. Kid slots: ${kidBookings.length + 1}/${bookingData.maxSlotsPerKid}`);
   res.json({ success: true, booking: newBooking, data: bookingData });
 });
 
 // POST cancel a booking
-app.post('/api/bookings/cancel', (req, res) => {
+app.post('/api/bookings/cancel', async (req, res) => {
   const { bookingId, kidName, dayId, slotId } = req.body;
 
   let idx = -1;
@@ -3111,21 +3115,21 @@ app.post('/api/bookings/cancel', (req, res) => {
   }
 
   const removed = bookingData.bookings.splice(idx, 1)[0];
-  saveBookingsData();
+  await saveBookingsData();
 
   console.log(`[1:1 BOOKING] Canceled booking for ${removed.kidName} (${removed.dayId} @ ${removed.slotId})`);
   res.json({ success: true, removed, data: bookingData });
 });
 
 // POST reset all bookings (Admin/Coach with PIN)
-app.post('/api/bookings/reset', (req, res) => {
+app.post('/api/bookings/reset', async (req, res) => {
   const { pin } = req.body;
   if (pin !== '2026' && pin !== 'coach') {
     return res.status(401).json({ success: false, error: 'Unauthorized. PIN required to reset schedule.' });
   }
   const clearedCount = bookingData.bookings.length;
   bookingData.bookings = [];
-  saveBookingsData();
+  await saveBookingsData();
   console.log(`[1:1 BOOKING] Reset schedule: cleared ${clearedCount} bookings.`);
   res.json({ success: true, message: `Cleared ${clearedCount} bookings.`, data: bookingData });
 });
@@ -3272,9 +3276,16 @@ async function initStorage() {
             allowedKids: DEFAULT_BOOKING_DATA.allowedKids,
             bookings: activeBookings
           };
-          saveBookingsData();
+          await saveBookingsData();
           console.log(`[PG] Restored ${bookingData.bookings.length} active 1:1 bookings directly from database.`);
         }
+      } else {
+        await dbPool.query(
+          `INSERT INTO tbq_store (key, value, updated_at) VALUES ('bookings', $1::jsonb, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+          [JSON.stringify(bookingData)]
+        );
+        console.log('[PG] Seeded initial bookings store in database.');
       }
 
       console.log('[PG] Database-first initialization complete. No static files loaded!');

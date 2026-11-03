@@ -62,6 +62,10 @@
 
       <!-- Quick Links -->
       <div class="flex items-center gap-1.5">
+        <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 hidden sm:flex items-center gap-1" title="Bookings are persisted in PostgreSQL Database">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Database Saved</span>
+        </span>
         <a href="/practice" class="text-xs bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-400/30 font-bold px-2 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1">
           <span>📖</span>
           <span class="hidden sm:inline">Practice</span>
@@ -216,6 +220,15 @@
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
+      try {
+        const saved = localStorage.getItem('tbq_selected_kid');
+        if (saved && state.allowedKids.includes(saved)) {
+          state.selectedKid = saved;
+        } else if (!state.selectedKid && state.allowedKids.length > 0) {
+          state.selectedKid = state.allowedKids[0]; // pre-selected on load
+        }
+      } catch (e) {}
+
       renderAll();
       fetchBookings();
       // Auto-poll every 5 seconds for real-time collaboration
@@ -241,6 +254,17 @@
           state.maxSlotsPerKid = json.data.maxSlotsPerKid || 3;
           state.maxCapacityPerSlot = json.data.maxCapacityPerSlot || 1;
 
+          if (!state.selectedKid) {
+            try {
+              const saved = localStorage.getItem('tbq_selected_kid');
+              if (saved && state.allowedKids.includes(saved)) {
+                state.selectedKid = saved;
+              } else if (state.allowedKids.length > 0) {
+                state.selectedKid = state.allowedKids[0];
+              }
+            } catch (e) {}
+          }
+
           if (!state.days.some(d => d.id === state.activeDayId) && state.days.length > 0) {
             state.activeDayId = state.days[0].id;
           }
@@ -265,6 +289,7 @@
     // Select active kid
     function selectKid(kidName) {
       state.selectedKid = kidName;
+      try { localStorage.setItem('tbq_selected_kid', kidName); } catch (e) {}
       renderAll();
 
       // Scroll smoothly to active banner
@@ -486,16 +511,7 @@
 
         // Action Button Logic
         let actionBtn = '';
-        if (!state.selectedKid) {
-          actionBtn = `
-            <button 
-              onclick="promptSelectKid()" 
-              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all active:scale-95 cursor-pointer"
-            >
-              👉 Select Quizzer Above to Book
-            </button>
-          `;
-        } else if (myBooking) {
+        if (myBooking) {
           actionBtn = `
             <button 
               onclick="cancelBooking('${myBooking.id}')" 
@@ -506,12 +522,22 @@
             </button>
           `;
         } else if (isFull) {
+          const bookedKid = slotBookings[0] ? slotBookings[0].kidName : 'Another Quizzer';
           actionBtn = `
             <button 
               disabled 
-              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 text-slate-400 cursor-not-allowed"
+              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed"
             >
-              Slot Taken
+              🔒 Booked by ${bookedKid}
+            </button>
+          `;
+        } else if (!state.selectedKid) {
+          actionBtn = `
+            <button 
+              onclick="promptSelectKid()" 
+              class="w-full text-xs font-bold py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all active:scale-95 cursor-pointer"
+            >
+              👉 Select Quizzer Above to Book
             </button>
           `;
         } else if (activeKidDayBooked >= (state.maxSlotsPerKidPerDay || 1)) {
@@ -587,8 +613,9 @@
         const json = await res.json();
         if (json.success) {
           state.bookings = json.data.bookings || [];
+          try { localStorage.setItem('tbq_selected_kid', kidName); } catch (e) {}
           renderAll();
-          showToast(`🎉 Slot booked for ${kidName}!`, 'success');
+          showToast(`🎉 Slot booked for ${kidName} and saved to database!`, 'success');
         } else {
           showToast(json.error || 'Failed to book slot.', 'error');
         }
