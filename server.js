@@ -59,19 +59,66 @@ const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
 // POSTGRESQL PERSISTENCE POOL
 // ==========================================
 let dbPool = null;
-if (process.env.DATABASE_URL) {
-  const connStr = process.env.DATABASE_URL;
-  const isSsl = process.env.NODE_ENV === 'production' || 
-                connStr.includes('render.com') || 
-                !connStr.includes('localhost');
-  dbPool = new Pool({
-    connectionString: connStr,
-    ssl: isSsl ? { rejectUnauthorized: false } : false
-  });
 
-  dbPool.on('error', (err) => {
-    console.error('[PG] Unexpected database client error:', err.message);
-  });
+async function initDbPool() {
+  if (!process.env.DATABASE_URL) {
+    console.log('[PG] No DATABASE_URL provided. Local storage fallback will be used.');
+    return null;
+  }
+
+  const rawConnStr = process.env.DATABASE_URL.trim();
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(rawConnStr);
+  } catch (e) {
+    console.error('[PG] Invalid DATABASE_URL:', e.message);
+    return null;
+  }
+
+  const originalHost = parsedUrl.hostname;
+  const candidateHosts = [originalHost];
+
+  // If hostname has no domain suffix (e.g. Render internal host "dpg-db03hnou01pc738nlvc0-a")
+  if (!originalHost.includes('.')) {
+    candidateHosts.push(
+      `${originalHost}.oregon-postgres.render.com`,
+      `${originalHost}.ohio-postgres.render.com`,
+      `${originalHost}.frankfurt-postgres.render.com`,
+      `${originalHost}.virginia-postgres.render.com`,
+      `${originalHost}.singapore-postgres.render.com`
+    );
+  }
+
+  for (const host of candidateHosts) {
+    try {
+      const candidateUrl = new URL(rawConnStr);
+      candidateUrl.hostname = host;
+      const isSsl = !host.includes('localhost');
+
+      const pool = new Pool({
+        connectionString: candidateUrl.toString(),
+        ssl: isSsl ? { rejectUnauthorized: false } : false,
+        connectionTimeoutMillis: 5000
+      });
+
+      console.log(`[PG] Testing database connection to ${host}...`);
+      const testRes = await pool.query('SELECT NOW() as now');
+      console.log(`[PG] Connected successfully to PostgreSQL at ${host} (${testRes.rows[0].now})!`);
+
+      pool.on('error', (err) => {
+        console.error('[PG] Unexpected database client error:', err.message);
+      });
+
+      dbPool = pool;
+      return pool;
+    } catch (err) {
+      console.warn(`[PG] Connection to ${host} failed: ${err.message}`);
+    }
+  }
+
+  console.error('[PG] All candidate database hosts failed. Falling back to local storage.');
+  dbPool = null;
+  return null;
 }
 
 // ==========================================
@@ -3164,6 +3211,9 @@ app.post('/api/bookings/reset', async (req, res) => {
 // ==========================================
 
 async function initStorage() {
+  // 1. Resolve and connect to PostgreSQL (with automatic regional host resolution)
+  await initDbPool();
+
   if (dbPool) {
     console.log('[PG] Database-first mode active. Connecting to PostgreSQL...');
     try {
@@ -3283,34 +3333,72 @@ async function initStorage() {
 
       // 4. Restore or seed Bookings Data directly from Database
       const bookingsRes = await dbPool.query(`SELECT value FROM tbq_store WHERE key = 'bookings'`);
+      const validDayIds = new Set(DEFAULT_BOOKING_DATA.days.map(d => d.id));
+
       if (bookingsRes.rows.length > 0 && bookingsRes.rows[0].value) {
         let loadedBookings = bookingsRes.rows[0].value;
         if (typeof loadedBookings === 'string') {
           try { loadedBookings = JSON.parse(loadedBookings); } catch (e) {}
         }
-        if (loadedBookings && Array.isArray(loadedBookings.bookings)) {
-          const validDayIds = new Set(DEFAULT_BOOKING_DATA.days.map(d => d.id));
-          const activeBookings = (loadedBookings.bookings || []).filter(b => validDayIds.has(b.dayId));
-          bookingData = {
-            ...DEFAULT_BOOKING_DATA,
-            maxSlotsPerKidPerDay: DEFAULT_BOOKING_DATA.maxSlotsPerKidPerDay,
-            maxSlotsPerKid: DEFAULT_BOOKING_DATA.maxSlotsPerKid,
-            maxCapacityPerSlot: DEFAULT_BOOKING_DATA.maxCapacityPerSlot,
-            days: DEFAULT_BOOKING_DATA.days,
-            timeSlots: DEFAULT_BOOKING_DATA.timeSlots,
-            allowedKids: DEFAULT_BOOKING_DATA.allowedKids,
-            bookings: activeBookings
-          };
-          await saveBookingsData();
-          console.log(`[PG] Restored ${bookingData.bookings.length} active 1:1 bookings directly from database.`);
+
+        let rawBookingsList = [];
+        if (Array.isArray(loadedBookings)) {
+          rawBookingsList = loadedBookings;
+        } else if (loadedBookings && Array.isArray(loadedBookings.bookings)) {
+          rawBookingsList = loadedBookings.bookings;
         }
+
+        let activeBookings = rawBookingsList.filter(b => b && validDayIds.has(b.dayId));
+
+        // If database has 0 bookings, check if local file has bookings to migrate
+        if (activeBookings.length === 0 && fs.existsSync(BOOKINGS_FILE)) {
+          try {
+            const localData = JSON.parse(fs.readFileSync(BOOKINGS_FILE, 'utf8'));
+            if (localData && Array.isArray(localData.bookings) && localData.bookings.length > 0) {
+              const localActive = localData.bookings.filter(b => b && validDayIds.has(b.dayId));
+              if (localActive.length > 0) {
+                activeBookings = localActive;
+                console.log(`[PG] Migrated ${localActive.length} bookings from local file to database.`);
+              }
+            }
+          } catch (e) {}
+        }
+
+        bookingData = {
+          ...DEFAULT_BOOKING_DATA,
+          maxSlotsPerKidPerDay: DEFAULT_BOOKING_DATA.maxSlotsPerKidPerDay,
+          maxSlotsPerKid: DEFAULT_BOOKING_DATA.maxSlotsPerKid,
+          maxCapacityPerSlot: DEFAULT_BOOKING_DATA.maxCapacityPerSlot,
+          days: DEFAULT_BOOKING_DATA.days,
+          timeSlots: DEFAULT_BOOKING_DATA.timeSlots,
+          allowedKids: DEFAULT_BOOKING_DATA.allowedKids,
+          bookings: activeBookings
+        };
+        await saveBookingsData();
+        console.log(`[PG] Restored ${bookingData.bookings.length} active 1:1 bookings directly from database.`);
       } else {
+        // Seed from local file if available
+        let seedBookings = [];
+        if (fs.existsSync(BOOKINGS_FILE)) {
+          try {
+            const localData = JSON.parse(fs.readFileSync(BOOKINGS_FILE, 'utf8'));
+            if (localData && Array.isArray(localData.bookings)) {
+              seedBookings = localData.bookings.filter(b => b && validDayIds.has(b.dayId));
+            }
+          } catch (e) {}
+        }
+
+        bookingData = {
+          ...DEFAULT_BOOKING_DATA,
+          bookings: seedBookings
+        };
+
         await dbPool.query(
           `INSERT INTO tbq_store (key, value, updated_at) VALUES ('bookings', $1::jsonb, NOW())
            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
           [JSON.stringify(bookingData)]
         );
-        console.log('[PG] Seeded initial bookings store in database.');
+        console.log(`[PG] Seeded initial bookings store in database with ${seedBookings.length} bookings.`);
       }
 
       console.log('[PG] Database-first initialization complete. No static files loaded!');
