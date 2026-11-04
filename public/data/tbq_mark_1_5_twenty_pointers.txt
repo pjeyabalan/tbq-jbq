@@ -586,79 +586,79 @@ Question: Scripture text question. Give a complete answer. From the section titl
 Answer:   Anyone who does God's will
 --------------------------------------------------------------------------------
 
-#117 | Points: 20 | Ref: M 4 Analysis
-Question: According to the Chapter Analysis page for Mark 4, how many named individuals and geographical locations are listed?
-Answer:   1 individual (Jesus, 11 times) and 0 geographical locations.
+#117 | Points: 20 | Ref: M 4:3
+Question: From the section titled *Parable of the Farmer Scattering Seed*, what one-word exclamation does the farmer parable begin with in verse 3?
+Answer:   "Listen!"
 --------------------------------------------------------------------------------
 
-#118 | Points: 20 | Ref: M 4 Analysis
-Question: According to the Chapter Analysis page for Mark 4, what are the total counts for questions and exclamations?
-Answer:   8 questions and 7 exclamations.
+#118 | Points: 20 | Ref: M 4:9
+Question: From the section titled *Parable of the Farmer Scattering Seed*, what statement did Jesus make to the crowds at the conclusion of his parable in verse 9?
+Answer:   "Anyone with ears to hear should listen and understand."
 --------------------------------------------------------------------------------
 
-#119 | Points: 20 | Ref: M 4:3
-Question: From the section titled *Parable of the Farmer Scattering Seed*, what single-word exclamation did Jesus use to begin his story?
-Answer:   "Listen!".
+#119 | Points: 20 | Ref: M 4:11
+Question: From the section titled *Parable of the Farmer Scattering Seed*, what are the disciples permitted to understand according to verse 11?
+Answer:   The secret of the Kingdom of God.
 --------------------------------------------------------------------------------
 
 #120 | Points: 20 | Ref: M 4:11 Endnote
-Question: According to the endnote for Mark 4:11, what is the meaning of the Greek term translated as "secret"?
-Answer:   Mystery.
+Question: According to the endnote for Mark 4:11, what is the Greek word for "secret"?
+Answer:   Greek *mystery*.
 --------------------------------------------------------------------------------
 
 #121 | Points: 20 | Ref: M 4:12
-Question: From the section titled *Parable of the Farmer Scattering Seed*, which Old Testament passage from the Greek translation is cited regarding outsiders?
-Answer:   Isaiah 6:9–10.
+Question: From the section titled *Parable of the Farmer Scattering Seed*, what Old Testament quotation is cited in verse 12?
+Answer:   "When they see what I do, they will learn nothing. When they hear what I say, they will not understand. Otherwise, they will turn to me and be forgiven."
 --------------------------------------------------------------------------------
 
 #122 | Points: 20 | Ref: M 4:13
-Question: From the section titled *Parable of the Farmer Scattering Seed*, what question did Jesus ask his disciples regarding their ability to understand other parables?
-Answer:   "If you can't understand the meaning of this parable, how will you understand all the other parables?".
+Question: From the section titled *Parable of the Farmer Scattering Seed*, what question did Jesus ask his disciples when they were alone in verse 13?
+Answer:   "If you can't understand the meaning of this parable, how will you understand all the other parables?"
 --------------------------------------------------------------------------------
 
 #123 | Points: 20 | Ref: M 4:21
-Question: From the section titled *Parable of the Lamp*, what question did Jesus ask concerning concealing a lamp?
-Answer:   "Would anyone light a lamp and then put it under a basket or under a bed?".
+Question: From the section titled *Parable of the Lamp*, what question did Jesus ask concerning a lamp in verse 21?
+Answer:   "Would anyone light a lamp and then put it under a basket or under a bed?"
 --------------------------------------------------------------------------------
 
 #124 | Points: 20 | Ref: M 4:21
-Question: From the section titled *Parable of the Lamp*, what brief exclamation answers whether a lamp should be placed under furniture?
-Answer:   "Of course not!".
+Question: From the section titled *Parable of the Lamp*, what exclamation immediately answers Jesus's question about lighting a lamp in verse 21?
+Answer:   "Of course not!"
 --------------------------------------------------------------------------------
 
 #125 | Points: 20 | Ref: M 4:24 Endnote
-Question: According to the endnote for Mark 4:24, what alternate phrase is given for receiving more understanding?
-Answer:   "The measure you give will be the measure you get back".
+Question: According to the endnote for Mark 4:24, what alternate reading is given for "the more understanding you will be given"?
+Answer:   "Or *The measure you give will be the measure you get back*."
 --------------------------------------------------------------------------------
 
 #126 | Points: 20 | Ref: M 4:30
-Question: From the section titled *Parable of the Mustard Seed*, what two questions did Jesus use to introduce the parable?
-Answer:   "How can I describe the Kingdom of God? What story should I use to illustrate it?".
+Question: From the section titled *Parable of the Mustard Seed*, what two questions did Jesus ask in verse 30?
+Answer:   "How can I describe the Kingdom of God? What story should I use to illustrate it?"
 --------------------------------------------------------------------------------
 
 #127 | Points: 20 | Ref: M 4:36
-Question: From the section titled *Jesus Calms the Storm*, what parenthetical note is recorded about the departure of the boat?
-Answer:   "(although other boats followed)".
+Question: From the section titled *Jesus Calms the Storm*, what parenthetical statement appears in verse 36?
+Answer:   "(although other boats followed)"
 --------------------------------------------------------------------------------
 
 #128 | Points: 20 | Ref: M 4:38
-Question: From the section titled *Jesus Calms the Storm*, what question did the disciples ask Jesus when they woke him?
-Answer:   "Teacher, don't you care that we're going to drown?".
+Question: From the section titled *Jesus Calms the Storm*, what question did the disciples ask Jesus while shouting at him during the storm?
+Answer:   "Teacher, don't you care that we're going to drown?"
 --------------------------------------------------------------------------------
 
 #129 | Points: 20 | Ref: M 4:39
-Question: From the section titled *Jesus Calms the Storm*, what two imperative exclamations did Jesus speak to calm the wind and waves?
-Answer:   "Silence! Be still!".
+Question: From the section titled *Jesus Calms the Storm*, what two exclamations did Jesus speak to the waves in verse 39?
+Answer:   "Silence! Be still!"
 --------------------------------------------------------------------------------
 
 #130 | Points: 20 | Ref: M 4:40
 Question: From the section titled *Jesus Calms the Storm*, what two questions did Jesus ask his disciples after the wind stopped?
-Answer:   "Why are you afraid? Do you still have no faith?".
+Answer:   "Why are you afraid? Do you still have no faith?"
 --------------------------------------------------------------------------------
 
 #131 | Points: 20 | Ref: M 4:41
-Question: From the section titled *Jesus Calms the Storm*, what question and exclamation did the disciples ask each other in awe?
-Answer:   "Who is this man? Even the wind and waves obey him!".
+Question: From the section titled *Jesus Calms the Storm*, what question and exclamation did the disciples ask each other in verse 41?
+Answer:   Question: "Who is this man?" / Exclamation: "Even the wind and waves obey him!"
 --------------------------------------------------------------------------------
 
 #132 | Points: 20 | Ref: M 5:1 Endnote
