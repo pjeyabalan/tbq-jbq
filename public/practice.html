@@ -302,16 +302,16 @@
           }
         } else {
           const s = state.data ? state.data.metadata.summary : null;
-          const totalQ = state.data ? state.data.metadata.total_unique_questions : 386;
+          const totalQ = state.data ? state.data.metadata.total_unique_questions : 449;
           if (state.activeTab === '10') {
             pdfBtn.href = '/data/tbq_mark_1_5_ten_pointers.pdf';
-            pdfLabel.textContent = `📄 Download 10 Pts PDF (${s ? s['10_pointers'].total : 171} Qs)`;
+            pdfLabel.textContent = `📄 Download 10 Pts PDF (${s ? s['10_pointers'].total : 199} Qs)`;
           } else if (state.activeTab === '20') {
             pdfBtn.href = '/data/tbq_mark_1_5_twenty_pointers.pdf';
-            pdfLabel.textContent = `📄 Download 20 Pts PDF (${s ? s['20_pointers'].total : 156} Qs)`;
+            pdfLabel.textContent = `📄 Download 20 Pts PDF (${s ? s['20_pointers'].total : 185} Qs)`;
           } else if (state.activeTab === '30') {
             pdfBtn.href = '/data/tbq_mark_1_5_thirty_pointers.pdf';
-            pdfLabel.textContent = `📄 Download 30 Pts PDF (${s ? s['30_pointers'].total : 59} Qs)`;
+            pdfLabel.textContent = `📄 Download 30 Pts PDF (${s ? s['30_pointers'].total : 65} Qs)`;
           } else {
             pdfBtn.href = '/data/tbq_mark_1_5_all_pointers.pdf';
             pdfLabel.textContent = `📄 Download Mark 1–5 PDF (${totalQ} Qs)`;
