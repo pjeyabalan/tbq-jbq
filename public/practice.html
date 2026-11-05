@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>TBQ Practice Sets — Mark Chapters 1–5</title>
+  <title>TBQ Practice Sets — Mark Chapters 1–3</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -121,13 +121,11 @@
           <button onclick="setChapterFilter('1')" id="btn-chapter-1" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 1</button>
           <button onclick="setChapterFilter('2')" id="btn-chapter-2" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 2</button>
           <button onclick="setChapterFilter('3')" id="btn-chapter-3" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 3</button>
-          <button onclick="setChapterFilter('4')" id="btn-chapter-4" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 4</button>
-          <button onclick="setChapterFilter('5')" id="btn-chapter-5" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Mark 5</button>
         </div>
 
         <!-- Download PDF Action -->
         <div class="flex items-center gap-1.5 ml-auto">
-          <a id="download-current-pdf-btn" href="/data/tbq_mark_1_5_ten_pointers.pdf" target="_blank" class="text-[11px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 active:scale-95 shadow-2xs">
+          <a id="download-current-pdf-btn" href="/data/tbq_mark_1_3_ten_pointers.pdf" target="_blank" class="text-[11px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 active:scale-95 shadow-2xs">
             <span>📄</span>
             <span id="download-pdf-label">Download 10 Pts PDF</span>
           </a>
@@ -138,8 +136,8 @@
     <!-- QUESTIONS SUMMARY CHIPS -->
     <div class="flex items-center justify-between px-1 mb-2.5 text-xs text-slate-500 font-semibold">
       <div class="flex items-center gap-2">
-        <span class="font-black text-slate-900" id="filtered-count-label">Showing 165 questions</span>
-        <span id="active-filter-badge" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">10 Pointers • Mark 1–5</span>
+        <span class="font-black text-slate-900" id="filtered-count-label">Showing 125 questions</span>
+        <span id="active-filter-badge" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">10 Pointers • Mark 1–3</span>
       </div>
       <button onclick="shuffleQuestions()" class="text-brand-600 hover:text-brand-700 font-bold active:scale-95 flex items-center gap-1 cursor-pointer" title="Randomize order for drilling">
         <span>🔀</span>
@@ -217,7 +215,7 @@
       document.getElementById('tab-count-20').textContent = s['20_pointers'].total;
       document.getElementById('tab-count-30').textContent = s['30_pointers'].total;
       document.getElementById('tab-count-all').textContent = state.data.metadata.total_unique_questions;
-      document.title = `TBQ Practice Sets — Mark Chapters 1–5 (${state.data.metadata.total_unique_questions} Questions)`;
+      document.title = `TBQ Practice Sets — Mark Chapters 1–3 (${state.data.metadata.total_unique_questions} Questions)`;
     }
 
     // Switch Points Tab (10, 20, 30, All)
@@ -269,7 +267,7 @@
       });
 
       // 2. Sync Chapter Buttons
-      const chs = ['all', '1', '2', '3', '4', '5'];
+      const chs = ['all', '1', '2', '3'];
       chs.forEach(c => {
         const btn = document.getElementById(`btn-chapter-${c}`);
         if (!btn) return;
@@ -285,37 +283,20 @@
       const pdfBtn = document.getElementById('download-current-pdf-btn');
       const pdfLabel = document.getElementById('download-pdf-label');
       if (pdfBtn && pdfLabel) {
-        const isMark45 = state.chapterFilter === '4' || state.chapterFilter === '5';
-        if (isMark45) {
-          if (state.activeTab === '10') {
-            pdfBtn.href = '/data/tbq_mark_4_5_ten_pointers.pdf';
-            pdfLabel.textContent = '📄 Download Mark 4-5 10 Pts PDF';
-          } else if (state.activeTab === '20') {
-            pdfBtn.href = '/data/tbq_mark_4_5_twenty_pointers.pdf';
-            pdfLabel.textContent = '📄 Download Mark 4-5 20 Pts PDF';
-          } else if (state.activeTab === '30') {
-            pdfBtn.href = '/data/tbq_mark_4_5_thirty_pointers.pdf';
-            pdfLabel.textContent = '📄 Download Mark 4-5 30 Pts PDF';
-          } else {
-            pdfBtn.href = '/data/tbq_mark_4_5_all_pointers.pdf';
-            pdfLabel.textContent = '📄 Download Mark 4-5 Drill PDF';
-          }
+        const s = state.data ? state.data.metadata.summary : null;
+        const totalQ = state.data ? state.data.metadata.total_unique_questions : 281;
+        if (state.activeTab === '10') {
+          pdfBtn.href = '/data/tbq_mark_1_3_ten_pointers.pdf';
+          pdfLabel.textContent = `📄 Download 10 Pts PDF (${s ? s['10_pointers'].total : 125} Qs)`;
+        } else if (state.activeTab === '20') {
+          pdfBtn.href = '/data/tbq_mark_1_3_twenty_pointers.pdf';
+          pdfLabel.textContent = `📄 Download 20 Pts PDF (${s ? s['20_pointers'].total : 116} Qs)`;
+        } else if (state.activeTab === '30') {
+          pdfBtn.href = '/data/tbq_mark_1_3_thirty_pointers.pdf';
+          pdfLabel.textContent = `📄 Download 30 Pts PDF (${s ? s['30_pointers'].total : 40} Qs)`;
         } else {
-          const s = state.data ? state.data.metadata.summary : null;
-          const totalQ = state.data ? state.data.metadata.total_unique_questions : 449;
-          if (state.activeTab === '10') {
-            pdfBtn.href = '/data/tbq_mark_1_5_ten_pointers.pdf';
-            pdfLabel.textContent = `📄 Download 10 Pts PDF (${s ? s['10_pointers'].total : 199} Qs)`;
-          } else if (state.activeTab === '20') {
-            pdfBtn.href = '/data/tbq_mark_1_5_twenty_pointers.pdf';
-            pdfLabel.textContent = `📄 Download 20 Pts PDF (${s ? s['20_pointers'].total : 185} Qs)`;
-          } else if (state.activeTab === '30') {
-            pdfBtn.href = '/data/tbq_mark_1_5_thirty_pointers.pdf';
-            pdfLabel.textContent = `📄 Download 30 Pts PDF (${s ? s['30_pointers'].total : 65} Qs)`;
-          } else {
-            pdfBtn.href = '/data/tbq_mark_1_5_all_pointers.pdf';
-            pdfLabel.textContent = `📄 Download Mark 1–5 PDF (${totalQ} Qs)`;
-          }
+          pdfBtn.href = '/data/tbq_mark_1_3_all_pointers.pdf';
+          pdfLabel.textContent = `📄 Download Mark 1–3 PDF (${totalQ} Qs)`;
         }
       }
     }
@@ -431,7 +412,7 @@
       if (countLabel) countLabel.textContent = `Showing ${list.length} question${list.length === 1 ? '' : 's'}`;
       if (filterBadge) {
         const tabText = state.activeTab === 'all' ? 'All Points' : `${state.activeTab} Pointers`;
-        const chText = state.chapterFilter === 'all' ? 'Mark 1–5' : `Mark ${state.chapterFilter}`;
+        const chText = state.chapterFilter === 'all' ? 'Mark 1–3' : `Mark ${state.chapterFilter}`;
         const shuffleText = state.isShuffled ? ' • 🔀 Shuffled' : '';
         filterBadge.textContent = `${tabText} • ${chText}${shuffleText}`;
       }
